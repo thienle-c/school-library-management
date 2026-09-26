@@ -1,0 +1,64 @@
+# ==============================================================================
+# Remote School Library Management - .gitignore
+# ==============================================================================
+
+# Compiled Java class files
+*.class
+
+# Apache Ant Build & Packaging Artifacts
+build/
+dist/
+nbbuild/
+nbdist/
+
+# NetBeans IDE User-Specific Metadata (Keep project.xml and project.properties)
+nbproject/private/
+.nb-gradle/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Eclipse IDE
+.project
+.classpath
+.settings/
+bin/
+
+# Visual Studio Code
+.vscode/
+
+# Build logs and temporary test outputs
+*.log
+*.tmp
+TEST-*.xml
+TESTS-TestSuites.xml
+
+# Operating System Files
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# AI Coding Assistant & Scratch directories
+.agent/
+scratch/

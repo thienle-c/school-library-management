@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="thuvien" default="default" basedir=".">
+    <description>Builds, tests, and runs the Remote School Library Management System.</description>
+    <import file="nbproject/build-impl.xml"/>
+
+    <!-- ================================================================= -->
+    <!-- Modular Compilation Override                                      -->
+    <!-- Enforces strict separation:                                       -->
+    <!-- 1. common: zero dependencies (no Swing, no JDBC)                 -->
+    <!-- 2. server: common + MySQL + HikariCP + SLF4J (no Swing)          -->
+    <!-- 3. client: common only (no MySQL, no JDBC, no HikariCP)           -->
+    <!-- ================================================================= -->
+
+    <target name="-do-compile" depends="init,deps-jar,-pre-pre-compile,-pre-compile">
+        <!-- 1. Compile common module -->
+        <echo message="[ANT] Compiling common module (common/src)..."/>
+        <mkdir dir="${build.classes.dir}"/>
+        <javac srcdir="common/src"
+               destdir="${build.classes.dir}"
+               source="${javac.source}"
+               target="${javac.target}"
+               encoding="${source.encoding}"
+               debug="${javac.debug}"
+               includeantruntime="false">
+            <classpath path=""/>
+        </javac>
+
+        <!-- 2. Compile server module with database libraries -->
+        <echo message="[ANT] Compiling server module (server/src) with HikariCP and MySQL..."/>
+        <javac srcdir="server/src"
+               destdir="${build.classes.dir}"
+               source="${javac.source}"
+               target="${javac.target}"
+               encoding="${source.encoding}"
+               debug="${javac.debug}"
+               includeantruntime="false">
+            <classpath>
+                <pathelement location="${build.classes.dir}"/>
+                <path path="${javac.classpath}"/>
+            </classpath>
+        </javac>
+
+        <!-- 3. Compile client module with STRICT ZERO DATABASE DEPENDENCIES -->
+        <echo message="[ANT] Compiling client module (client/src) with ZERO database dependencies..."/>
+        <javac srcdir="client/src"
+               destdir="${build.classes.dir}"
+               source="${javac.source}"
+               target="${javac.target}"
+               encoding="${source.encoding}"
+               debug="${javac.debug}"
+               includeantruntime="false">
+            <classpath>
+                <!-- Only common classes in build.classes.dir, NO JDBC JARs -->
+                <pathelement location="${build.classes.dir}"/>
+            </classpath>
+        </javac>
+
+        <!-- 4. Copy runtime configuration resources -->
+        <echo message="[ANT] Copying configuration resources..."/>
+        <copy todir="${build.classes.dir}" failonerror="false">
+            <fileset dir="common/src" excludes="**/*.java"/>
+            <fileset dir="server/src" excludes="**/*.java"/>
+            <fileset dir="server/resources" erroronmissingdir="false"/>
+            <fileset dir="client/src" excludes="**/*.java"/>
+            <fileset dir="client/resources" erroronmissingdir="false"/>
+        </copy>
+    </target>
+
+    <!-- Target to run the Library Server -->
+    <target name="run-server" depends="compile" description="Runs the Library TCP Server">
+        <java classname="thuvien.server.ServerMain" fork="true">
+            <classpath>
+                <path path="${run.classpath}"/>
+            </classpath>
+        </java>
+    </target>
+
+    <!-- Target to run the Library Swing Client -->
+    <target name="run-client" depends="compile" description="Runs the Library Swing Client">
+        <java classname="thuvien.client.ClientMain" fork="true">
+            <classpath>
+                <pathelement location="${build.classes.dir}"/>
+            </classpath>
+        </java>
+    </target>
+</project>

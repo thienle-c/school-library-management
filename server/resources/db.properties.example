@@ -1,0 +1,14 @@
+# MySQL Database Configuration Example
+# Copy this file to db.properties and update with your local database credentials.
+db.driver=com.mysql.cj.jdbc.Driver
+db.url=jdbc:mysql://localhost:3306/school_library?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
+db.username=your_db_username
+db.password=your_db_password
+
+# HikariCP Connection Pool Settings
+db.pool.name=LibraryServerPool
+db.pool.maxSize=10
+db.pool.minIdle=2
+db.pool.idleTimeout=30000
+db.pool.connectionTimeout=10000
+db.pool.maxLifetime=1800000
