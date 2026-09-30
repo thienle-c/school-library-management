@@ -11,6 +11,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import thuvien.client.session.ClientSession;
 import thuvien.common.exception.NetworkException;
+import thuvien.common.protocol.Action;
 import thuvien.common.protocol.Request;
 import thuvien.common.protocol.Response;
 
@@ -21,8 +22,8 @@ import thuvien.common.protocol.Response;
 public class TCPNetworkClient implements NetworkClient {
     private static final Logger LOGGER = Logger.getLogger(TCPNetworkClient.class.getName());
 
-    private final String host;
-    private final int port;
+    private String host;
+    private int port;
     private final int timeoutMs;
 
     private Socket socket;
@@ -34,9 +35,42 @@ public class TCPNetworkClient implements NetworkClient {
     private static final long IDLE_RENEWAL_THRESHOLD_MS = 20000L;
 
     public TCPNetworkClient(String host, int port, int timeoutMs) {
-        this.host = host;
+        this.host = (host != null && !host.trim().isEmpty()) ? host.trim() : "127.0.0.1";
         this.port = port;
         this.timeoutMs = timeoutMs;
+    }
+
+    @Override
+    public synchronized String getHost() {
+        return host;
+    }
+
+    @Override
+    public synchronized int getPort() {
+        return port;
+    }
+
+    @Override
+    public synchronized void setServerAddress(String newHost, int newPort) {
+        String normalizedHost = (newHost != null && !newHost.trim().isEmpty()) ? newHost.trim() : "127.0.0.1";
+        if (!normalizedHost.equals(this.host) || newPort != this.port) {
+            disconnect();
+            this.host = normalizedHost;
+            this.port = newPort;
+        }
+    }
+
+    @Override
+    public synchronized boolean connect(String newHost, int newPort) throws NetworkException {
+        setServerAddress(newHost, newPort);
+        disconnect();
+        return connect();
+    }
+
+    @Override
+    public synchronized boolean ping() throws NetworkException {
+        Response resp = send(new Request(Action.PING, "PING"));
+        return resp != null && resp.isSuccess() && "PONG".equals(resp.getData());
     }
 
     @Override

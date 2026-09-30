@@ -4,8 +4,6 @@ import java.util.Collections;
 import java.util.List;
 import thuvien.client.network.NetworkClient;
 import thuvien.common.dto.SearchSuggestionRequestDTO;
-import thuvien.common.exception.LibraryException;
-import thuvien.common.exception.NetworkException;
 import thuvien.common.protocol.Action;
 import thuvien.common.protocol.Request;
 import thuvien.common.protocol.Response;

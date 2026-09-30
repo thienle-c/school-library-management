@@ -11,11 +11,8 @@ import thuvien.common.dto.BookSearchCriteriaDTO;
 import thuvien.common.dto.BorrowRecordDTO;
 import thuvien.common.dto.BorrowRequestDTO;
 import thuvien.common.dto.CategoryDTO;
-import thuvien.common.dto.DashboardMetricsDTO;
 import thuvien.common.dto.DeleteStudentRequestDTO;
-import thuvien.common.dto.FineDTO;
 import thuvien.common.dto.LoginRequestDTO;
-import thuvien.common.dto.PageResponseDTO;
 import thuvien.common.dto.ReservationDTO;
 import thuvien.common.dto.ReturnResultDTO;
 import thuvien.common.dto.StudentDTO;
@@ -169,7 +166,7 @@ public class RequestRouter {
         try {
             // 1. Authentication Check
             UserSessionDTO session = null;
-            if (action != Action.LOGIN && action != Action.REGISTER_STUDENT) {
+            if (action != Action.LOGIN && action != Action.REGISTER_STUDENT && action != Action.PING) {
                 String token = request.getToken();
                 if (token == null || token.trim().isEmpty()) {
                     return Response.error(reqId, StatusCode.UNAUTHORIZED, "Unauthorized: Session token is missing.");
@@ -188,6 +185,10 @@ public class RequestRouter {
 
             // 2. Action Routing
             switch (action) {
+                // --- Health Check ---
+                case PING:
+                    return Response.ok(reqId, "PONG", "PONG");
+
                 // --- Authentication & User Self-Service ---
                 case LOGIN:
                     return handleLogin(reqId, request);

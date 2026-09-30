@@ -8,15 +8,12 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import thuvien.common.dto.UserDTO;
 import thuvien.common.enums.UserRole;
 import thuvien.server.database.DatabaseManager;
 import thuvien.server.repository.UserRepository;
 
 public class UserRepositoryImpl implements UserRepository {
-    private static final Logger LOGGER = Logger.getLogger(UserRepositoryImpl.class.getName());
     private final DatabaseManager databaseManager;
 
     public UserRepositoryImpl() {

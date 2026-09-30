@@ -10,7 +10,6 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
-import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -38,7 +37,6 @@ import thuvien.common.enums.UserRole;
  * Establishes the role-aware navigation foundation, session management, and content card container.
  */
 public class MainDashboardForm extends JFrame {
-    private static final Logger LOGGER = Logger.getLogger(MainDashboardForm.class.getName());
 
     private final NetworkClient networkClient;
     private final UserSessionDTO session;

@@ -4,13 +4,15 @@
     <configuration>
         <data xmlns="http://www.netbeans.org/ns/j2se-project/3">
             <name>thuvien</name>
+
             <source-roots>
-                <root id="src.common.dir" label="Common"/>
-                <root id="src.server.dir" label="Server"/>
-                <root id="src.client.dir" label="Client"/>
+                <root id="src.common.dir"/>
+                <root id="src.server.dir"/>
+                <root id="src.client.dir"/>
             </source-roots>
+
             <test-roots>
-                <root id="test.src.dir" label="Test"/>
+                <root id="test.src.dir"/>
             </test-roots>
         </data>
     </configuration>

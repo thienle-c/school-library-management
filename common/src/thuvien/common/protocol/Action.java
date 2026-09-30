@@ -72,13 +72,17 @@ public enum Action {
     LIST_AUDIT_LOGS,
 
     // Search Autocomplete Suggestions
-    SEARCH_SUGGESTIONS;
+    SEARCH_SUGGESTIONS,
+
+    // Health Check
+    PING;
 
     /**
      * Determines whether this action is idempotent and safe for automatic retry.
      */
     public boolean isReadOnly() {
         switch (this) {
+            case PING:
             case GET_CURRENT_USER:
             case LIST_USERS:
             case GET_USER:

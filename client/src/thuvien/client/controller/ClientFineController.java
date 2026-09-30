@@ -61,7 +61,6 @@ public class ClientFineController {
         return Collections.emptyList();
     }
 
-    @SuppressWarnings("unchecked")
     public List<FineDTO> listUnpaidFines() throws LibraryException, NetworkException {
         return listAllFines();
     }

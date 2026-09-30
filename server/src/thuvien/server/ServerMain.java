@@ -1,6 +1,12 @@
 package thuvien.server;
 
 import java.io.InputStream;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -24,7 +30,7 @@ public class ServerMain {
     public static void main(String[] args) {
         LOGGER.info("Starting Remote School Library Server...");
 
-        int port = 8888;
+        int port = 9999;
         int threadPoolSize = 20;
         int socketTimeout = 30000;
 
@@ -33,12 +39,20 @@ public class ServerMain {
             if (in != null) {
                 Properties props = new Properties();
                 props.load(in);
-                port = Integer.parseInt(props.getProperty("server.port", "8888"));
+                port = Integer.parseInt(props.getProperty("server.port", "9999"));
                 threadPoolSize = Integer.parseInt(props.getProperty("server.threadPoolSize", "20"));
                 socketTimeout = Integer.parseInt(props.getProperty("server.socketTimeout", "30000"));
             }
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Could not load server.properties, using defaults.", e);
+        }
+
+        // Allow system property override if provided
+        String sysPort = System.getProperty("server.port");
+        if (sysPort != null && !sysPort.trim().isEmpty()) {
+            try {
+                port = Integer.parseInt(sysPort.trim());
+            } catch (NumberFormatException ignored) {}
         }
 
         // Initialize Services
@@ -83,10 +97,51 @@ public class ServerMain {
 
         try {
             server.start();
-            LOGGER.info(String.format("Server is online and ready for client connections on port %d.", port));
+            printStartupBanner(port);
+            LOGGER.info(String.format("Server is online and ready for client connections on 0.0.0.0:%d.", port));
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Failed to start library server", e);
             System.exit(1);
         }
+    }
+
+    private static void printStartupBanner(int port) {
+        List<String> ipv4List = getAvailableLanIPv4Addresses();
+        System.out.println("Server started");
+        System.out.println("Port: " + port);
+        System.out.println("Available IPv4 addresses:");
+        if (ipv4List.isEmpty()) {
+            System.out.println("- 127.0.0.1");
+        } else {
+            for (String ip : ipv4List) {
+                System.out.println("- " + ip);
+            }
+        }
+        System.out.flush();
+    }
+
+    private static List<String> getAvailableLanIPv4Addresses() {
+        List<String> addresses = new ArrayList<>();
+        try {
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            if (interfaces != null) {
+                while (interfaces.hasMoreElements()) {
+                    NetworkInterface iface = interfaces.nextElement();
+                    if (!iface.isUp() || iface.isLoopback() || iface.isVirtual()) {
+                        continue;
+                    }
+                    Enumeration<InetAddress> inetAddresses = iface.getInetAddresses();
+                    while (inetAddresses.hasMoreElements()) {
+                        InetAddress addr = inetAddresses.nextElement();
+                        if (addr instanceof Inet4Address && !addr.isLoopbackAddress() && !addr.isLinkLocalAddress()) {
+                            addresses.add(addr.getHostAddress());
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.FINE, "Could not enumerate network interfaces", e);
+        }
+        return addresses;
     }
 }

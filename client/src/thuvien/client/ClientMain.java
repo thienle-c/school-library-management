@@ -17,7 +17,7 @@ public class ClientMain {
 
     public static void main(String[] args) {
         String host = "127.0.0.1";
-        int port = 8888;
+        int port = 9999;
         int timeout = 10000;
 
         // Load client configuration
@@ -25,12 +25,24 @@ public class ClientMain {
             if (in != null) {
                 Properties props = new Properties();
                 props.load(in);
-                host = props.getProperty("server.host", "127.0.0.1");
-                port = Integer.parseInt(props.getProperty("server.port", "8888"));
-                timeout = Integer.parseInt(props.getProperty("network.timeout", "10000"));
+                host = props.getProperty("server.host", "127.0.0.1").trim();
+                port = Integer.parseInt(props.getProperty("server.port", "9999").trim());
+                timeout = Integer.parseInt(props.getProperty("network.timeout", "10000").trim());
             }
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Could not load client.properties, using defaults.", e);
+        }
+
+        // Allow system property overrides if provided
+        String sysHost = System.getProperty("server.host");
+        if (sysHost != null && !sysHost.trim().isEmpty()) {
+            host = sysHost.trim();
+        }
+        String sysPort = System.getProperty("server.port");
+        if (sysPort != null && !sysPort.trim().isEmpty()) {
+            try {
+                port = Integer.parseInt(sysPort.trim());
+            } catch (NumberFormatException ignored) {}
         }
 
         final TCPNetworkClient networkClient = new TCPNetworkClient(host, port, timeout);

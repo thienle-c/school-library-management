@@ -18,7 +18,6 @@ import thuvien.client.view.LoginForm;
 import thuvien.client.view.common.AsyncWorker;
 import thuvien.common.dto.DashboardMetricsDTO;
 import thuvien.common.exception.AuthenticationException;
-import thuvien.common.exception.NetworkException;
 
 /**
  * Panel displaying real-time library dashboard metrics and statistics from the server.

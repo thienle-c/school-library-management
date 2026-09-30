@@ -7,29 +7,33 @@ The networking layer utilizes persistent Java TCP Sockets (`java.net.Socket` and
 ```
 Swing Client                                           Library Server
     |                                                        |
-    |---- 1. TCP SYN / Connect (Port 8888) ----------------->|
+    |---- 1. TCP SYN / Connect (Port 9999) ----------------->|
     |                                                        |-- 2. ServerSocket.accept()
     |                                                        |-- 3. Assign to ExecutorService
     |<--- 4. Established Connection (Object Streams) --------|
     |                                                        |
-    |---- 5. Send Request (Action: LOGIN) ------------------>|
-    |                                                        |-- 6. RequestRouter validates
-    |                                                        |-- 7. AuthService authenticates
-    |<--- 8. Send Response (Token Generated) ----------------|
+    |---- 5. Send Request (Action: PING) ------------------->|
+    |                                                        |-- 6. RequestRouter responds PONG
+    |<--- 7. Send Response (200 OK: "PONG") -----------------|
     |                                                        |
-    |---- 9. Send Request (Action: BORROW_BOOK + Token) ---->|
-    |                                                        |-- 10. RequestRouter verifies Token
-    |                                                        |-- 11. BorrowService executes TX
-    |<--- 12. Send Response (BorrowRecord DTO) --------------|
+    |---- 8. Send Request (Action: LOGIN) ------------------>|
+    |                                                        |-- 9. RequestRouter validates
+    |                                                        |-- 10. AuthService authenticates
+    |<--- 11. Send Response (Token Generated) ---------------|
     |                                                        |
-    |---- 13. Socket Close / Disconnect -------------------->|
-    |                                                        |-- 14. Catch EOF / Release Worker
+    |---- 12. Send Request (Action: BORROW_BOOK + Token) --->|
+    |                                                        |-- 13. RequestRouter verifies Token
+    |                                                        |-- 14. BorrowService executes TX
+    |<--- 15. Send Response (BorrowRecord DTO) --------------|
+    |                                                        |
+    |---- 16. Socket Close / Disconnect -------------------->|
+    |                                                        |-- 17. Catch EOF / Release Worker
 ```
 
 ---
 
 ## 2. Client Connection Handling
-* The client initializes `TCPNetworkClient` pointing to the host and port defined in `client.properties`.
+* The client initializes `TCPNetworkClient` pointing to the host and port defined in `client.properties` (default `127.0.0.1:9999`, configurable in `LoginForm` or via `-Dserver.host=<IP> -Dserver.port=9999`).
 * Socket timeout is set to `10,000 ms` to avoid locking the UI if network drops.
 * A persistent stream is maintained to minimize socket handshake overhead during consecutive user actions.
 * In the event of a connection break, `TCPNetworkClient` automatically cleans up dead socket handles and re-establishes connectivity on the next user action.
@@ -37,7 +41,7 @@ Swing Client                                           Library Server
 ---
 
 ## 3. Server Connection & Thread Pool Architecture
-* `LibraryServer` binds to a dedicated TCP port (`8888` by default).
+* `LibraryServer` binds to `0.0.0.0` on TCP port `9999` by default (`server.properties`).
 * An `ExecutorService` thread pool with 20 pre-allocated worker threads processes incoming client sockets.
 * When a client connects:
   1. `ServerSocket.accept()` returns a connected `Socket`.
@@ -127,3 +131,26 @@ Every message transmitted over the TCP stream follows a structured envelope.
 * The system comfortably sustains up to 20 concurrent active socket operations simultaneously.
 * Socket backlog handles incoming bursts during peak periods (e.g. library opening hours).
 * Business transactions (such as borrowing the last available copy of a book) remain completely isolated and concurrency-safe via database-level row locking.
+
+---
+
+## 7. Wi-Fi / LAN Connectivity & Windows Firewall Configuration
+
+### Server Setup (Wi-Fi / LAN Host)
+1. Start `thuvien.server.ServerMain`.
+2. The server binds to `0.0.0.0:9999` and prints all active non-loopback IPv4 addresses on startup:
+   ```text
+   Server started
+   Port: 9999
+   Available IPv4 addresses:
+   - 192.168.1.100
+   ```
+3. If clients on the same Wi-Fi/LAN cannot connect while `127.0.0.1:9999` works locally, allow inbound TCP port `9999` on Windows Firewall (Private/Domain profile) without disabling the firewall globally:
+   ```powershell
+   New-NetFirewallRule -DisplayName "Remote School Library TCP Server (Port 9999)" -Direction Inbound -Protocol TCP -LocalPort 9999 -Action Allow -Profile Private,Domain
+   ```
+
+### Client Setup (Remote Machine on Same Wi-Fi / LAN)
+1. Either set `server.host=<Server-IPv4>` and `server.port=9999` in `client/resources/client.properties`, or enter the **Server IP** and **Port** directly in `LoginForm`.
+2. Click **"Kiểm tra kết nối"** to execute an unauthenticated `PING -> PONG` check over TCP before logging in.
+

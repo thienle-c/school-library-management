@@ -36,6 +36,10 @@ public class LoginForm extends JFrame {
     private final NetworkClient networkClient;
     private final ClientAuthController authController;
 
+    private JTextField serverHostField;
+    private JTextField serverPortField;
+    private JButton testConnectionButton;
+
     private JTextField usernameField;
     private JPasswordField passwordField;
     private JButton loginButton;
@@ -52,12 +56,12 @@ public class LoginForm extends JFrame {
     private void initUI() {
         setTitle("Hệ Thống Quản Lý Thư Viện - Đăng Nhập");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(460, 360);
+        setSize(480, 440);
         setLocationRelativeTo(null);
         setResizable(false);
 
-        JPanel mainPanel = new JPanel(new BorderLayout(10, 15));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 25, 20, 25));
+        JPanel mainPanel = new JPanel(new BorderLayout(10, 12));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(18, 25, 18, 25));
 
         // Header
         JPanel headerPanel = new JPanel(new BorderLayout(0, 4));
@@ -73,10 +77,42 @@ public class LoginForm extends JFrame {
         // Form fields
         JPanel formPanel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(6, 6, 6, 6);
+        gbc.insets = new Insets(5, 6, 5, 6);
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
+        // Row 0: Server IP
         gbc.gridx = 0; gbc.gridy = 0;
+        gbc.weightx = 0.0;
+        JLabel hostLabel = new JLabel("Server IP:");
+        hostLabel.setFont(hostLabel.getFont().deriveFont(Font.BOLD));
+        formPanel.add(hostLabel, gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 1.0;
+        serverHostField = new JTextField(networkClient.getHost(), 15);
+        formPanel.add(serverHostField, gbc);
+
+        // Row 1: Server Port
+        gbc.gridx = 0; gbc.gridy = 1;
+        gbc.weightx = 0.0;
+        JLabel portLabel = new JLabel("Port:");
+        portLabel.setFont(portLabel.getFont().deriveFont(Font.BOLD));
+        formPanel.add(portLabel, gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 1.0;
+        serverPortField = new JTextField(String.valueOf(networkClient.getPort()), 15);
+        formPanel.add(serverPortField, gbc);
+
+        // Row 2: Test Connection button
+        gbc.gridx = 1; gbc.gridy = 2;
+        gbc.weightx = 1.0;
+        testConnectionButton = new JButton("Kiểm tra kết nối");
+        testConnectionButton.addActionListener(e -> performTestConnection());
+        formPanel.add(testConnectionButton, gbc);
+
+        // Row 3: Username
+        gbc.gridx = 0; gbc.gridy = 3;
         gbc.weightx = 0.0;
         JLabel userLabel = new JLabel("Tên đăng nhập:");
         userLabel.setFont(userLabel.getFont().deriveFont(Font.BOLD));
@@ -87,7 +123,8 @@ public class LoginForm extends JFrame {
         usernameField = new JTextField(15);
         formPanel.add(usernameField, gbc);
 
-        gbc.gridx = 0; gbc.gridy = 1;
+        // Row 4: Password
+        gbc.gridx = 0; gbc.gridy = 4;
         gbc.weightx = 0.0;
         JLabel passLabel = new JLabel("Mật khẩu:");
         passLabel.setFont(passLabel.getFont().deriveFont(Font.BOLD));
@@ -125,6 +162,9 @@ public class LoginForm extends JFrame {
         registerButton.setFocusPainted(false);
         registerButton.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         registerButton.addActionListener(e -> {
+            if (!applyServerSettingsFromUI()) {
+                return;
+            }
             StudentRegistrationDialog dialog = new StudentRegistrationDialog(this, networkClient);
             dialog.setVisible(true);
         });
@@ -141,13 +181,95 @@ public class LoginForm extends JFrame {
     }
 
     private void setInputsEnabled(boolean enabled) {
+        serverHostField.setEnabled(enabled);
+        serverPortField.setEnabled(enabled);
+        testConnectionButton.setEnabled(enabled);
         usernameField.setEnabled(enabled);
         passwordField.setEnabled(enabled);
         loginButton.setEnabled(enabled);
         registerButton.setEnabled(enabled);
     }
 
+    private boolean applyServerSettingsFromUI() {
+        String host = serverHostField.getText().trim();
+        String portStr = serverPortField.getText().trim();
+        if (host.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Vui lòng nhập địa chỉ Server IP.",
+                    "Lỗi Cấu Hình",
+                    JOptionPane.WARNING_MESSAGE);
+            serverHostField.requestFocusInWindow();
+            return false;
+        }
+        int port;
+        try {
+            port = Integer.parseInt(portStr);
+            if (port < 1 || port > 65535) {
+                throw new NumberFormatException("Out of range");
+            }
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Port phải là số nguyên hợp lệ (1 - 65535).",
+                    "Lỗi Cấu Hình",
+                    JOptionPane.WARNING_MESSAGE);
+            serverPortField.requestFocusInWindow();
+            return false;
+        }
+        networkClient.setServerAddress(host, port);
+        return true;
+    }
+
+    private void performTestConnection() {
+        if (!applyServerSettingsFromUI()) {
+            return;
+        }
+        final String host = networkClient.getHost();
+        final int port = networkClient.getPort();
+
+        setInputsEnabled(false);
+        statusLabel.setForeground(new Color(80, 80, 80));
+        statusLabel.setText("Đang kiểm tra kết nối tới " + host + ":" + port + "...");
+
+        AsyncWorker.run(
+                () -> {
+                    networkClient.connect(host, port);
+                    return networkClient.ping();
+                },
+                (Boolean pongOk) -> {
+                    setInputsEnabled(true);
+                    if (Boolean.TRUE.equals(pongOk)) {
+                        statusLabel.setForeground(new Color(20, 130, 50));
+                        statusLabel.setText("Server connected");
+                        JOptionPane.showMessageDialog(LoginForm.this,
+                                "Server connected",
+                                "Kết Nối Thành Công",
+                                JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        statusLabel.setForeground(new Color(180, 40, 40));
+                        statusLabel.setText("Cannot connect to server");
+                        JOptionPane.showMessageDialog(LoginForm.this,
+                                "Cannot connect to server",
+                                "Lỗi Kết Nối",
+                                JOptionPane.ERROR_MESSAGE);
+                    }
+                },
+                (Exception ex) -> {
+                    setInputsEnabled(true);
+                    statusLabel.setForeground(new Color(180, 40, 40));
+                    statusLabel.setText("Cannot connect to server");
+                    LOGGER.log(Level.WARNING, "PING connectivity check failed", ex);
+                    JOptionPane.showMessageDialog(LoginForm.this,
+                            "Cannot connect to server",
+                            "Lỗi Kết Nối",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+        );
+    }
+
     private void performLogin() {
+        if (!applyServerSettingsFromUI()) {
+            return;
+        }
         String username = usernameField.getText().trim();
         char[] passChars = passwordField.getPassword();
         String password = new String(passChars);
@@ -167,6 +289,7 @@ public class LoginForm extends JFrame {
 
         // Disable inputs and show loading state
         setInputsEnabled(false);
+        statusLabel.setForeground(new Color(80, 80, 80));
         statusLabel.setText("Đang kết nối và xác thực với máy chủ...");
 
         // Non-blocking network call via AsyncWorker off the EDT
@@ -194,14 +317,13 @@ public class LoginForm extends JFrame {
                         statusLabel.setText(errorMsg);
                     } else if (ex instanceof NetworkException) {
                         errorTitle = "Lỗi Kết Nối Máy Chủ";
-                        errorMsg = "Không thể kết nối đến máy chủ thư viện.\n\n"
-                                + "Chi tiết: " + ex.getMessage() + "\n\n"
-                                + "Vui lòng kiểm tra xem máy chủ đang chạy và kết nối mạng ổn định.";
-                        statusLabel.setText("Kết nối đến máy chủ thất bại.");
+                        errorMsg = "Cannot connect to server (" + networkClient.getHost() + ":" + networkClient.getPort() + ").\n"
+                                + "Vui lòng kiểm tra lại Server IP, Port và kết nối mạng.";
+                        statusLabel.setText("Cannot connect to server");
                         LOGGER.log(Level.WARNING, "Login network failure", ex);
                     } else {
                         errorTitle = "Lỗi Hệ Thống";
-                        errorMsg = "Đã xảy ra lỗi trong quá trình xác thực: " + ex.getMessage();
+                        errorMsg = "Đã xảy ra lỗi trong quá trình xác thực.";
                         statusLabel.setText("Lỗi hệ thống khi đăng nhập.");
                         LOGGER.log(Level.SEVERE, "Unexpected login error", ex);
                     }
