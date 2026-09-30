@@ -442,39 +442,52 @@ ant clean compile test jar
 
 ## Running the Application
 
-### 1. Start the Server
-
-The server must be started before launching client instances.
+### 1. Package Server & Client Distributions
 
 ```bash
-# Option A: Using Ant target
+ant package-all
+```
+
+### 2. Start the Server
+
+The server must be started on the host machine (where MySQL is running) before launching client instances.
+
+```bash
+# Option A: Using portable batch script in Server distribution
+dist\server-dist\run-server.bat
+
+# Option B: Using Ant target
 ant run-server
 
-# Option B: Directly from packaged JAR
+# Option C: Directly from packaged JAR
 java -jar dist/thuvien.jar
-
-# Option C: Running the class explicitly
-java -cp "dist/thuvien.jar;dist/lib/*" thuvien.server.ServerMain
 ```
 
-Expected startup log output:
+Expected startup console output:
 ```text
-INFO: LibraryServer listening on TCP port 8888 with 20 worker threads.
-INFO: HikariCP DataSource initialized successfully.
-INFO: Server is online and ready for client connections on port 8888.
+Server started
+Port: 9999
+Available IPv4 addresses:
+- 192.168.1.100
+INFO: Server is online and ready for client connections on 0.0.0.0:9999.
 ```
 
-### 2. Start the Client
+### 3. Start the Client
 
-You can launch multiple client instances simultaneously to test multi-user concurrency.
+You can launch the client on the same machine (`127.0.0.1`) or copy `dist/client-dist/` to another laptop on the same Wi-Fi/LAN:
 
 ```bash
-# Option A: Using Ant target
-ant run-client
+# Option A: Using portable batch script (uses resources/client.properties or LoginForm input)
+dist\client-dist\run-client.bat
 
-# Option B: Using Java command
-java -cp "dist/thuvien.jar;dist/lib/*" thuvien.client.ClientMain
+# Option B: Passing Server IP and Port directly via CLI arguments
+dist\client-dist\run-client.bat 192.168.1.100 9999
+
+# Option C: Using Ant target
+ant run-client
 ```
+
+In `LoginForm`, you can also enter **Server IP** (e.g., `192.168.1.100`), **Port** (`9999`), and click **"Kiểm tra kết nối"** to verify `PING -> PONG` connectivity (`"Server connected"`) prior to logging in.
 
 ---
 
@@ -483,13 +496,13 @@ java -cp "dist/thuvien.jar;dist/lib/*" thuvien.client.ClientMain
 The project contains 9 automated JUnit 4 test suites. The entire test suite executes via:
 
 ```bash
-ant test
+ant clean compile test
 ```
 
 ### Test Suite Verification Results
 
 ```text
-The current test suite contains 75 tests with 0 failures, 0 errors, and 0 skipped tests.
+The current test suite contains 84 tests with 0 failures, 0 errors, and 0 skipped tests.
 ```
 
 | Test Suite | Class Name | Tests | Failures | Errors | Skipped | Status |
@@ -497,41 +510,55 @@ The current test suite contains 75 tests with 0 failures, 0 errors, and 0 skippe
 | **Protocol Serialization** | `thuvien.common.ProtocolTest` | 2 | 0 | 0 | 0 | **PASS** |
 | **RequestRouter & RBAC** | `thuvien.server.RequestRouterTest` | 24 | 0 | 0 | 0 | **PASS** |
 | **Database Persistence Smoke** | `thuvien.server.database.MySQLSmokeIntegrationTest` | 4 | 0 | 0 | 0 | **PASS** |
-| **TCP End-to-End Networking** | `thuvien.server.network.TCPEndToEndIntegrationTest` | 2 | 0 | 0 | 0 | **PASS** |
+| **TCP End-to-End Networking** | `thuvien.server.network.TCPEndToEndIntegrationTest` | 11 | 0 | 0 | 0 | **PASS** |
 | **Architecture & Dependency Guard**| `thuvien.server.repository.RepositoryArchitectureTest`| 3 | 0 | 0 | 0 | **PASS** |
 | **Authentication Service** | `thuvien.server.service.AuthServiceTest` | 5 | 0 | 0 | 0 | **PASS** |
 | **Borrow Concurrency & Isolation** | `thuvien.server.service.BorrowConcurrencyIntegrationTest`| 3 | 0 | 0 | 0 | **PASS** |
 | **Fine Calculation & Settlement** | `thuvien.server.service.FineServiceTest` | 3 | 0 | 0 | 0 | **PASS** |
 | **Security & Lockout Hardening** | `thuvien.server.service.SecurityAndFeatureHardeningTest` | 29 | 0 | 0 | 0 | **PASS** |
-| **TOTAL** | **9 Suites** | **75** | **0** | **0** | **0** | **100% PASS** |
+| **TOTAL** | **9 Suites** | **84** | **0** | **0** | **0** | **100% PASS** |
 
 ---
 
 ## Release & Distribution
 
-Packaging the project with `ant jar` produces the standalone distribution in `dist/`:
+Running `ant package-all` produces isolated Server and Client distributions in `dist/`:
 
 ```text
 dist/
-├── thuvien.jar                       # Application classes, resources, and manifest
-├── README.TXT                        # NetBeans deployment instructions
-└── lib/                              # Runtime dependencies
-    ├── HikariCP-4.0.3.jar            # Database connection pool
-    ├── mysql-connector-java-8.0.33.jar# MySQL JDBC driver
-    ├── slf4j-api-1.7.36.jar          # Logging API
-    └── slf4j-jdk14-1.7.36.jar        # JUL logging implementation
+├── server-dist/                      # Standalone Server distribution (Deploy on Server host)
+│   ├── server.jar                    # ServerMain + server & common classes (no client GUI)
+│   ├── run-server.bat                # Portable Windows launcher script
+│   ├── resources/
+│   │   ├── server.properties         # TCP port (9999), thread pool, timeout
+│   │   ├── db.properties             # Server-only MySQL JDBC & HikariCP configuration
+│   │   └── db.properties.example     # Template database configuration
+│   └── lib/
+│       ├── HikariCP-4.0.3.jar
+│       ├── mysql-connector-java-8.0.33.jar
+│       ├── slf4j-api-1.7.36.jar
+│       └── slf4j-jdk14-1.7.36.jar
+│
+├── client-dist/                      # Standalone Client distribution (Deploy on Client laptops)
+│   ├── client.jar                    # ClientMain + Swing UI & common DTOs (ZERO DB/Server classes)
+│   ├── run-client.bat                # Portable Windows launcher (supports: run-client.bat [IP] [Port])
+│   ├── resources/
+│   │   └── client.properties         # Default server.host=127.0.0.1, server.port=9999
+│   └── lib/                          # Empty (Client uses pure JDK + Swing + TCP sockets)
+│
+└── thuvien.jar                       # Combined NetBeans default artifact
 ```
 
 ---
 
 ## Configuration
 
-Configuration files are located in `resources/` directories and packaged into the application:
+Configuration files are located in `resources/` directories and externalized in each distribution:
 
-### Database Configuration (`server/resources/db.properties`)
+### Database Configuration (`server/resources/db.properties` — Server Only)
 ```properties
 db.url=jdbc:mysql://127.0.0.1:3306/school_library?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
-db.user=root
+db.username=root
 db.password=
 db.pool.maxSize=10
 db.pool.minIdle=2
@@ -539,7 +566,7 @@ db.pool.minIdle=2
 
 ### Server Networking (`server/resources/server.properties`)
 ```properties
-server.port=8888
+server.port=9999
 server.threadPoolSize=20
 server.socketTimeout=30000
 ```
@@ -547,7 +574,7 @@ server.socketTimeout=30000
 ### Client Networking (`client/resources/client.properties`)
 ```properties
 server.host=127.0.0.1
-server.port=8888
+server.port=9999
 network.timeout=10000
 ```
 

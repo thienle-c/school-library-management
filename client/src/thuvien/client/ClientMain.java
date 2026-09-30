@@ -45,6 +45,16 @@ public class ClientMain {
             } catch (NumberFormatException ignored) {}
         }
 
+        // Allow optional command-line argument overrides: <host> [port]
+        if (args != null && args.length >= 1 && args[0] != null && !args[0].trim().isEmpty()) {
+            host = args[0].trim();
+        }
+        if (args != null && args.length >= 2 && args[1] != null && !args[1].trim().isEmpty()) {
+            try {
+                port = Integer.parseInt(args[1].trim());
+            } catch (NumberFormatException ignored) {}
+        }
+
         final TCPNetworkClient networkClient = new TCPNetworkClient(host, port, timeout);
 
         SwingUtilities.invokeLater(() -> {

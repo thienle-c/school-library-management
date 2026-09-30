@@ -83,4 +83,121 @@
             </classpath>
         </java>
     </target>
+
+    <!-- ================================================================= -->
+    <!-- Phase 6: Isolated Server & Client Distribution Packaging          -->
+    <!-- ================================================================= -->
+
+    <target name="package-server" depends="compile" description="Packages isolated Server distribution into dist/server-dist">
+        <property name="server.dist.dir" value="${dist.dir}/server-dist"/>
+        <delete dir="${server.dist.dir}"/>
+        <mkdir dir="${server.dist.dir}"/>
+        <mkdir dir="${server.dist.dir}/lib"/>
+        <mkdir dir="${server.dist.dir}/resources"/>
+
+        <!-- Copy external runtime libraries required by Server -->
+        <copy todir="${server.dist.dir}/lib">
+            <fileset dir="lib">
+                <include name="mysql-connector-java-8.0.33.jar"/>
+                <include name="HikariCP-4.0.3.jar"/>
+                <include name="slf4j-api-1.7.36.jar"/>
+                <include name="slf4j-jdk14-1.7.36.jar"/>
+            </fileset>
+        </copy>
+
+        <!-- Copy externalized Server configuration files -->
+        <copy todir="${server.dist.dir}/resources" failonerror="false">
+            <fileset dir="server/resources" includes="server.properties,db.properties,db.properties.example"/>
+        </copy>
+
+        <!-- Build server.jar with ONLY common + server classes (NO client GUI, NO tests) -->
+        <jar destfile="${server.dist.dir}/server.jar">
+            <fileset dir="${build.classes.dir}">
+                <include name="thuvien/common/**"/>
+                <include name="thuvien/server/**"/>
+                <include name="server.properties"/>
+                <include name="db.properties"/>
+                <exclude name="thuvien/client/**"/>
+                <exclude name="client.properties"/>
+            </fileset>
+            <manifest>
+                <attribute name="Main-Class" value="thuvien.server.ServerMain"/>
+                <attribute name="Class-Path" value="resources/ lib/mysql-connector-java-8.0.33.jar lib/HikariCP-4.0.3.jar lib/slf4j-api-1.7.36.jar lib/slf4j-jdk14-1.7.36.jar"/>
+            </manifest>
+        </jar>
+
+        <!-- Create portable run-server.bat -->
+        <echo file="${server.dist.dir}/run-server.bat">@echo off
+setlocal
+cd /d "%~dp0"
+
+where java &gt;nul 2&gt;&amp;1
+if errorlevel 1 (
+    echo [ERROR] Java Runtime Environment ^(java^) was not found in PATH.
+    echo Please install Java 8+ and add it to your system PATH.
+    pause
+    exit /b 1
+)
+
+echo Starting Remote School Library TCP Server...
+java -cp "resources;server.jar;lib/*" thuvien.server.ServerMain %*
+endlocal
+</echo>
+        <echo message="[ANT] Server distribution created at: ${server.dist.dir}"/>
+    </target>
+
+    <target name="package-client" depends="compile" description="Packages isolated Client distribution into dist/client-dist">
+        <property name="client.dist.dir" value="${dist.dir}/client-dist"/>
+        <delete dir="${client.dist.dir}"/>
+        <mkdir dir="${client.dist.dir}"/>
+        <mkdir dir="${client.dist.dir}/lib"/>
+        <mkdir dir="${client.dist.dir}/resources"/>
+
+        <!-- Copy externalized Client configuration -->
+        <copy todir="${client.dist.dir}/resources" failonerror="false">
+            <fileset dir="client/resources" includes="client.properties"/>
+        </copy>
+
+        <!-- Build client.jar with ONLY common + client classes (ZERO server classes, ZERO db.properties, ZERO JDBC JARs) -->
+        <jar destfile="${client.dist.dir}/client.jar">
+            <fileset dir="${build.classes.dir}">
+                <include name="thuvien/common/**"/>
+                <include name="thuvien/client/**"/>
+                <include name="client.properties"/>
+                <exclude name="thuvien/server/**"/>
+                <exclude name="db.properties"/>
+                <exclude name="db.properties.example"/>
+                <exclude name="server.properties"/>
+            </fileset>
+            <manifest>
+                <attribute name="Main-Class" value="thuvien.client.ClientMain"/>
+                <attribute name="Class-Path" value="resources/"/>
+            </manifest>
+        </jar>
+
+        <!-- Create portable run-client.bat supporting optional [host] [port] arguments -->
+        <echo file="${client.dist.dir}/run-client.bat">@echo off
+setlocal
+cd /d "%~dp0"
+
+where java &gt;nul 2&gt;&amp;1
+if errorlevel 1 (
+    echo [ERROR] Java Runtime Environment ^(java^) was not found in PATH.
+    echo Please install Java 8+ and add it to your system PATH.
+    pause
+    exit /b 1
+)
+
+set "JVM_ARGS="
+if not "%~1"=="" set "JVM_ARGS=-Dserver.host=%~1"
+if not "%~2"=="" set "JVM_ARGS=%JVM_ARGS% -Dserver.port=%~2"
+
+echo Starting Remote School Library Swing Client...
+java %JVM_ARGS% -cp "resources;client.jar;lib/*" thuvien.client.ClientMain %*
+endlocal
+</echo>
+        <echo message="[ANT] Client distribution created at: ${client.dist.dir}"/>
+    </target>
+
+    <target name="package-all" depends="jar,package-server,package-client" description="Builds all Server and Client distributions"/>
 </project>

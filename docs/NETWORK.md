@@ -136,21 +136,64 @@ Every message transmitted over the TCP stream follows a structured envelope.
 
 ## 7. Wi-Fi / LAN Connectivity & Windows Firewall Configuration
 
+### Packaging Isolated Server & Client Distributions
+Run the Apache Ant packaging target to build standalone distributions for the Server machine and Client machine(s):
+
+```bash
+ant package-all
+```
+
+This creates two isolated distributions under `dist/`:
+* **`dist/server-dist/`**: Contains `server.jar`, `lib/` (MySQL JDBC + HikariCP + SLF4J), `resources/` (`server.properties`, `db.properties`), and `run-server.bat`.
+* **`dist/client-dist/`**: Contains `client.jar` (pure Swing + TCP client + common DTOs, **zero** JDBC drivers or `db.properties`), `resources/` (`client.properties`), and `run-client.bat`.
+
 ### Server Setup (Wi-Fi / LAN Host)
-1. Start `thuvien.server.ServerMain`.
-2. The server binds to `0.0.0.0:9999` and prints all active non-loopback IPv4 addresses on startup:
+1. Ensure MySQL (e.g., Laragon / MySQL 5.7+ / 8.0+) is running on the Server machine and `resources/db.properties` is configured.
+2. Run `run-server.bat` inside `dist/server-dist/` (or `ant run-server`).
+3. The server binds to `0.0.0.0:9999` and prints all active non-loopback IPv4 addresses on startup:
    ```text
    Server started
    Port: 9999
    Available IPv4 addresses:
    - 192.168.1.100
    ```
-3. If clients on the same Wi-Fi/LAN cannot connect while `127.0.0.1:9999` works locally, allow inbound TCP port `9999` on Windows Firewall (Private/Domain profile) without disabling the firewall globally:
+4. Allow inbound TCP port `9999` on Windows Firewall (do **not** disable Windows Firewall globally):
+   ```cmd
+   netsh advfirewall firewall add rule name="School Library Server TCP 9999" dir=in action=allow protocol=TCP localport=9999
+   ```
+   Or via PowerShell (Administrator):
    ```powershell
-   New-NetFirewallRule -DisplayName "Remote School Library TCP Server (Port 9999)" -Direction Inbound -Protocol TCP -LocalPort 9999 -Action Allow -Profile Private,Domain
+   New-NetFirewallRule -DisplayName "School Library Server TCP 9999" -Direction Inbound -Protocol TCP -LocalPort 9999 -Action Allow -Profile Private,Domain
    ```
 
 ### Client Setup (Remote Machine on Same Wi-Fi / LAN)
-1. Either set `server.host=<Server-IPv4>` and `server.port=9999` in `client/resources/client.properties`, or enter the **Server IP** and **Port** directly in `LoginForm`.
-2. Click **"Kiểm tra kết nối"** to execute an unauthenticated `PING -> PONG` check over TCP before logging in.
+1. Copy `dist/client-dist/` to the Client machine.
+2. Launch the Client using `run-client.bat`:
+   ```cmd
+   run-client.bat
+   ```
+   Or pass the Server IP and Port directly as command-line arguments:
+   ```cmd
+   run-client.bat 192.168.1.100 9999
+   ```
+   *(Alternatively, edit `resources/client.properties` with `server.host=192.168.1.100` and `server.port=9999`, or enter **Server IP** and **Port** directly in `LoginForm`).*
+3. Click **"Kiểm tra kết nối"** in `LoginForm` to execute an unauthenticated `PING -> PONG` check over TCP (`"Server connected"`), then log in.
+
+---
+
+## 8. Two-Machine LAN Deployment Checklist & Troubleshooting
+
+### Port Connectivity Diagnostic (From Client Machine)
+Before logging in from a second laptop, test TCP port reachability in PowerShell:
+```powershell
+Test-NetConnection 192.168.1.100 -Port 9999
+```
+* **Expected**: `TcpTestSucceeded : True`
+* **If `TcpTestSucceeded : False`**, diagnose in this order:
+  1. **Server not running**: Verify `run-server.bat` is active on the Server machine and printed `Port: 9999`.
+  2. **Firewall blocking**: Ensure inbound rule for TCP `9999` is enabled for the active network profile (Private/Domain/Public).
+  3. **Wrong Server IP**: Verify the IPv4 address printed by `ServerMain` matches the IP entered on the Client.
+  4. **Different subnet / VLAN**: Confirm both machines are connected to the same Wi-Fi SSID/LAN subnet.
+  5. **Wi-Fi AP Isolation**: Public/guest Wi-Fi routers may block peer-to-peer client communication (AP isolation). Use a private LAN or mobile hotspot if guest Wi-Fi blocks local peers.
+
 
