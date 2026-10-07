@@ -3,11 +3,11 @@
 [![Java](https://img.shields.io/badge/Java-8%20(1.8)-orange.svg)](https://www.oracle.com/java/)
 [![Build](https://img.shields.io/badge/Build-Apache%20Ant%20%2F%20NetBeans-blue.svg)](https://ant.apache.org/)
 [![Database](https://img.shields.io/badge/Database-MySQL%208.x%20(InnoDB)-00758F.svg)](https://www.mysql.com/)
-[![Tests](https://img.shields.io/badge/Tests-75%20Passed-brightgreen.svg)](https://junit.org/junit4/)
+[![Tests](https://img.shields.io/badge/Tests-99%20Passed-brightgreen.svg)](https://junit.org/junit4/)
 [![GUI](https://img.shields.io/badge/GUI-Java%20Swing-red.svg)](https://docs.oracle.com/javase/8/docs/technotes/guides/swing/)
-[![Network](https://img.shields.io/badge/Network-Raw%20TCP%20Sockets-lightgrey.svg)](https://docs.oracle.com/javase/8/docs/api/java/net/Socket.html)
+[![Network](https://img.shields.io/badge/Network-Java%20RMI%20Registry%20:1099-purple.svg)](https://docs.oracle.com/javase/8/docs/technotes/guides/rmi/)
 
-A 3-tier client-server school library management system designed for university Computer Networking and Network Programming coursework. The system enables book and student management, circulation workflows (borrowing and returns), hold reservations, fine settlements, catalog search with prefix autocomplete, and audit logging over a raw TCP socket connection.
+A 3-tier client-server school library management system designed for university Computer Networking and Network Programming coursework. The system enables book and student management, circulation workflows (borrowing and returns), hold reservations, fine settlements, catalog search with prefix autocomplete, and audit logging over **Java Remote Method Invocation (Java RMI)** and **Java Object Serialization**. Server-side atomic locking guarantees that two concurrent clients cannot borrow the same book copy simultaneously.
 
 ---
 
@@ -78,7 +78,7 @@ A 3-tier client-server school library management system designed for university 
 
 ## Architecture
 
-The system is strictly organized into a 3-tier distributed architecture over raw TCP sockets:
+The system is strictly organized into a 3-tier distributed architecture over **Java Remote Method Invocation (Java RMI)**:
 
 ```mermaid
 graph TD
@@ -86,23 +86,23 @@ graph TD
         UI["Swing Views & Panels<br/>(LoginForm, MainDashboardForm)"]
         CC["Client Controllers"]
         AW["AsyncWorker (SwingWorker)<br/>(Offloads EDT)"]
-        TC["TCPNetworkClient<br/>(Persistent Socket)"]
-        UI --> CC --> AW --> TC
+        RC["RMIClient<br/>(Registry Lookup :1099)"]
+        UI --> CC --> AW --> RC
     end
 
     subgraph Transport ["Network Transport"]
-        Socket["Raw TCP Socket<br/>Port 8888<br/>Request / Response Protocol"]
+        RMI["Java RMI Registry :1099<br/>Remote Interface: LibraryRemoteService<br/>Java Serialization (DTOs & Envelopes)"]
     end
 
     subgraph Server Tier ["Java Library Server"]
-        LS["LibraryServer<br/>(ServerSocket + ExecutorService)"]
-        CH["ClientHandler<br/>(Per-Socket Worker)"]
+        LRS["LibraryRMIServer<br/>(LocateRegistry + Rebind)"]
+        RSI["LibraryRemoteServiceImpl<br/>(UnicastRemoteObject)"]
         RR["RequestRouter<br/>(Session & RBAC Guards)"]
         SL["Service Layer<br/>(Auth, Book, Borrow, Return, Fine)"]
         RL["Repository Layer<br/>(JDBC PreparedStatements)"]
         DM["DatabaseManager<br/>(HikariCP Pool)"]
 
-        LS --> CH --> RR --> SL --> RL --> DM
+        LRS --> RSI --> RR --> SL --> RL --> DM
     end
 
     subgraph Data Tier ["Database Tier"]
@@ -110,14 +110,14 @@ graph TD
         DM --> DB
     end
 
-    TC <==>|Serialized Envelopes| Socket <==> LS
+    RC <==>|RMI Remote Invocations| RMI <==> RSI
 ```
 
 ### Module Boundaries
 
-* **`common` (`thuvien.common`)**: Shared protocol envelopes (`Request`, `Response`), Action enumeration, StatusCode constants, Data Transfer Objects (DTOs), domain enums, and exceptions. Has **zero** dependencies on Swing or JDBC.
-* **`server` (`thuvien.server`)**: TCP socket listener (`ServerSocket`), `RequestRouter`, business services, JDBC repositories, `SessionManager`, `PasswordHasher`, and HikariCP connection pool. Has **zero** Swing dependencies.
-* **`client` (`thuvien.client`)**: Swing GUI views, panels, dialogs, client controllers, `ClientSession`, and `TCPNetworkClient`. Has **zero** JDBC, SQL (`java.sql.*`), or database driver dependencies.
+* **`common` (`thuvien.common`)**: Remote interface (`LibraryRemoteService`), shared protocol envelopes (`Request`, `Response`), Action enumeration, StatusCode constants, Data Transfer Objects (DTOs), domain enums, and exceptions. Has **zero** dependencies on Swing or JDBC.
+* **`server` (`thuvien.server`)**: RMI Server bootstrap (`LibraryRMIServer`), Remote implementation (`LibraryRemoteServiceImpl`), `RequestRouter`, business services, JDBC repositories, `SessionManager`, `PasswordHasher`, and HikariCP connection pool. Has **zero** Swing dependencies.
+* **`client` (`thuvien.client`)**: Swing GUI views, panels, dialogs, client controllers, `ClientSession`, and `RMIClient`. Has **zero** JDBC, SQL (`java.sql.*`), or database driver dependencies.
 
 ---
 
@@ -127,7 +127,8 @@ graph TD
 |---|---|---|
 | **Runtime & Language** | Java (OpenJDK / Amazon Corretto) | Java 8 (Source & Target `1.8`) |
 | **Desktop Client GUI** | Java Swing | Standard JDK 8 |
-| **Network Transport** | Raw Java TCP Sockets | `java.net.Socket`, `ServerSocket` |
+| **Network Transport** | Java RMI (Remote Method Invocation) | `java.rmi.*`, RMI Registry Port 1099 |
+| **Serialization** | Java Object Serialization | `java.io.Serializable` |
 | **Database Engine** | MySQL (InnoDB) | 5.7+ / 8.0+ |
 | **Connection Pooling** | HikariCP | 4.0.3 |
 | **Build System** | Apache Ant via NetBeans | 1.9+ (`build.xml`) |
@@ -375,26 +376,33 @@ The database uses the MySQL **InnoDB** storage engine to support foreign key con
 
 ## Networking & Protocol
 
-Communication between client and server takes place over raw TCP sockets using Java Object Serialization envelopes.
+Communication between client and server takes place over **Java Remote Method Invocation (Java RMI)** using standard Java Object Serialization envelopes and DTOs.
 
-### Protocol Envelopes
+### RMI Remote Interface & Service
+
+* **Remote Interface**: `thuvien.common.rmi.LibraryRemoteService` extending `java.rmi.Remote`.
+* **Remote Object Implementation**: `thuvien.server.rmi.LibraryRemoteServiceImpl` extending `java.rmi.server.UnicastRemoteObject`.
+* **RMI Registry Port**: Default `1099` (configured in `server.properties` and `client.properties`).
+* **Service Name**: `"LibraryRemoteService"`.
+* **Client Adapter**: `thuvien.client.network.RMIClient` performs `LocateRegistry.getRegistry(host, 1099).lookup("LibraryRemoteService")` and translates UI controller actions into remote invocations.
+
+### Protocol Envelopes & DTOs
 
 * **`Request`**:
   * `requestId`: UUID string for request-response correlation.
   * `action`: Action enum identifier (e.g. `LOGIN`, `BORROW_BOOK`).
-  * `token`: Active session token (auto-injected by `TCPNetworkClient`).
+  * `token`: Active session token (auto-injected by `RMIClient`).
   * `payload`: Action-specific DTO or parameter object.
 * **`Response`**:
   * `requestId`: Echoed UUID correlating with the originating request.
-  * `statusCode`: HTTP-style status code (`200 OK`, `201 CREATED`, `400 BAD_REQUEST`, `401 UNAUTHORIZED`, `403 FORBIDDEN`, `404 NOT_FOUND`, `409 CONFLICT`, `500 SERVER_ERROR`).
+  * `statusCode`: Status code (`200 OK`, `201 CREATED`, `400 BAD_REQUEST`, `401 UNAUTHORIZED`, `403 FORBIDDEN`, `404 NOT_FOUND`, `409 CONFLICT`, `500 SERVER_ERROR`).
   * `message`: User-readable message or error description.
   * `data`: Return DTO, collection, or operation result.
 
-### Socket Concurrency & Safety
-* **Server Threading**: Connections are handled via a bounded `ExecutorService` fixed thread pool (default 20 workers) to protect the server from resource exhaustion.
-* **Timeouts**: Configured read timeouts prevent deadlocks (`setSoTimeout`: 30s server, 10s client).
-* **Idempotency & Safe Retry**: Read-only queries (`isReadOnly() == true`) permit safe socket refresh and retry; state-mutating requests (`BORROW_BOOK`, `CREATE_RESERVATION`, etc.) are never automatically retried on network dropouts.
-* **Swing EDT Protection**: Socket calls in the desktop client execute in worker threads via `AsyncWorker` (`SwingWorker`), keeping the UI responsive.
+### Concurrency & Thread Safety
+* **RMI Concurrency**: The RMI runtime dynamically allocates thread workers to handle concurrent client calls simultaneously without blocking unaffected operations.
+* **Strict Anti-Race Borrowing**: Server-side atomic transaction decrement (`available_copies = available_copies - 1 ... WHERE id = ? AND available_copies > 0`) prevents two concurrent clients from borrowing the same single available copy.
+* **Swing EDT Protection**: All remote invocations in the desktop client execute asynchronously via `AsyncWorker` (`SwingWorker`), preventing UI freezing.
 
 ---
 
@@ -431,7 +439,7 @@ ant clean
 # Compile all modules (common, server, client)
 ant compile
 
-# Run full automated test suite
+# Run full automated test suite (99 tests)
 ant test
 
 # Clean, compile, test, and package release JAR
@@ -460,16 +468,16 @@ dist\server-dist\run-server.bat
 ant run-server
 
 # Option C: Directly from packaged JAR
-java -jar dist/thuvien.jar
+java -jar dist/server-dist/server.jar
 ```
 
 Expected startup console output:
 ```text
-Server started
-Port: 9999
-Available IPv4 addresses:
-- 192.168.1.100
-INFO: Server is online and ready for client connections on 0.0.0.0:9999.
+[INFO] Active LAN IPv4 Addresses:
+       - 10.15.38.111 (Wi-Fi)
+[INFO] RMI Registry running on port 1099
+[INFO] Service 'LibraryRemoteService' bound successfully.
+[INFO] Library RMI Server is ONLINE and awaiting client connections.
 ```
 
 ### 3. Start the Client
@@ -481,13 +489,13 @@ You can launch the client on the same machine (`127.0.0.1`) or copy `dist/client
 dist\client-dist\run-client.bat
 
 # Option B: Passing Server IP and Port directly via CLI arguments
-dist\client-dist\run-client.bat 192.168.1.100 9999
+dist\client-dist\run-client.bat 10.15.38.111 1099
 
 # Option C: Using Ant target
 ant run-client
 ```
 
-In `LoginForm`, you can also enter **Server IP** (e.g., `192.168.1.100`), **Port** (`9999`), and click **"Kiểm tra kết nối"** to verify `PING -> PONG` connectivity (`"Server connected"`) prior to logging in.
+In `LoginForm`, you can also enter **Server IP** (e.g., `10.15.38.111`), **Port** (`1099`), and click **"Kiểm tra kết nối"** to verify `PING -> PONG` connectivity over Java RMI prior to logging in.
 
 ---
 
@@ -502,7 +510,7 @@ ant clean compile test
 ### Test Suite Verification Results
 
 ```text
-The current test suite contains 84 tests with 0 failures, 0 errors, and 0 skipped tests.
+The current test suite contains 99 tests with 0 failures, 0 errors, and 0 skipped tests.
 ```
 
 | Test Suite | Class Name | Tests | Failures | Errors | Skipped | Status |
@@ -510,13 +518,14 @@ The current test suite contains 84 tests with 0 failures, 0 errors, and 0 skippe
 | **Protocol Serialization** | `thuvien.common.ProtocolTest` | 2 | 0 | 0 | 0 | **PASS** |
 | **RequestRouter & RBAC** | `thuvien.server.RequestRouterTest` | 24 | 0 | 0 | 0 | **PASS** |
 | **Database Persistence Smoke** | `thuvien.server.database.MySQLSmokeIntegrationTest` | 4 | 0 | 0 | 0 | **PASS** |
-| **TCP End-to-End Networking** | `thuvien.server.network.TCPEndToEndIntegrationTest` | 11 | 0 | 0 | 0 | **PASS** |
+| **Java RMI End-to-End & Concurrency** | `thuvien.server.rmi.RMIEndToEndIntegrationTest` | 15 | 0 | 0 | 0 | **PASS** |
+| **TCP Legacy Networking** | `thuvien.server.network.TCPEndToEndIntegrationTest` | 11 | 0 | 0 | 0 | **PASS** |
 | **Architecture & Dependency Guard**| `thuvien.server.repository.RepositoryArchitectureTest`| 3 | 0 | 0 | 0 | **PASS** |
 | **Authentication Service** | `thuvien.server.service.AuthServiceTest` | 5 | 0 | 0 | 0 | **PASS** |
 | **Borrow Concurrency & Isolation** | `thuvien.server.service.BorrowConcurrencyIntegrationTest`| 3 | 0 | 0 | 0 | **PASS** |
 | **Fine Calculation & Settlement** | `thuvien.server.service.FineServiceTest` | 3 | 0 | 0 | 0 | **PASS** |
 | **Security & Lockout Hardening** | `thuvien.server.service.SecurityAndFeatureHardeningTest` | 29 | 0 | 0 | 0 | **PASS** |
-| **TOTAL** | **9 Suites** | **84** | **0** | **0** | **0** | **100% PASS** |
+| **TOTAL** | **10 Suites** | **99** | **0** | **0** | **0** | **100% PASS** |
 
 ---
 

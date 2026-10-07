@@ -67,7 +67,7 @@ public class LoginForm extends JFrame {
         JPanel headerPanel = new JPanel(new BorderLayout(0, 4));
         JLabel headerLabel = new JLabel("Quản Lý Thư Viện Trường Học", JLabel.CENTER);
         headerLabel.setFont(headerLabel.getFont().deriveFont(Font.BOLD, 18.0f));
-        JLabel subHeaderLabel = new JLabel("Ứng Dụng Khách Kết Nối TCP Từ Xa", JLabel.CENTER);
+        JLabel subHeaderLabel = new JLabel("Ứng Dụng Khách Kết Nối Java RMI", JLabel.CENTER);
         subHeaderLabel.setFont(subHeaderLabel.getFont().deriveFont(Font.PLAIN, 12.0f));
         subHeaderLabel.setForeground(new Color(100, 100, 100));
         headerPanel.add(headerLabel, BorderLayout.NORTH);

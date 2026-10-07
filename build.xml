@@ -66,9 +66,27 @@
         </copy>
     </target>
 
-    <!-- Target to run the Library Server -->
-    <target name="run-server" depends="compile" description="Runs the Library TCP Server">
-        <java classname="thuvien.server.ServerMain" fork="true">
+    <!-- Target to run the Library RMI Server -->
+    <target name="run-rmi-server" depends="compile" description="Runs the Library Java RMI Server">
+        <java classname="thuvien.server.rmi.LibraryRMIServer" fork="true">
+            <classpath>
+                <path path="${run.classpath}"/>
+            </classpath>
+        </java>
+    </target>
+
+    <!-- Target to run the Library RMI Swing Client -->
+    <target name="run-rmi-client" depends="compile" description="Runs the Library Swing Client over Java RMI">
+        <java classname="thuvien.client.ClientMain" fork="true">
+            <classpath>
+                <pathelement location="${build.classes.dir}"/>
+            </classpath>
+        </java>
+    </target>
+
+    <!-- Target to run the Library Server (defaults to RMI Server) -->
+    <target name="run-server" depends="compile" description="Runs the Library Server">
+        <java classname="thuvien.server.rmi.LibraryRMIServer" fork="true">
             <classpath>
                 <path path="${run.classpath}"/>
             </classpath>
@@ -85,7 +103,7 @@
     </target>
 
     <!-- ================================================================= -->
-    <!-- Phase 6: Isolated Server & Client Distribution Packaging          -->
+    <!-- Isolated Server & Client Distribution Packaging                   -->
     <!-- ================================================================= -->
 
     <target name="package-server" depends="compile" description="Packages isolated Server distribution into dist/server-dist">
@@ -121,12 +139,12 @@
                 <exclude name="client.properties"/>
             </fileset>
             <manifest>
-                <attribute name="Main-Class" value="thuvien.server.ServerMain"/>
+                <attribute name="Main-Class" value="thuvien.server.rmi.LibraryRMIServer"/>
                 <attribute name="Class-Path" value="resources/ lib/mysql-connector-java-8.0.33.jar lib/HikariCP-4.0.3.jar lib/slf4j-api-1.7.36.jar lib/slf4j-jdk14-1.7.36.jar"/>
             </manifest>
         </jar>
 
-        <!-- Create portable run-server.bat -->
+        <!-- Create portable run-server.bat for RMI Server -->
         <echo file="${server.dist.dir}/run-server.bat">@echo off
 setlocal
 cd /d "%~dp0"
@@ -139,8 +157,8 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Starting Remote School Library TCP Server...
-java -cp "resources;server.jar;lib/*" thuvien.server.ServerMain %*
+echo Starting Remote School Library Java RMI Server...
+java -cp "resources;server.jar;lib/*" thuvien.server.rmi.LibraryRMIServer %*
 endlocal
 </echo>
         <echo message="[ANT] Server distribution created at: ${server.dist.dir}"/>
@@ -189,10 +207,10 @@ if errorlevel 1 (
 )
 
 set "JVM_ARGS="
-if not "%~1"=="" set "JVM_ARGS=-Dserver.host=%~1"
-if not "%~2"=="" set "JVM_ARGS=%JVM_ARGS% -Dserver.port=%~2"
+if not "%~1"=="" set "JVM_ARGS=-Drmi.server.host=%~1 -Dserver.host=%~1"
+if not "%~2"=="" set "JVM_ARGS=%JVM_ARGS% -Drmi.registry.port=%~2 -Dserver.port=%~2"
 
-echo Starting Remote School Library Swing Client...
+echo Starting Remote School Library Java RMI Swing Client...
 java %JVM_ARGS% -cp "resources;client.jar;lib/*" thuvien.client.ClientMain %*
 endlocal
 </echo>
