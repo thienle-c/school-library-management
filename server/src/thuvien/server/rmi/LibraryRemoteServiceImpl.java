@@ -46,18 +46,20 @@ import thuvien.server.router.RequestRouter;
 public class LibraryRemoteServiceImpl extends UnicastRemoteObject implements LibraryRemoteService {
     private static final long serialVersionUID = 1L;
 
+    public static final int DEFAULT_SERVICE_PORT = 1100;
+
     private final RequestRouter router;
 
     public LibraryRemoteServiceImpl() throws RemoteException {
-        this(0, new RequestRouter());
+        this(DEFAULT_SERVICE_PORT, new RequestRouter());
     }
 
     public LibraryRemoteServiceImpl(int port) throws RemoteException {
-        this(port, new RequestRouter());
+        this(port > 0 ? port : DEFAULT_SERVICE_PORT, new RequestRouter());
     }
 
     public LibraryRemoteServiceImpl(int port, RequestRouter router) throws RemoteException {
-        super(port);
+        super(port > 0 ? port : DEFAULT_SERVICE_PORT);
         this.router = (router != null) ? router : new RequestRouter();
     }
 

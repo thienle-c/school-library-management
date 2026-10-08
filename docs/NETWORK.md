@@ -84,7 +84,7 @@ dist/server-dist/
 ├── server.jar             # Contains common + server classes (Main-Class: thuvien.server.rmi.LibraryRMIServer)
 ├── run-server.bat         # Portable launcher script (checks Java PATH, relative %~dp0 resolution)
 ├── resources/
-│   ├── server.properties  # RMI Registry port (1099), service name (LibraryRemoteService)
+│   ├── server.properties  # RMI Registry port (1099), service port (1100), service name (LibraryRemoteService)
 │   ├── db.properties      # MySQL credentials (root / localhost:3306)
 │   └── db.properties.example
 └── lib/
@@ -99,6 +99,7 @@ dist/server-dist/
 dist/client-dist/
 ├── client.jar             # Contains common + client classes (Main-Class: thuvien.client.ClientMain)
 ├── run-client.bat         # Portable launcher script (accepts optional [host] [port] arguments)
+├── test-connection.bat    # Quick diagnostic script to test ports 1099 and 1100
 ├── resources/
 │   └── client.properties  # RMI host (127.0.0.1), registry port (1099), service name
 └── lib/                   # Empty directory (client requires ZERO database/JDBC libraries)
@@ -108,48 +109,63 @@ dist/client-dist/
 
 ## 5. Two-Machine Wi-Fi / LAN Deployment Guide
 
+### Port Architecture
+* **TCP Port 1099**: RMI Registry lookup port (`LocateRegistry.getRegistry(host, 1099)`).
+* **TCP Port 1100**: RMI Remote Object fixed export port (avoids random dynamic ports blocked by firewall).
+* **Server Hostname**: Auto-configured to Server's actual LAN IPv4 via `System.setProperty("java.rmi.server.hostname", serverIp)`.
+
 ### Machine 1: Server
 1. Start MySQL (e.g. via Laragon or standard MySQL service).
-2. Connect to the local Wi-Fi / LAN network.
-3. Open a terminal in `dist/server-dist/` and run:
-   ```cmd
-   run-server.bat
+2. Open PowerShell as Administrator and configure Windows Firewall to allow both TCP 1099 and TCP 1100:
+   ```powershell
+   New-NetFirewallRule -DisplayName "School Library RMI Registry" -Direction Inbound -LocalPort 1099 -Protocol TCP -Action Allow
+   New-NetFirewallRule -DisplayName "School Library RMI Object" -Direction Inbound -LocalPort 1100 -Protocol TCP -Action Allow
    ```
-4. The server prints its active LAN IPv4 addresses:
+3. Connect to the local Wi-Fi / LAN network.
+4. Launch the server:
+   ```cmd
+   dist\server-dist\run-server.bat
+   ```
+5. The server prints its active configuration:
    ```text
    RMI Server started
-   Port: 1099
+   RMI Registry port: 1099
+   RMI Remote Object port: 1100
+   RMI hostname: 192.168.1.100
    Service: LibraryRemoteService
    Available IPv4 addresses:
    - 192.168.1.100
    ```
-5. Ensure Windows Firewall allows inbound TCP connections on port 1099:
-   ```cmd
-   netsh advfirewall firewall add rule name="Library RMI Server TCP 1099" dir=in action=allow protocol=TCP localport=1099
-   ```
 
 ### Machine 2: Client
 1. Connect to the same Wi-Fi / LAN network.
-2. In `dist/client-dist/`, launch the client with the Server's IP address:
+2. Verify port connectivity to the Server:
    ```cmd
-   run-client.bat 192.168.1.100 1099
+   dist\client-dist\test-connection.bat 192.168.1.100
    ```
-3. Alternatively, launch `run-client.bat` and enter `192.168.1.100` and port `1099` on the login window.
-4. Click **"Kiểm tra kết nối"** (ping over RMI). The client displays `Server connected`.
-5. Enter credentials (`librarian1` / `lib123` or `student1` / `student123`) and log in.
+   Or in PowerShell:
+   ```powershell
+   Test-NetConnection -ComputerName 192.168.1.100 -Port 1099
+   Test-NetConnection -ComputerName 192.168.1.100 -Port 1100
+   ```
+3. Launch the client:
+   ```cmd
+   dist\client-dist\run-client.bat 192.168.1.100 1099
+   ```
+4. On the login screen:
+   * Verify **Server IP** is `192.168.1.100` and **Port** is `1099`.
+   * Click **"Kiểm tra kết nối"** (ping over RMI). The client displays `Server connected`.
+   * Log in with credentials (e.g. `librarian1` / `lib123` or `student1` / `student123`).
 
 ---
 
 ## 6. Diagnostic & Connectivity Troubleshooting
 
-### Testing Port Connectivity from Client:
-In PowerShell on the client machine:
-```powershell
-Test-NetConnection -ComputerName <SERVER-IP> -Port 1099
-```
-* If `TcpTestSucceeded : True`: Network and firewall are correctly configured.
-* If `TcpTestSucceeded : False`:
-  1. Verify `run-server.bat` is running on the Server.
-  2. Verify the Server IP address.
-  3. Verify Windows Firewall on the Server allows port 1099.
-  4. Verify both machines are connected to the same subnet and Wi-Fi AP isolation is disabled.
+### Error Matrix:
+
+| Error Symptom | Cause | Solution |
+|---|---|---|
+| `Không thể kết nối tới RMI Registry tại host:1099` | Server chưa bật hoặc Cổng 1099 bị chặn | Kiểm tra server đang chạy, mở port TCP 1099 trên Firewall server |
+| `Kết nối RMI Registry thành công nhưng không kết nối được Remote Object (cổng 1100)` | Cổng 1100 bị Firewall chặn | Mở port TCP 1100 trên Firewall server (`LocalPort 1100`) |
+| `Lỗi hostname: Máy Client không thể phân giải địa chỉ hostname...` | `java.rmi.server.hostname` trả về `127.0.0.1` hoặc tên máy nội bộ | Khai báo `rmi.server.host=<IP_LAN>` trong `server.properties` |
+| `Service 'LibraryRemoteService' không tồn tại trên RMI Registry` | Sai tên service | Kiểm tra `rmi.service.name` trong `client.properties` và `server.properties` |

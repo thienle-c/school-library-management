@@ -1,6 +1,10 @@
 package thuvien.client.network;
 
+import java.rmi.ConnectException;
+import java.rmi.ConnectIOException;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
+import java.rmi.UnknownHostException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.logging.Level;
@@ -13,8 +17,14 @@ import thuvien.common.rmi.LibraryRemoteService;
 
 /**
  * Java RMI Client implementation of NetworkClient.
- * Obtains remote reference to LibraryRemoteService via RMI LocateRegistry.lookup()
- * and invokes remote methods using standard Java RMI + Java Serialization.
+ * Connects to the RMI Registry via LocateRegistry.getRegistry(host, port),
+ * looks up the remote service interface LibraryRemoteService,
+ * and communicates directly with the Remote Object over fixed port 1100.
+ *
+ * Includes detailed error diagnostics for multi-machine LAN setups:
+ * - Differentiates Registry port (1099) unreachable vs. Remote Object port (1100) unreachable.
+ * - Detects java.rmi.server.hostname resolution failures.
+ * - Detects missing/unregistered service names.
  */
 public class RMIClient implements NetworkClient {
     private static final Logger LOGGER = Logger.getLogger(RMIClient.class.getName());
@@ -43,17 +53,57 @@ public class RMIClient implements NetworkClient {
 
     @Override
     public synchronized boolean connect() throws NetworkException {
+        // Step 1: Connect to Registry and lookup service
+        Registry registry;
         try {
             LOGGER.info("Connecting to RMI Registry at " + host + ":" + port + "...");
-            Registry registry = LocateRegistry.getRegistry(host, port);
+            registry = LocateRegistry.getRegistry(host, port);
             LOGGER.info("Looking up service '" + serviceName + "' in RMI Registry...");
             this.remoteService = (LibraryRemoteService) registry.lookup(serviceName);
-            LOGGER.info("RMI lookup successful: " + serviceName);
-            return true;
+            LOGGER.info("RMI Registry lookup successful: " + serviceName);
+        } catch (NotBoundException e) {
+            this.remoteService = null;
+            LOGGER.log(Level.WARNING, "Service '" + serviceName + "' is not bound on RMI Registry at " + host + ":" + port, e);
+            throw new NetworkException("Không tìm thấy service '" + serviceName + "' trên RMI Registry tại " + host + ":" + port
+                    + ". Vui lòng kiểm tra lại cấu hình tên service trên Server.", e);
+        } catch (ConnectException | ConnectIOException | UnknownHostException e) {
+            this.remoteService = null;
+            LOGGER.log(Level.WARNING, "Cannot reach RMI Registry at " + host + ":" + port, e);
+            throw new NetworkException("Không thể kết nối tới RMI Registry tại " + host + ":" + port
+                    + ". Vui lòng kiểm tra: (1) Server đã khởi chạy chưa, (2) IP/Port có đúng không, và (3) Firewall trên Server đã mở cổng " + port + " (TCP) chưa.", e);
         } catch (Exception e) {
             this.remoteService = null;
-            LOGGER.log(Level.WARNING, "Failed to lookup RMI service '" + serviceName + "' at " + host + ":" + port, e);
-            throw new NetworkException("Cannot connect to RMI Server at " + host + ":" + port + ": " + e.getMessage(), e);
+            LOGGER.log(Level.WARNING, "Failed to connect to RMI Registry at " + host + ":" + port, e);
+            throw new NetworkException("Lỗi kết nối tới RMI Registry (" + host + ":" + port + "): " + e.getMessage(), e);
+        }
+
+        // Step 2: Test Remote Object communication over port 1100 to verify stub and hostname
+        try {
+            LOGGER.info("Verifying RMI Remote Object communication via ping()...");
+            String pong = this.remoteService.ping();
+            if (!"PONG".equalsIgnoreCase(pong)) {
+                throw new NetworkException("RMI Remote Object phản hồi không đúng kỳ vọng: " + pong);
+            }
+            LOGGER.info("RMI Remote Object communication verified successfully.");
+            return true;
+        } catch (RemoteException e) {
+            this.remoteService = null;
+            String msg = (e.getMessage() != null) ? e.getMessage() : "";
+            LOGGER.log(Level.WARNING, "RMI Remote Object verification failed: " + msg, e);
+            if (e instanceof UnknownHostException || msg.contains("UnknownHostException")) {
+                throw new NetworkException("Lỗi hostname RMI: Máy Client không thể phân giải địa chỉ hostname nhận từ Server stub (" + msg + ")."
+                        + " Vui lòng thiết lập java.rmi.server.hostname trên Server là địa chỉ IPv4 LAN thực tế thay vì tên máy.", e);
+            }
+            throw new NetworkException("Kết nối tới RMI Registry (cổng " + port + ") thành công, nhưng không thể kết nối tới RMI Remote Object (cổng 1100)."
+                    + " Nguyên nhân có thể do: (1) Cổng 1100 (TCP) đang bị Firewall trên Server chặn, hoặc (2) java.rmi.server.hostname trên Server không truy cập được từ máy Client."
+                    + " Chi tiết lỗi: " + msg, e);
+        } catch (NetworkException e) {
+            this.remoteService = null;
+            throw e;
+        } catch (Exception e) {
+            this.remoteService = null;
+            LOGGER.log(Level.WARNING, "Unexpected error verifying remote object: " + e.getMessage(), e);
+            throw new NetworkException("Lỗi kiểm tra Remote Object RMI: " + e.getMessage(), e);
         }
     }
 
@@ -108,7 +158,11 @@ public class RMIClient implements NetworkClient {
             return "PONG".equalsIgnoreCase(pong);
         } catch (RemoteException e) {
             disconnect();
-            throw new NetworkException("RMI ping failed: " + e.getMessage(), e);
+            String msg = (e.getMessage() != null) ? e.getMessage() : "";
+            if (e instanceof UnknownHostException || msg.contains("UnknownHostException")) {
+                throw new NetworkException("Lỗi hostname RMI: Không thể phân giải địa chỉ hostname của Server (" + msg + ").", e);
+            }
+            throw new NetworkException("RMI ping failed: Không thể kết nối tới Remote Object (cổng 1100): " + msg, e);
         }
     }
 

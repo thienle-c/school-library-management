@@ -58,6 +58,7 @@ import thuvien.server.router.RequestRouter;
 public class RMIEndToEndIntegrationTest {
 
     private static final int TEST_REGISTRY_PORT = 10999;
+    private static final int TEST_SERVICE_PORT = 11001;
     private static final String TEST_SERVICE_NAME = "TestLibraryRemoteService";
 
     private static Registry testRegistry;
@@ -66,6 +67,7 @@ public class RMIEndToEndIntegrationTest {
 
     @BeforeClass
     public static void setUpRMIAndDatabase() throws Exception {
+        System.setProperty("java.rmi.server.hostname", "127.0.0.1");
         try (Connection conn = DatabaseManager.getInstance().getConnection()) {
             dbAvailable = (conn != null && !conn.isClosed());
         } catch (Exception e) {
@@ -102,7 +104,7 @@ public class RMIEndToEndIntegrationTest {
             testRegistry = LocateRegistry.getRegistry(TEST_REGISTRY_PORT);
         }
 
-        exportedService = new LibraryRemoteServiceImpl(0, new RequestRouter());
+        exportedService = new LibraryRemoteServiceImpl(TEST_SERVICE_PORT, new RequestRouter());
         testRegistry.rebind(TEST_SERVICE_NAME, exportedService);
     }
 

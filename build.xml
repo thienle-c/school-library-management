@@ -214,6 +214,7 @@ echo Starting Remote School Library Java RMI Swing Client...
 java %JVM_ARGS% -cp "resources;client.jar;lib/*" thuvien.client.ClientMain %*
 endlocal
 </echo>
+        <copy file="test-connection.bat" todir="${client.dist.dir}" failonerror="false"/>
         <echo message="[ANT] Client distribution created at: ${client.dist.dir}"/>
     </target>
 

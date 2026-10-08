@@ -226,15 +226,43 @@ Chạy lệnh `ant package-all`:
 ---
 
 ## 15. Hướng dẫn kết nối hai máy qua Wi-Fi/LAN
+
+### Nguyên nhân cốt lõi khiến RMI thường thất bại giữa 2 máy:
+1. **Dynamic Remote Object Port**: Mặc định `UnicastRemoteObject` dùng port 0 (ngẫu nhiên). Khi Client lookup thành công ở 1099, việc gọi remote method sẽ gọi tới port ngẫu nhiên này và bị Firewall máy Server chặn.
+   -> **Giải pháp**: Cố định Remote Object trên cổng **TCP 1100**.
+2. **Sai IP trong Stub (`java.rmi.server.hostname`)**: Nếu Server không cấu hình hostname trước khi export object, stub sẽ chứa `127.0.0.1` hoặc hostname nội bộ khiến máy khác không thể kết nối.
+   -> **Giải pháp**: Tự động nhận diện IPv4 LAN thực tế và gán `System.setProperty("java.rmi.server.hostname", serverIp)`.
+
+### Các bước triển khai:
 1. **Máy Server**:
-   - Kết nối Wi-Fi.
-   - Chạy `run-server.bat`. Ghi lại địa chỉ IPv4 (ví dụ: `192.168.1.100`).
-   - Mở port 1099 trên Windows Firewall:
-     ```cmd
-     netsh advfirewall firewall add rule name="Library RMI Server TCP 1099" dir=in action=allow protocol=TCP localport=1099
+   - Mở PowerShell quyền Administrator, chạy lệnh mở Firewall cho cả 2 cổng 1099 và 1100:
+     ```powershell
+     New-NetFirewallRule -DisplayName "School Library RMI Registry" -Direction Inbound -LocalPort 1099 -Protocol TCP -Action Allow
+     New-NetFirewallRule -DisplayName "School Library RMI Object" -Direction Inbound -LocalPort 1100 -Protocol TCP -Action Allow
+     ```
+   - Chạy server: `run-server.bat`. Server sẽ in thông tin:
+     ```text
+     RMI Server started
+     RMI Registry port: 1099
+     RMI Remote Object port: 1100
+     RMI hostname: 192.168.1.100
+     Service: LibraryRemoteService
      ```
 2. **Máy Client**:
-   - Kết nối cùng mạng Wi-Fi với Server.
-   - Chạy `run-client.bat 192.168.1.100 1099`.
-   - Kiểm tra kết nối hiển thị `"Server connected"`.
-   - Đăng nhập và thực hiện tra cứu, mượn, trả sách qua RMI.
+   - Kết nối cùng mạng Wi-Fi/LAN với Server.
+   - Kiểm tra kết nối 2 cổng từ máy Client bằng script:
+     ```cmd
+     dist\client-dist\test-connection.bat 192.168.1.100
+     ```
+     Hoặc trong PowerShell:
+     ```powershell
+     Test-NetConnection -ComputerName 192.168.1.100 -Port 1099
+     Test-NetConnection -ComputerName 192.168.1.100 -Port 1100
+     ```
+   - Khởi động Client:
+     ```cmd
+     dist\client-dist\run-client.bat 192.168.1.100 1099
+     ```
+   - Bấm **"Kiểm tra kết nối"** -> nhận thông báo `"Server connected"`.
+   - Đăng nhập và tra cứu/mượn/trả sách qua Java RMI.
+

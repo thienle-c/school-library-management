@@ -256,11 +256,12 @@ public class LoginForm extends JFrame {
                 (Exception ex) -> {
                     setInputsEnabled(true);
                     statusLabel.setForeground(new Color(180, 40, 40));
-                    statusLabel.setText("Cannot connect to server");
-                    LOGGER.log(Level.WARNING, "PING connectivity check failed", ex);
+                    String errorMsg = (ex.getMessage() != null && !ex.getMessage().trim().isEmpty())
+                            ? ex.getMessage()
+                            : "Cannot connect to server";
                     JOptionPane.showMessageDialog(LoginForm.this,
-                            "Cannot connect to server",
-                            "Lỗi Kết Nối",
+                            errorMsg,
+                            "Lỗi Kết Nối RMI",
                             JOptionPane.ERROR_MESSAGE);
                 }
         );
