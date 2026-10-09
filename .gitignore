@@ -2,18 +2,45 @@
 # Remote School Library Management - .gitignore
 # ==============================================================================
 
-# Compiled Java class files
+# Compiled Java class files & packages
 *.class
+*.war
+*.ear
+*.nar
 
-# Apache Ant Build & Packaging Artifacts
+# JVM crash logs & memory dumps
+hs_err_pid*
+replay_pid*
+*.hprof
+
+# Apache Ant & NetBeans Build Artifacts
 build/
 dist/
 nbbuild/
 nbdist/
 
-# NetBeans IDE User-Specific Metadata (Keep project.xml and project.properties)
+# NetBeans IDE User-Specific Metadata (Preserve project.xml, project.properties, build-impl.xml)
 nbproject/private/
 .nb-gradle/
+.nbprofiler/
+*.form.bak
+
+# Database & Runtime Configuration (Ignore live local config, keep template example)
+server/resources/db.properties
+!server/resources/db.properties.example
+local.properties
+*.local.properties
+
+# Secrets, Environment & Certificate Files
+.env
+.env.*
+!*.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
 
 # IntelliJ IDEA
 .idea/
@@ -31,11 +58,21 @@ bin/
 # Visual Studio Code
 .vscode/
 
+# Editor & Temporary files
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+*.sublime-project
+*.sublime-workspace
+
 # Build logs and temporary test outputs
 *.log
-*.tmp
 TEST-*.xml
 TESTS-TestSuites.xml
+junit*.properties
+test-results/
 
 # Operating System Files
 # Windows
@@ -54,11 +91,13 @@ Icon
 ._*
 
 # Linux
-*~
 .fuse_hidden*
 .directory
 .Trash-*
 
 # AI Coding Assistant & Scratch directories
 .agent/
+.agents/
+.claude/
+.gemini/
 scratch/
