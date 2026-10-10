@@ -1,22 +1,8 @@
 package thuvien.client.view;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Font;
 import java.awt.Frame;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
-import javax.swing.BorderFactory;
-import javax.swing.JButton;
 import javax.swing.JDialog;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JPasswordField;
-import javax.swing.JTextField;
 import thuvien.client.controller.ClientAuthController;
 import thuvien.client.network.NetworkClient;
 import thuvien.client.view.common.AsyncWorker;
@@ -28,119 +14,243 @@ import thuvien.common.dto.RegisterStudentRequestDTO;
 public class StudentRegistrationDialog extends JDialog {
     private final ClientAuthController authController;
 
-    private JTextField studentCodeField;
-    private JTextField fullNameField;
-    private JTextField emailField;
-    private JTextField usernameField;
-    private JPasswordField passwordField;
-    private JPasswordField confirmPasswordField;
-    private JTextField activationCodeField;
-
-    private JButton registerButton;
-    private JButton cancelButton;
-    private JLabel statusLabel;
-
     public StudentRegistrationDialog(Frame parent, NetworkClient networkClient) {
-        super(parent, "Đăng Ký Tài Khoản Sinh Viên", true);
+        super(parent, true);
         this.authController = new ClientAuthController(networkClient);
-        initUI();
+        initComponents();
+        initCustom();
     }
 
-    private void initUI() {
+    private void initCustom() {
+        ((javax.swing.JComponent) getContentPane()).setBorder(javax.swing.BorderFactory.createEmptyBorder(15, 20, 15, 20));
         setSize(480, 480);
         setLocationRelativeTo(getParent());
-        setResizable(false);
-
-        JPanel mainPanel = new JPanel(new BorderLayout(10, 15));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
-
-        // Header
-        JPanel headerPanel = new JPanel(new BorderLayout(0, 4));
-        JLabel titleLabel = new JLabel("Đăng Ký Tài Khoản Thư Viện", JLabel.CENTER);
-        titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 16.0f));
-        JLabel subLabel = new JLabel("Dành cho sinh viên đã có hồ sơ và được cấp mã kích hoạt", JLabel.CENTER);
-        subLabel.setFont(subLabel.getFont().deriveFont(Font.PLAIN, 12.0f));
-        subLabel.setForeground(new Color(100, 100, 100));
-        headerPanel.add(titleLabel, BorderLayout.NORTH);
-        headerPanel.add(subLabel, BorderLayout.SOUTH);
-        mainPanel.add(headerPanel, BorderLayout.NORTH);
-
-        // Form fields
-        JPanel formPanel = new JPanel(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-
-        int row = 0;
-        studentCodeField = addFormField(formPanel, gbc, "Mã sinh viên (*):", row++, "VD: STU002");
-        fullNameField = addFormField(formPanel, gbc, "Họ và tên (*):", row++, "VD: Nguyễn Văn A");
-        emailField = addFormField(formPanel, gbc, "Email liên hệ:", row++, "VD: a.nguyen@student.school.edu");
-        usernameField = addFormField(formPanel, gbc, "Tên đăng nhập (*):", row++, "VD: nguyenvana");
-
-        // Password
-        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.0;
-        JLabel passLbl = new JLabel("Mật khẩu (*):");
-        passLbl.setFont(passLbl.getFont().deriveFont(Font.BOLD));
-        formPanel.add(passLbl, gbc);
-        gbc.gridx = 1; gbc.weightx = 1.0;
-        passwordField = new JPasswordField(15);
-        formPanel.add(passwordField, gbc);
-        row++;
-
-        // Confirm Password
-        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.0;
-        JLabel confirmPassLbl = new JLabel("Xác nhận mật khẩu (*):");
-        confirmPassLbl.setFont(confirmPassLbl.getFont().deriveFont(Font.BOLD));
-        formPanel.add(confirmPassLbl, gbc);
-        gbc.gridx = 1; gbc.weightx = 1.0;
-        confirmPasswordField = new JPasswordField(15);
-        formPanel.add(confirmPasswordField, gbc);
-        row++;
-
-        // Activation code
-        activationCodeField = addFormField(formPanel, gbc, "Mã kích hoạt (*):", row++, "VD: ACT-XXXXXXXX");
-
-        mainPanel.add(formPanel, BorderLayout.CENTER);
-
-        // Bottom panel
-        JPanel bottomPanel = new JPanel(new BorderLayout(5, 8));
-        statusLabel = new JLabel("(*) Các trường bắt buộc nhập", JLabel.CENTER);
-        statusLabel.setForeground(new Color(100, 100, 100));
-        bottomPanel.add(statusLabel, BorderLayout.NORTH);
-
-        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        registerButton = new JButton("Đăng ký");
-        registerButton.setFont(registerButton.getFont().deriveFont(Font.BOLD));
-        registerButton.setPreferredSize(new Dimension(110, 32));
-        registerButton.addActionListener(e -> performRegister());
-
-        cancelButton = new JButton("Hủy bỏ");
-        cancelButton.setPreferredSize(new Dimension(90, 32));
-        cancelButton.addActionListener(e -> dispose());
-
-        btnPanel.add(registerButton);
-        btnPanel.add(cancelButton);
-        bottomPanel.add(btnPanel, BorderLayout.SOUTH);
-
-        mainPanel.add(bottomPanel, BorderLayout.SOUTH);
-        setContentPane(mainPanel);
         getRootPane().setDefaultButton(registerButton);
     }
 
-    private JTextField addFormField(JPanel panel, GridBagConstraints gbc, String labelText, int row, String tooltip) {
-        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.0;
-        JLabel label = new JLabel(labelText);
-        label.setFont(label.getFont().deriveFont(Font.BOLD));
-        panel.add(label, gbc);
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+        java.awt.GridBagConstraints gridBagConstraints;
 
-        gbc.gridx = 1; gbc.weightx = 1.0;
-        JTextField field = new JTextField(15);
-        if (tooltip != null) {
-            field.setToolTipText(tooltip);
-        }
-        panel.add(field, gbc);
-        return field;
-    }
+        headerPanel = new javax.swing.JPanel();
+        titleLabel = new javax.swing.JLabel();
+        subLabel = new javax.swing.JLabel();
+        formPanel = new javax.swing.JPanel();
+        lblStudentCode = new javax.swing.JLabel();
+        studentCodeField = new javax.swing.JTextField();
+        lblFullName = new javax.swing.JLabel();
+        fullNameField = new javax.swing.JTextField();
+        lblEmail = new javax.swing.JLabel();
+        emailField = new javax.swing.JTextField();
+        lblUsername = new javax.swing.JLabel();
+        usernameField = new javax.swing.JTextField();
+        lblPassword = new javax.swing.JLabel();
+        passwordField = new javax.swing.JPasswordField();
+        lblConfirmPassword = new javax.swing.JLabel();
+        confirmPasswordField = new javax.swing.JPasswordField();
+        lblActivationCode = new javax.swing.JLabel();
+        activationCodeField = new javax.swing.JTextField();
+        bottomPanel = new javax.swing.JPanel();
+        statusLabel = new javax.swing.JLabel();
+        btnPanel = new javax.swing.JPanel();
+        registerButton = new javax.swing.JButton();
+        cancelButton = new javax.swing.JButton();
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        setTitle("Đăng Ký Tài Khoản Sinh Viên");
+        setModal(true);
+        setResizable(false);
+        getContentPane().setLayout(new java.awt.BorderLayout(10, 15));
+
+        headerPanel.setLayout(new java.awt.BorderLayout(0, 4));
+
+        titleLabel.setFont(new java.awt.Font("Tahoma", 1, 16)); // NOI18N
+        titleLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        titleLabel.setText("Đăng Ký Tài Khoản Thư Viện");
+        headerPanel.add(titleLabel, java.awt.BorderLayout.NORTH);
+
+        subLabel.setFont(new java.awt.Font("Tahoma", 0, 12)); // NOI18N
+        subLabel.setForeground(new java.awt.Color(100, 100, 100));
+        subLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        subLabel.setText("Dành cho sinh viên đã có hồ sơ và được cấp mã kích hoạt");
+        headerPanel.add(subLabel, java.awt.BorderLayout.SOUTH);
+
+        getContentPane().add(headerPanel, java.awt.BorderLayout.NORTH);
+
+        formPanel.setLayout(new java.awt.GridBagLayout());
+
+        lblStudentCode.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
+        lblStudentCode.setText("Mã sinh viên (*):");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
+        formPanel.add(lblStudentCode, gridBagConstraints);
+
+        studentCodeField.setToolTipText("VD: STU002");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.weightx = 1.0;
+        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
+        formPanel.add(studentCodeField, gridBagConstraints);
+
+        lblFullName.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
+        lblFullName.setText("Họ và tên (*):");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
+        formPanel.add(lblFullName, gridBagConstraints);
+
+        fullNameField.setToolTipText("VD: Nguyễn Văn A");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.weightx = 1.0;
+        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
+        formPanel.add(fullNameField, gridBagConstraints);
+
+        lblEmail.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
+        lblEmail.setText("Email liên hệ:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
+        formPanel.add(lblEmail, gridBagConstraints);
+
+        emailField.setToolTipText("VD: a.nguyen@student.school.edu");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.weightx = 1.0;
+        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
+        formPanel.add(emailField, gridBagConstraints);
+
+        lblUsername.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
+        lblUsername.setText("Tên đăng nhập (*):");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
+        formPanel.add(lblUsername, gridBagConstraints);
+
+        usernameField.setToolTipText("VD: nguyenvana");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.weightx = 1.0;
+        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
+        formPanel.add(usernameField, gridBagConstraints);
+
+        lblPassword.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
+        lblPassword.setText("Mật khẩu (*):");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 4;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
+        formPanel.add(lblPassword, gridBagConstraints);
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 4;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.weightx = 1.0;
+        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
+        formPanel.add(passwordField, gridBagConstraints);
+
+        lblConfirmPassword.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
+        lblConfirmPassword.setText("Xác nhận mật khẩu (*):");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 5;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
+        formPanel.add(lblConfirmPassword, gridBagConstraints);
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 5;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.weightx = 1.0;
+        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
+        formPanel.add(confirmPasswordField, gridBagConstraints);
+
+        lblActivationCode.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
+        lblActivationCode.setText("Mã kích hoạt (*):");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 6;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
+        formPanel.add(lblActivationCode, gridBagConstraints);
+
+        activationCodeField.setToolTipText("VD: ACT-XXXXXXXX");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 6;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.weightx = 1.0;
+        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
+        formPanel.add(activationCodeField, gridBagConstraints);
+
+        getContentPane().add(formPanel, java.awt.BorderLayout.CENTER);
+
+        bottomPanel.setLayout(new java.awt.BorderLayout(5, 8));
+
+        statusLabel.setForeground(new java.awt.Color(100, 100, 100));
+        statusLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        statusLabel.setText("(*) Các trường bắt buộc nhập");
+        bottomPanel.add(statusLabel, java.awt.BorderLayout.NORTH);
+
+        btnPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 10, 0));
+
+        registerButton.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
+        registerButton.setText("Đăng ký");
+        registerButton.setPreferredSize(new java.awt.Dimension(110, 32));
+        registerButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                registerButtonActionPerformed(evt);
+            }
+        });
+        btnPanel.add(registerButton);
+
+        cancelButton.setText("Hủy bỏ");
+        cancelButton.setPreferredSize(new java.awt.Dimension(90, 32));
+        cancelButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cancelButtonActionPerformed(evt);
+            }
+        });
+        btnPanel.add(cancelButton);
+
+        bottomPanel.add(btnPanel, java.awt.BorderLayout.SOUTH);
+
+        getContentPane().add(bottomPanel, java.awt.BorderLayout.SOUTH);
+
+        pack();
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void registerButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_registerButtonActionPerformed
+        performRegister();
+    }//GEN-LAST:event_registerButtonActionPerformed
+
+    private void cancelButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cancelButtonActionPerformed
+        dispose();
+    }//GEN-LAST:event_cancelButtonActionPerformed
 
     private void performRegister() {
         String studentCode = studentCodeField.getText().trim();
@@ -206,4 +316,30 @@ public class StudentRegistrationDialog extends JDialog {
                 }
         );
     }
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JTextField activationCodeField;
+    private javax.swing.JPanel bottomPanel;
+    private javax.swing.JPanel btnPanel;
+    private javax.swing.JButton cancelButton;
+    private javax.swing.JPasswordField confirmPasswordField;
+    private javax.swing.JTextField emailField;
+    private javax.swing.JPanel formPanel;
+    private javax.swing.JTextField fullNameField;
+    private javax.swing.JPanel headerPanel;
+    private javax.swing.JLabel lblActivationCode;
+    private javax.swing.JLabel lblConfirmPassword;
+    private javax.swing.JLabel lblEmail;
+    private javax.swing.JLabel lblFullName;
+    private javax.swing.JLabel lblPassword;
+    private javax.swing.JLabel lblStudentCode;
+    private javax.swing.JLabel lblUsername;
+    private javax.swing.JPasswordField passwordField;
+    private javax.swing.JButton registerButton;
+    private javax.swing.JLabel statusLabel;
+    private javax.swing.JTextField studentCodeField;
+    private javax.swing.JLabel subLabel;
+    private javax.swing.JLabel titleLabel;
+    private javax.swing.JTextField usernameField;
+    // End of variables declaration//GEN-END:variables
 }

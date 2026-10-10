@@ -1,8 +1,6 @@
 package thuvien.client.view.panels;
 
-import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.FlowLayout;
 import java.awt.Font;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -10,14 +8,8 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTable;
-import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
@@ -47,17 +39,7 @@ public class ReservationManagementPanel extends JPanel {
     private final ClientReservationController reservationController;
     private final boolean isStaff;
 
-    private JTable reservationTable;
     private DefaultTableModel tableModel;
-    private JTextField searchField;
-    private JComboBox<String> statusFilterCombo;
-    private JButton searchBtn;
-    private JButton clearFilterBtn;
-    private JButton refreshBtn;
-    private JButton newResBtn;
-    private JButton cancelResBtn;
-    private JLabel statusLabel;
-
     private List<ReservationDTO> allReservations = new ArrayList<>();
     private List<ReservationDTO> currentFiltered = new ArrayList<>();
     private Timer pollTimer;
@@ -68,86 +50,22 @@ public class ReservationManagementPanel extends JPanel {
         this.reservationController = new ClientReservationController(networkClient);
         this.isStaff = ClientSession.getInstance().isAdmin() || ClientSession.getInstance().isLibrarian();
 
-        initUI();
+        initComponents();
+        initCustom();
         loadReservations();
         startAutoRefresh();
     }
 
-    private void initUI() {
-        setLayout(new BorderLayout(5, 5));
+    private void initCustom() {
         setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
-        setBackground(Color.WHITE);
-
-        // Header and Actions toolbar
-        JPanel northPanel = new JPanel(new BorderLayout(5, 8));
-        northPanel.setOpaque(false);
-
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setOpaque(false);
-
-        JLabel title = new JLabel(isStaff ? "Quản lý Đặt trước sách" : "Sách tôi đã đặt trước");
-        title.setFont(title.getFont().deriveFont(Font.BOLD, 16.0f));
-        title.setForeground(new Color(25, 45, 80));
-        headerPanel.add(title, BorderLayout.WEST);
-
-        JPanel rightBtns = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        rightBtns.setOpaque(false);
-
-        newResBtn = new JButton("+ Đặt trước sách");
-        newResBtn.setBackground(new Color(225, 245, 230));
-        newResBtn.setToolTipText("Tạo yêu cầu đặt trước sách mới");
-        newResBtn.addActionListener(e -> openReservationDialog());
-        rightBtns.add(newResBtn);
-
-        cancelResBtn = new JButton("Hủy đặt trước");
-        cancelResBtn.setBackground(new Color(255, 235, 235));
-        cancelResBtn.setEnabled(false);
-        cancelResBtn.setToolTipText("Hủy yêu cầu đặt trước đã chọn");
-        cancelResBtn.addActionListener(e -> cancelSelectedReservation());
-        rightBtns.add(cancelResBtn);
-
-        refreshBtn = new JButton("Làm mới");
-        refreshBtn.setToolTipText("Tải lại danh sách từ máy chủ");
-        refreshBtn.addActionListener(e -> loadReservations());
-        rightBtns.add(refreshBtn);
-
-        headerPanel.add(rightBtns, BorderLayout.EAST);
-        northPanel.add(headerPanel, BorderLayout.NORTH);
-
-        // Filter / Search Toolbar
-        JPanel filterBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
-        filterBar.setOpaque(false);
         filterBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(230, 235, 240)));
+        tableScroll.setBorder(BorderFactory.createLineBorder(new Color(220, 225, 230)));
+        bottomBar.setBorder(BorderFactory.createEmptyBorder(6, 4, 4, 4));
 
-        filterBar.add(new JLabel("Tìm kiếm:"));
-        searchField = new JTextField(20);
-        searchField.setToolTipText("Tìm theo Mã ĐT, Mã SV, Tên sinh viên, Tên sách...");
-        searchField.addActionListener(e -> applyFilter());
+        titleLabel.setText(isStaff ? "Quản lý Đặt trước sách" : "Sách tôi đã đặt trước");
+
         SearchAutoCompleteHelper.attach(searchField, "RESERVATION", new ClientSearchSuggestionController(networkClient), this::applyFilter);
-        filterBar.add(searchField);
 
-        filterBar.add(new JLabel("Trạng thái:"));
-        statusFilterCombo = new JComboBox<>(new String[]{
-                "Tất cả trạng thái",
-                "Đang chờ (PENDING)",
-                "Đã hoàn thành (FULFILLED)",
-                "Đã hủy (CANCELLED)"
-        });
-        statusFilterCombo.addActionListener(e -> applyFilter());
-        filterBar.add(statusFilterCombo);
-
-        searchBtn = new JButton("Tìm");
-        searchBtn.addActionListener(e -> applyFilter());
-        filterBar.add(searchBtn);
-
-        clearFilterBtn = new JButton("Xóa bộ lọc");
-        clearFilterBtn.addActionListener(e -> resetFilter());
-        filterBar.add(clearFilterBtn);
-
-        northPanel.add(filterBar, BorderLayout.SOUTH);
-        add(northPanel, BorderLayout.NORTH);
-
-        // Table
         String[] columns = isStaff
                 ? new String[]{"Mã ĐT", "Mã SV", "Tên sinh viên", "Tên sách", "Ngày đặt", "Hạn giữ", "Trạng thái"}
                 : new String[]{"Mã ĐT", "Tên sách", "Ngày đặt", "Hạn giữ", "Trạng thái"};
@@ -159,7 +77,7 @@ public class ReservationManagementPanel extends JPanel {
             }
         };
 
-        reservationTable = new JTable(tableModel);
+        reservationTable.setModel(tableModel);
         reservationTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         reservationTable.setRowHeight(25);
         reservationTable.getTableHeader().setFont(reservationTable.getTableHeader().getFont().deriveFont(Font.BOLD));
@@ -171,22 +89,193 @@ public class ReservationManagementPanel extends JPanel {
                 cancelResBtn.setEnabled(selected != null && selected.getStatus() == ReservationStatus.PENDING);
             }
         });
-
-        JScrollPane tableScroll = new JScrollPane(reservationTable);
-        tableScroll.setBorder(BorderFactory.createLineBorder(new Color(220, 225, 230)));
-        add(tableScroll, BorderLayout.CENTER);
-
-        // Bottom Status
-        JPanel bottomBar = new JPanel(new BorderLayout());
-        bottomBar.setOpaque(false);
-        bottomBar.setBorder(BorderFactory.createEmptyBorder(6, 4, 4, 4));
-
-        statusLabel = new JLabel("Sẵn sàng");
-        statusLabel.setFont(statusLabel.getFont().deriveFont(Font.PLAIN, 12.0f));
-        bottomBar.add(statusLabel, BorderLayout.WEST);
-
-        add(bottomBar, BorderLayout.SOUTH);
     }
+
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        northPanel = new javax.swing.JPanel();
+        headerPanel = new javax.swing.JPanel();
+        titleLabel = new javax.swing.JLabel();
+        rightBtns = new javax.swing.JPanel();
+        newResBtn = new javax.swing.JButton();
+        cancelResBtn = new javax.swing.JButton();
+        refreshBtn = new javax.swing.JButton();
+        filterBar = new javax.swing.JPanel();
+        lblSearch = new javax.swing.JLabel();
+        searchField = new javax.swing.JTextField();
+        lblStatus = new javax.swing.JLabel();
+        statusFilterCombo = new javax.swing.JComboBox<String>();
+        searchBtn = new javax.swing.JButton();
+        clearFilterBtn = new javax.swing.JButton();
+        tableScroll = new javax.swing.JScrollPane();
+        reservationTable = new javax.swing.JTable();
+        bottomBar = new javax.swing.JPanel();
+        statusLabel = new javax.swing.JLabel();
+
+        setBackground(new java.awt.Color(255, 255, 255));
+        setLayout(new java.awt.BorderLayout(5, 5));
+
+        northPanel.setOpaque(false);
+        northPanel.setLayout(new java.awt.BorderLayout(5, 8));
+
+        headerPanel.setOpaque(false);
+        headerPanel.setLayout(new java.awt.BorderLayout());
+
+        titleLabel.setFont(new java.awt.Font("Segoe UI", 1, 16)); // NOI18N
+        titleLabel.setForeground(new java.awt.Color(25, 45, 80));
+        titleLabel.setText("Quản lý Đặt trước sách");
+        headerPanel.add(titleLabel, java.awt.BorderLayout.WEST);
+
+        rightBtns.setOpaque(false);
+        rightBtns.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 6, 0));
+
+        newResBtn.setBackground(new java.awt.Color(225, 245, 230));
+        newResBtn.setText("+ Đặt trước sách");
+        newResBtn.setToolTipText("Tạo yêu cầu đặt trước sách mới");
+        newResBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                newResBtnActionPerformed(evt);
+            }
+        });
+        rightBtns.add(newResBtn);
+
+        cancelResBtn.setBackground(new java.awt.Color(255, 235, 235));
+        cancelResBtn.setText("Hủy đặt trước");
+        cancelResBtn.setToolTipText("Hủy yêu cầu đặt trước đã chọn");
+        cancelResBtn.setEnabled(false);
+        cancelResBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cancelResBtnActionPerformed(evt);
+            }
+        });
+        rightBtns.add(cancelResBtn);
+
+        refreshBtn.setText("Làm mới");
+        refreshBtn.setToolTipText("Tải lại danh sách từ máy chủ");
+        refreshBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                refreshBtnActionPerformed(evt);
+            }
+        });
+        rightBtns.add(refreshBtn);
+
+        headerPanel.add(rightBtns, java.awt.BorderLayout.EAST);
+
+        northPanel.add(headerPanel, java.awt.BorderLayout.NORTH);
+
+        filterBar.setOpaque(false);
+        filterBar.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 4));
+
+        lblSearch.setText("Tìm kiếm:");
+        filterBar.add(lblSearch);
+
+        searchField.setColumns(20);
+        searchField.setToolTipText("Tìm theo Mã ĐT, Mã SV, Tên sinh viên, Tên sách...");
+        searchField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                searchFieldActionPerformed(evt);
+            }
+        });
+        filterBar.add(searchField);
+
+        lblStatus.setText("Trạng thái:");
+        filterBar.add(lblStatus);
+
+        statusFilterCombo.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Tất cả trạng thái", "Đang chờ (PENDING)", "Đã hoàn thành (FULFILLED)", "Đã hủy (CANCELLED)" }));
+        statusFilterCombo.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                statusFilterComboActionPerformed(evt);
+            }
+        });
+        filterBar.add(statusFilterCombo);
+
+        searchBtn.setText("Tìm");
+        searchBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                searchBtnActionPerformed(evt);
+            }
+        });
+        filterBar.add(searchBtn);
+
+        clearFilterBtn.setText("Xóa bộ lọc");
+        clearFilterBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                clearFilterBtnActionPerformed(evt);
+            }
+        });
+        filterBar.add(clearFilterBtn);
+
+        northPanel.add(filterBar, java.awt.BorderLayout.SOUTH);
+
+        add(northPanel, java.awt.BorderLayout.NORTH);
+
+        reservationTable.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+
+            },
+            new String [] {
+                "Mã ĐT", "Mã SV", "Tên sinh viên", "Tên sách", "Ngày đặt", "Hạn giữ", "Trạng thái"
+            }
+        ) {
+            boolean[] canEdit = new boolean [] {
+                false, false, false, false, false, false, false
+            };
+
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit [columnIndex];
+            }
+        });
+        reservationTable.setAutoCreateRowSorter(true);
+        reservationTable.setRowHeight(25);
+        reservationTable.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+        tableScroll.setViewportView(reservationTable);
+
+        add(tableScroll, java.awt.BorderLayout.CENTER);
+
+        bottomBar.setOpaque(false);
+        bottomBar.setLayout(new java.awt.BorderLayout());
+
+        statusLabel.setFont(new java.awt.Font("Segoe UI", 0, 12)); // NOI18N
+        statusLabel.setText("Sẵn sàng");
+        bottomBar.add(statusLabel, java.awt.BorderLayout.WEST);
+
+        add(bottomBar, java.awt.BorderLayout.SOUTH);
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void newResBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_newResBtnActionPerformed
+        openReservationDialog();
+    }//GEN-LAST:event_newResBtnActionPerformed
+
+    private void cancelResBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cancelResBtnActionPerformed
+        cancelSelectedReservation();
+    }//GEN-LAST:event_cancelResBtnActionPerformed
+
+    private void refreshBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshBtnActionPerformed
+        loadReservations();
+    }//GEN-LAST:event_refreshBtnActionPerformed
+
+    private void searchFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_searchFieldActionPerformed
+        applyFilter();
+    }//GEN-LAST:event_searchFieldActionPerformed
+
+    private void statusFilterComboActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_statusFilterComboActionPerformed
+        applyFilter();
+    }//GEN-LAST:event_statusFilterComboActionPerformed
+
+    private void searchBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_searchBtnActionPerformed
+        applyFilter();
+    }//GEN-LAST:event_searchBtnActionPerformed
+
+    private void clearFilterBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearFilterBtnActionPerformed
+        resetFilter();
+    }//GEN-LAST:event_clearFilterBtnActionPerformed
 
     private void startAutoRefresh() {
         pollTimer = new Timer(6000, e -> {
@@ -434,4 +523,25 @@ public class ReservationManagementPanel extends JPanel {
             JOptionPane.showMessageDialog(this, "Thao tác thất bại: " + ex.getMessage(), "Lỗi đặt trước", JOptionPane.ERROR_MESSAGE);
         }
     }
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JPanel bottomBar;
+    private javax.swing.JButton cancelResBtn;
+    private javax.swing.JButton clearFilterBtn;
+    private javax.swing.JPanel filterBar;
+    private javax.swing.JPanel headerPanel;
+    private javax.swing.JLabel lblSearch;
+    private javax.swing.JLabel lblStatus;
+    private javax.swing.JButton newResBtn;
+    private javax.swing.JPanel northPanel;
+    private javax.swing.JButton refreshBtn;
+    private javax.swing.JTable reservationTable;
+    private javax.swing.JPanel rightBtns;
+    private javax.swing.JButton searchBtn;
+    private javax.swing.JTextField searchField;
+    private javax.swing.JComboBox<String> statusFilterCombo;
+    private javax.swing.JLabel statusLabel;
+    private javax.swing.JScrollPane tableScroll;
+    private javax.swing.JLabel titleLabel;
+    // End of variables declaration//GEN-END:variables
 }

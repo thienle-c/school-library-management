@@ -1,13 +1,8 @@
 package thuvien.client.view.panels;
 
-import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Color;
-import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.GridLayout;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -15,14 +10,8 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JSplitPane;
-import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
@@ -53,38 +42,7 @@ public class StudentManagementPanel extends JPanel {
     private final ClientStudentController studentController;
     private final boolean isStaff;
 
-    // Staff controls
-    private JTable studentTable;
     private DefaultTableModel tableModel;
-    private JTextField searchField;
-    private JComboBox<String> statusFilterCombo;
-    private JButton refreshBtn;
-    private JButton newStudentBtn;
-    private JButton editStudentBtn;
-    private JButton suspendStudentBtn;
-    private JButton hardDeleteStudentBtn;
-    private JButton activationCodeBtn;
-    private JLabel statusLabel;
-
-    // Detail panel
-    private JLabel detailIdVal;
-    private JLabel detailCodeVal;
-    private JLabel detailNameVal;
-    private JLabel detailClassVal;
-    private JLabel detailPhoneVal;
-    private JLabel detailEmailVal;
-    private JLabel detailBorrowVal;
-    private JLabel detailStatusVal;
-
-    // Student self profile labels
-    private JLabel profCodeVal;
-    private JLabel profNameVal;
-    private JLabel profClassVal;
-    private JLabel profPhoneVal;
-    private JLabel profEmailVal;
-    private JLabel profBorrowVal;
-    private JLabel profStatusVal;
-
     private List<StudentDTO> allStudents = new ArrayList<>();
     private javax.swing.Timer pollTimer;
     private volatile boolean isRefreshing = false;
@@ -94,144 +52,680 @@ public class StudentManagementPanel extends JPanel {
         this.studentController = new ClientStudentController(networkClient);
         this.isStaff = ClientSession.getInstance().isAdmin() || ClientSession.getInstance().isLibrarian();
 
+        initComponents();
+        initCustom();
+
+        CardLayout cl = (CardLayout) getLayout();
         if (isStaff) {
-            initStaffUI();
+            cl.show(this, "staffCard");
             loadStudents();
             initAutoRefresh();
         } else {
-            initStudentProfileUI();
+            cl.show(this, "studentProfileCard");
             loadStudentProfile();
         }
     }
 
-    private void initStaffUI() {
-        setLayout(new BorderLayout(5, 5));
-        setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
-        setBackground(Color.WHITE);
+    private void initCustom() {
+        if (isStaff) {
+            staffPanel.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+            topToolbar.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+            tableScroll.setBorder(BorderFactory.createLineBorder(new Color(220, 225, 230)));
+            detailCard.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 230)),
+                    BorderFactory.createEmptyBorder(10, 15, 10, 15)
+            ));
+            bottomBar.setBorder(BorderFactory.createEmptyBorder(6, 4, 4, 4));
 
-        // Top Toolbar
-        JPanel topToolbar = new JPanel(new BorderLayout(10, 0));
+            boolean isAdmin = ClientSession.getInstance().isAdmin();
+            if (!isAdmin) {
+                activationCodeBtn.setVisible(false);
+                hardDeleteStudentBtn.setVisible(false);
+            }
+
+            SearchAutoCompleteHelper.attach(searchField, "STUDENT", new ClientSearchSuggestionController(networkClient), () -> applyFilter(false));
+
+            String[] columns = {"Mã ID", "Mã Sinh Viên", "Họ Và Tên", "Lớp / Khóa", "Điện Thoại", "Địa Chỉ Email", "Đang Mượn / Tối Đa", "Trạng Thái"};
+            tableModel = new DefaultTableModel(columns, 0) {
+                @Override
+                public boolean isCellEditable(int row, int col) {
+                    return false;
+                }
+            };
+
+            studentTable.setModel(tableModel);
+            studentTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+            studentTable.setRowHeight(24);
+            studentTable.getTableHeader().setFont(studentTable.getTableHeader().getFont().deriveFont(Font.BOLD));
+            studentTable.setAutoCreateRowSorter(true);
+
+            studentTable.getSelectionModel().addListSelectionListener(e -> {
+                if (!e.getValueIsAdjusting()) {
+                    updateStaffDetails();
+                }
+            });
+        } else {
+            studentProfilePanel.setBorder(BorderFactory.createEmptyBorder(25, 30, 25, 30));
+            profileCard.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(new Color(225, 230, 238), 1),
+                    BorderFactory.createEmptyBorder(20, 25, 20, 25)
+            ));
+        }
+    }
+
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+        java.awt.GridBagConstraints gridBagConstraints;
+
+        staffPanel = new javax.swing.JPanel();
+        topToolbar = new javax.swing.JPanel();
+        leftPanel = new javax.swing.JPanel();
+        lblSearch = new javax.swing.JLabel();
+        searchField = new javax.swing.JTextField();
+        statusFilterCombo = new javax.swing.JComboBox<String>();
+        filterBtn = new javax.swing.JButton();
+        resetBtn = new javax.swing.JButton();
+        refreshBtn = new javax.swing.JButton();
+        rightPanel = new javax.swing.JPanel();
+        newStudentBtn = new javax.swing.JButton();
+        editStudentBtn = new javax.swing.JButton();
+        suspendStudentBtn = new javax.swing.JButton();
+        activationCodeBtn = new javax.swing.JButton();
+        hardDeleteStudentBtn = new javax.swing.JButton();
+        splitPane = new javax.swing.JSplitPane();
+        tableScroll = new javax.swing.JScrollPane();
+        studentTable = new javax.swing.JTable();
+        detailCard = new javax.swing.JPanel();
+        detailHeader = new javax.swing.JLabel();
+        gridDetails = new javax.swing.JPanel();
+        lblId = new javax.swing.JLabel();
+        detailIdVal = new javax.swing.JLabel();
+        lblCode = new javax.swing.JLabel();
+        detailCodeVal = new javax.swing.JLabel();
+        lblName = new javax.swing.JLabel();
+        detailNameVal = new javax.swing.JLabel();
+        lblClass = new javax.swing.JLabel();
+        detailClassVal = new javax.swing.JLabel();
+        lblPhone = new javax.swing.JLabel();
+        detailPhoneVal = new javax.swing.JLabel();
+        lblEmail = new javax.swing.JLabel();
+        detailEmailVal = new javax.swing.JLabel();
+        lblBorrow = new javax.swing.JLabel();
+        detailBorrowVal = new javax.swing.JLabel();
+        lblStatus = new javax.swing.JLabel();
+        detailStatusVal = new javax.swing.JLabel();
+        bottomBar = new javax.swing.JPanel();
+        statusLabel = new javax.swing.JLabel();
+        studentProfilePanel = new javax.swing.JPanel();
+        profileHeaderPanel = new javax.swing.JPanel();
+        profileTitle = new javax.swing.JLabel();
+        profileSubtitle = new javax.swing.JLabel();
+        profileCard = new javax.swing.JPanel();
+        lblProfCode = new javax.swing.JLabel();
+        profCodeVal = new javax.swing.JLabel();
+        lblProfName = new javax.swing.JLabel();
+        profNameVal = new javax.swing.JLabel();
+        lblProfClass = new javax.swing.JLabel();
+        profClassVal = new javax.swing.JLabel();
+        lblProfPhone = new javax.swing.JLabel();
+        profPhoneVal = new javax.swing.JLabel();
+        lblProfEmail = new javax.swing.JLabel();
+        profEmailVal = new javax.swing.JLabel();
+        lblProfBorrow = new javax.swing.JLabel();
+        profBorrowVal = new javax.swing.JLabel();
+        lblProfStatus = new javax.swing.JLabel();
+        profStatusVal = new javax.swing.JLabel();
+
+        setBackground(new java.awt.Color(255, 255, 255));
+        setLayout(new java.awt.CardLayout());
+
+        staffPanel.setBackground(new java.awt.Color(255, 255, 255));
+        staffPanel.setLayout(new java.awt.BorderLayout(5, 5));
+
         topToolbar.setOpaque(false);
-        topToolbar.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+        topToolbar.setLayout(new java.awt.BorderLayout(10, 0));
 
-        JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         leftPanel.setOpaque(false);
+        leftPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 6, 0));
 
-        leftPanel.add(new JLabel("Tìm kiếm sinh viên:"));
-        searchField = new JTextField(14);
+        lblSearch.setText("Tìm kiếm sinh viên:");
+        leftPanel.add(lblSearch);
+
+        searchField.setColumns(14);
         searchField.setToolTipText("Tìm kiếm theo Mã SV, Họ tên, Lớp, Email, SĐT hoặc Mã ID");
-        searchField.addActionListener(e -> applyFilter(false));
-        SearchAutoCompleteHelper.attach(searchField, "STUDENT", new ClientSearchSuggestionController(networkClient), () -> applyFilter(false));
+        searchField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                searchFieldActionPerformed(evt);
+            }
+        });
         leftPanel.add(searchField);
 
-        statusFilterCombo = new JComboBox<>(new String[]{"Tất cả trạng thái", "Đang hoạt động", "Tạm khóa", "Đã tốt nghiệp"});
-        statusFilterCombo.addActionListener(e -> applyFilter(false));
+        statusFilterCombo.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Tất cả trạng thái", "Đang hoạt động", "Tạm khóa", "Đã tốt nghiệp" }));
+        statusFilterCombo.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                statusFilterComboActionPerformed(evt);
+            }
+        });
         leftPanel.add(statusFilterCombo);
 
-        JButton filterBtn = new JButton("Tìm");
-        filterBtn.addActionListener(e -> applyFilter(false));
+        filterBtn.setText("Tìm");
+        filterBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                filterBtnActionPerformed(evt);
+            }
+        });
         leftPanel.add(filterBtn);
 
-        JButton resetBtn = new JButton("Xóa bộ lọc");
-        resetBtn.addActionListener(e -> {
-            searchField.setText("");
-            statusFilterCombo.setSelectedIndex(0);
-            applyFilter(false);
+        resetBtn.setText("Xóa bộ lọc");
+        resetBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                resetBtnActionPerformed(evt);
+            }
         });
         leftPanel.add(resetBtn);
 
-        refreshBtn = new JButton("Làm mới");
-        refreshBtn.addActionListener(e -> loadStudents());
-        leftPanel.add(refreshBtn);
-
-        topToolbar.add(leftPanel, BorderLayout.WEST);
-
-        // Action buttons
-        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        rightPanel.setOpaque(false);
-
-        newStudentBtn = new JButton("Thêm Sinh Viên");
-        newStudentBtn.setBackground(new Color(230, 245, 230));
-        newStudentBtn.addActionListener(e -> openCreateDialog());
-        rightPanel.add(newStudentBtn);
-
-        editStudentBtn = new JButton("Chỉnh Sửa");
-        editStudentBtn.setEnabled(false);
-        editStudentBtn.addActionListener(e -> openEditDialog());
-        rightPanel.add(editStudentBtn);
-
-        // "Tạm khóa" button (available for Admin & Librarian)
-        suspendStudentBtn = new JButton("Tạm Khóa");
-        suspendStudentBtn.setBackground(new Color(255, 245, 230));
-        suspendStudentBtn.setEnabled(false);
-        suspendStudentBtn.setToolTipText("Chuyển trạng thái sinh viên sang tạm khóa/ngưng hoạt động");
-        suspendStudentBtn.addActionListener(e -> suspendSelectedStudent());
-        rightPanel.add(suspendStudentBtn);
-
-        // Admin-only actions: Cấp mã kích hoạt & Xóa vĩnh viễn
-        if (ClientSession.getInstance().isAdmin()) {
-            activationCodeBtn = new JButton("Cấp Mã Kích Hoạt");
-            activationCodeBtn.setBackground(new Color(230, 240, 255));
-            activationCodeBtn.setEnabled(false);
-            activationCodeBtn.setToolTipText("Tạo mã kích hoạt an toàn để sinh viên tự đăng ký tài khoản");
-            activationCodeBtn.addActionListener(e -> generateActivationCodeForSelectedStudent());
-            rightPanel.add(activationCodeBtn);
-
-            hardDeleteStudentBtn = new JButton("Xóa Vĩnh Viễn");
-            hardDeleteStudentBtn.setBackground(new Color(255, 230, 230));
-            hardDeleteStudentBtn.setForeground(new Color(180, 0, 0));
-            hardDeleteStudentBtn.setFont(hardDeleteStudentBtn.getFont().deriveFont(Font.BOLD));
-            hardDeleteStudentBtn.setEnabled(false);
-            hardDeleteStudentBtn.setToolTipText("Xóa vĩnh viễn sinh viên khỏi cơ sở dữ liệu (Chỉ Quản trị viên)");
-            hardDeleteStudentBtn.addActionListener(e -> hardDeleteSelectedStudent());
-            rightPanel.add(hardDeleteStudentBtn);
-        }
-
-        topToolbar.add(rightPanel, BorderLayout.EAST);
-        add(topToolbar, BorderLayout.NORTH);
-
-        // Table
-        String[] columns = {"Mã ID", "Mã Sinh Viên", "Họ Và Tên", "Lớp / Khóa", "Điện Thoại", "Địa Chỉ Email", "Đang Mượn / Tối Đa", "Trạng Thái"};
-        tableModel = new DefaultTableModel(columns, 0) {
-            @Override
-            public boolean isCellEditable(int row, int col) {
-                return false;
-            }
-        };
-
-        studentTable = new JTable(tableModel);
-        studentTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        studentTable.setRowHeight(24);
-        studentTable.getTableHeader().setFont(studentTable.getTableHeader().getFont().deriveFont(Font.BOLD));
-        studentTable.setAutoCreateRowSorter(true);
-
-        studentTable.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                updateStaffDetails();
+        refreshBtn.setText("Làm mới");
+        refreshBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                refreshBtnActionPerformed(evt);
             }
         });
+        leftPanel.add(refreshBtn);
 
-        JScrollPane tableScroll = new JScrollPane(studentTable);
-        tableScroll.setBorder(BorderFactory.createLineBorder(new Color(220, 225, 230)));
+        topToolbar.add(leftPanel, java.awt.BorderLayout.WEST);
 
-        JPanel detailCard = createStaffDetailPanel();
+        rightPanel.setOpaque(false);
+        rightPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 6, 0));
 
-        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, tableScroll, detailCard);
-        splitPane.setResizeWeight(0.65);
+        newStudentBtn.setBackground(new java.awt.Color(230, 245, 230));
+        newStudentBtn.setText("Thêm Sinh Viên");
+        newStudentBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                newStudentBtnActionPerformed(evt);
+            }
+        });
+        rightPanel.add(newStudentBtn);
+
+        editStudentBtn.setText("Chỉnh Sửa");
+        editStudentBtn.setEnabled(false);
+        editStudentBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                editStudentBtnActionPerformed(evt);
+            }
+        });
+        rightPanel.add(editStudentBtn);
+
+        suspendStudentBtn.setBackground(new java.awt.Color(255, 245, 230));
+        suspendStudentBtn.setText("Tạm Khóa");
+        suspendStudentBtn.setToolTipText("Chuyển trạng thái sinh viên sang tạm khóa/ngưng hoạt động");
+        suspendStudentBtn.setEnabled(false);
+        suspendStudentBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                suspendStudentBtnActionPerformed(evt);
+            }
+        });
+        rightPanel.add(suspendStudentBtn);
+
+        activationCodeBtn.setBackground(new java.awt.Color(230, 240, 255));
+        activationCodeBtn.setText("Cấp Mã Kích Hoạt");
+        activationCodeBtn.setToolTipText("Tạo mã kích hoạt an toàn để sinh viên tự đăng ký tài khoản");
+        activationCodeBtn.setEnabled(false);
+        activationCodeBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                activationCodeBtnActionPerformed(evt);
+            }
+        });
+        rightPanel.add(activationCodeBtn);
+
+        hardDeleteStudentBtn.setBackground(new java.awt.Color(255, 230, 230));
+        hardDeleteStudentBtn.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        hardDeleteStudentBtn.setForeground(new java.awt.Color(180, 0, 0));
+        hardDeleteStudentBtn.setText("Xóa Vĩnh Viễn");
+        hardDeleteStudentBtn.setToolTipText("Xóa vĩnh viễn sinh viên khỏi cơ sở dữ liệu (Chỉ Quản trị viên)");
+        hardDeleteStudentBtn.setEnabled(false);
+        hardDeleteStudentBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                hardDeleteStudentBtnActionPerformed(evt);
+            }
+        });
+        rightPanel.add(hardDeleteStudentBtn);
+
+        topToolbar.add(rightPanel, java.awt.BorderLayout.EAST);
+
+        staffPanel.add(topToolbar, java.awt.BorderLayout.NORTH);
+
         splitPane.setDividerSize(6);
-        add(splitPane, BorderLayout.CENTER);
+        splitPane.setOrientation(javax.swing.JSplitPane.VERTICAL_SPLIT);
+        splitPane.setResizeWeight(0.65);
 
-        // Bottom Status
-        JPanel bottomBar = new JPanel(new BorderLayout());
+        studentTable.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+
+            },
+            new String [] {
+                "Mã ID", "Mã Sinh Viên", "Họ Và Tên", "Lớp / Khóa", "Điện Thoại", "Địa Chỉ Email", "Đang Mượn / Tối Đa", "Trạng Thái"
+            }
+        ) {
+            boolean[] canEdit = new boolean [] {
+                false, false, false, false, false, false, false, false
+            };
+
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit [columnIndex];
+            }
+        });
+        studentTable.setAutoCreateRowSorter(true);
+        studentTable.setRowHeight(24);
+        studentTable.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+        tableScroll.setViewportView(studentTable);
+
+        splitPane.setTopComponent(tableScroll);
+
+        detailCard.setBackground(new java.awt.Color(248, 250, 252));
+        detailCard.setLayout(new java.awt.BorderLayout(10, 10));
+
+        detailHeader.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        detailHeader.setText("Thông Tin Hồ Sơ Sinh Viên Được Chọn");
+        detailCard.add(detailHeader, java.awt.BorderLayout.NORTH);
+
+        gridDetails.setOpaque(false);
+        gridDetails.setLayout(new java.awt.GridBagLayout());
+
+        lblId.setText("Mã ID sinh viên:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblId, gridBagConstraints);
+
+        detailIdVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailIdVal, gridBagConstraints);
+
+        lblCode.setText("Mã số sinh viên:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 2;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblCode, gridBagConstraints);
+
+        detailCodeVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 3;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailCodeVal, gridBagConstraints);
+
+        lblName.setText("Họ và tên:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblName, gridBagConstraints);
+
+        detailNameVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailNameVal, gridBagConstraints);
+
+        lblClass.setText("Lớp / Khóa:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 2;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblClass, gridBagConstraints);
+
+        detailClassVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 3;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailClassVal, gridBagConstraints);
+
+        lblPhone.setText("Số điện thoại:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblPhone, gridBagConstraints);
+
+        detailPhoneVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailPhoneVal, gridBagConstraints);
+
+        lblEmail.setText("Địa chỉ Email:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 2;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblEmail, gridBagConstraints);
+
+        detailEmailVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 3;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailEmailVal, gridBagConstraints);
+
+        lblBorrow.setText("Sách đang mượn / Hạn mức:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblBorrow, gridBagConstraints);
+
+        detailBorrowVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailBorrowVal, gridBagConstraints);
+
+        lblStatus.setText("Trạng thái:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 2;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblStatus, gridBagConstraints);
+
+        detailStatusVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 3;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailStatusVal, gridBagConstraints);
+
+        detailCard.add(gridDetails, java.awt.BorderLayout.CENTER);
+
+        splitPane.setBottomComponent(detailCard);
+
+        staffPanel.add(splitPane, java.awt.BorderLayout.CENTER);
+
         bottomBar.setOpaque(false);
-        bottomBar.setBorder(BorderFactory.createEmptyBorder(6, 4, 4, 4));
+        bottomBar.setLayout(new java.awt.BorderLayout());
 
-        statusLabel = new JLabel("Sẵn sàng");
-        statusLabel.setFont(statusLabel.getFont().deriveFont(Font.PLAIN, 12.0f));
-        bottomBar.add(statusLabel, BorderLayout.WEST);
+        statusLabel.setFont(new java.awt.Font("Segoe UI", 0, 12)); // NOI18N
+        statusLabel.setText("Sẵn sàng");
+        bottomBar.add(statusLabel, java.awt.BorderLayout.WEST);
 
-        add(bottomBar, BorderLayout.SOUTH);
-    }
+        staffPanel.add(bottomBar, java.awt.BorderLayout.SOUTH);
+
+        add(staffPanel, "staffCard");
+
+        studentProfilePanel.setBackground(new java.awt.Color(255, 255, 255));
+        studentProfilePanel.setLayout(new java.awt.BorderLayout());
+
+        profileHeaderPanel.setOpaque(false);
+        profileHeaderPanel.setLayout(new java.awt.GridLayout(2, 1, 0, 5));
+
+        profileTitle.setFont(new java.awt.Font("Segoe UI", 1, 20)); // NOI18N
+        profileTitle.setText("Hồ Sơ Cá Nhân Sinh Viên");
+        profileHeaderPanel.add(profileTitle);
+
+        profileSubtitle.setFont(new java.awt.Font("Segoe UI", 0, 12)); // NOI18N
+        profileSubtitle.setForeground(new java.awt.Color(128, 128, 128));
+        profileSubtitle.setText("Thông tin tài khoản thư viện và hạn mức mượn sách");
+        profileHeaderPanel.add(profileSubtitle);
+
+        studentProfilePanel.add(profileHeaderPanel, java.awt.BorderLayout.NORTH);
+
+        profileCard.setBackground(new java.awt.Color(250, 252, 255));
+        profileCard.setLayout(new java.awt.GridBagLayout());
+
+        lblProfCode.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        lblProfCode.setText("Mã số sinh viên:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.3;
+        gridBagConstraints.insets = new java.awt.Insets(8, 8, 8, 8);
+        profileCard.add(lblProfCode, gridBagConstraints);
+
+        profCodeVal.setFont(new java.awt.Font("Segoe UI", 0, 13)); // NOI18N
+        profCodeVal.setText("Đang tải...");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.7;
+        gridBagConstraints.insets = new java.awt.Insets(8, 8, 8, 8);
+        profileCard.add(profCodeVal, gridBagConstraints);
+
+        lblProfName.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        lblProfName.setText("Họ và tên:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.3;
+        gridBagConstraints.insets = new java.awt.Insets(8, 8, 8, 8);
+        profileCard.add(lblProfName, gridBagConstraints);
+
+        profNameVal.setFont(new java.awt.Font("Segoe UI", 0, 13)); // NOI18N
+        profNameVal.setText("Đang tải...");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.7;
+        gridBagConstraints.insets = new java.awt.Insets(8, 8, 8, 8);
+        profileCard.add(profNameVal, gridBagConstraints);
+
+        lblProfClass.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        lblProfClass.setText("Lớp / Khóa học:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.3;
+        gridBagConstraints.insets = new java.awt.Insets(8, 8, 8, 8);
+        profileCard.add(lblProfClass, gridBagConstraints);
+
+        profClassVal.setFont(new java.awt.Font("Segoe UI", 0, 13)); // NOI18N
+        profClassVal.setText("Đang tải...");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.7;
+        gridBagConstraints.insets = new java.awt.Insets(8, 8, 8, 8);
+        profileCard.add(profClassVal, gridBagConstraints);
+
+        lblProfPhone.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        lblProfPhone.setText("Số điện thoại:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.3;
+        gridBagConstraints.insets = new java.awt.Insets(8, 8, 8, 8);
+        profileCard.add(lblProfPhone, gridBagConstraints);
+
+        profPhoneVal.setFont(new java.awt.Font("Segoe UI", 0, 13)); // NOI18N
+        profPhoneVal.setText("Đang tải...");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.7;
+        gridBagConstraints.insets = new java.awt.Insets(8, 8, 8, 8);
+        profileCard.add(profPhoneVal, gridBagConstraints);
+
+        lblProfEmail.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        lblProfEmail.setText("Địa chỉ Email:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 4;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.3;
+        gridBagConstraints.insets = new java.awt.Insets(8, 8, 8, 8);
+        profileCard.add(lblProfEmail, gridBagConstraints);
+
+        profEmailVal.setFont(new java.awt.Font("Segoe UI", 0, 13)); // NOI18N
+        profEmailVal.setText("Đang tải...");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 4;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.7;
+        gridBagConstraints.insets = new java.awt.Insets(8, 8, 8, 8);
+        profileCard.add(profEmailVal, gridBagConstraints);
+
+        lblProfBorrow.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        lblProfBorrow.setText("Tình trạng mượn sách:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 5;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.3;
+        gridBagConstraints.insets = new java.awt.Insets(8, 8, 8, 8);
+        profileCard.add(lblProfBorrow, gridBagConstraints);
+
+        profBorrowVal.setFont(new java.awt.Font("Segoe UI", 0, 13)); // NOI18N
+        profBorrowVal.setText("Đang tải...");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 5;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.7;
+        gridBagConstraints.insets = new java.awt.Insets(8, 8, 8, 8);
+        profileCard.add(profBorrowVal, gridBagConstraints);
+
+        lblProfStatus.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        lblProfStatus.setText("Trạng thái tài khoản:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 6;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.3;
+        gridBagConstraints.insets = new java.awt.Insets(8, 8, 8, 8);
+        profileCard.add(lblProfStatus, gridBagConstraints);
+
+        profStatusVal.setFont(new java.awt.Font("Segoe UI", 0, 13)); // NOI18N
+        profStatusVal.setText("Đang tải...");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 6;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.7;
+        gridBagConstraints.insets = new java.awt.Insets(8, 8, 8, 8);
+        profileCard.add(profStatusVal, gridBagConstraints);
+
+        studentProfilePanel.add(profileCard, java.awt.BorderLayout.CENTER);
+
+        add(studentProfilePanel, "studentProfileCard");
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void searchFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_searchFieldActionPerformed
+        applyFilter(false);
+    }//GEN-LAST:event_searchFieldActionPerformed
+
+    private void statusFilterComboActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_statusFilterComboActionPerformed
+        applyFilter(false);
+    }//GEN-LAST:event_statusFilterComboActionPerformed
+
+    private void filterBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_filterBtnActionPerformed
+        applyFilter(false);
+    }//GEN-LAST:event_filterBtnActionPerformed
+
+    private void resetBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetBtnActionPerformed
+        searchField.setText("");
+        statusFilterCombo.setSelectedIndex(0);
+        applyFilter(false);
+    }//GEN-LAST:event_resetBtnActionPerformed
+
+    private void refreshBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshBtnActionPerformed
+        loadStudents();
+    }//GEN-LAST:event_refreshBtnActionPerformed
+
+    private void newStudentBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_newStudentBtnActionPerformed
+        openCreateDialog();
+    }//GEN-LAST:event_newStudentBtnActionPerformed
+
+    private void editStudentBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_editStudentBtnActionPerformed
+        openEditDialog();
+    }//GEN-LAST:event_editStudentBtnActionPerformed
+
+    private void suspendStudentBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_suspendStudentBtnActionPerformed
+        suspendSelectedStudent();
+    }//GEN-LAST:event_suspendStudentBtnActionPerformed
+
+    private void activationCodeBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_activationCodeBtnActionPerformed
+        generateActivationCodeForSelectedStudent();
+    }//GEN-LAST:event_activationCodeBtnActionPerformed
+
+    private void hardDeleteStudentBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_hardDeleteStudentBtnActionPerformed
+        hardDeleteSelectedStudent();
+    }//GEN-LAST:event_hardDeleteStudentBtnActionPerformed
 
     private void initAutoRefresh() {
         pollTimer = new javax.swing.Timer(6000, e -> {
@@ -255,136 +749,6 @@ public class StudentManagementPanel extends JPanel {
             @Override
             public void ancestorMoved(javax.swing.event.AncestorEvent event) {}
         });
-    }
-
-    private JPanel createStaffDetailPanel() {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setBackground(new Color(248, 250, 252));
-        panel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 230)),
-                BorderFactory.createEmptyBorder(10, 15, 10, 15)
-        ));
-
-        JLabel header = new JLabel("Thông Tin Hồ Sơ Sinh Viên Được Chọn");
-        header.setFont(header.getFont().deriveFont(Font.BOLD, 13.0f));
-        panel.add(header, BorderLayout.NORTH);
-
-        JPanel grid = new JPanel(new GridBagLayout());
-        grid.setOpaque(false);
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(3, 8, 3, 8);
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-
-        detailIdVal = new JLabel("Chưa chọn");
-        detailCodeVal = new JLabel("Chưa chọn");
-        detailNameVal = new JLabel("Chưa chọn");
-        detailClassVal = new JLabel("Chưa chọn");
-        detailPhoneVal = new JLabel("Chưa chọn");
-        detailEmailVal = new JLabel("Chưa chọn");
-        detailBorrowVal = new JLabel("Chưa chọn");
-        detailStatusVal = new JLabel("Chưa chọn");
-
-        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.0;
-        grid.add(new JLabel("Mã ID sinh viên:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 0.5;
-        grid.add(detailIdVal, gbc);
-
-        gbc.gridx = 2; gbc.weightx = 0.0;
-        grid.add(new JLabel("Mã số sinh viên:"), gbc);
-        gbc.gridx = 3; gbc.weightx = 0.5;
-        grid.add(detailCodeVal, gbc);
-
-        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0.0;
-        grid.add(new JLabel("Họ và tên:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 0.5;
-        grid.add(detailNameVal, gbc);
-
-        gbc.gridx = 2; gbc.weightx = 0.0;
-        grid.add(new JLabel("Lớp / Khóa:"), gbc);
-        gbc.gridx = 3; gbc.weightx = 0.5;
-        grid.add(detailClassVal, gbc);
-
-        gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0.0;
-        grid.add(new JLabel("Số điện thoại:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 0.5;
-        grid.add(detailPhoneVal, gbc);
-
-        gbc.gridx = 2; gbc.weightx = 0.0;
-        grid.add(new JLabel("Địa chỉ Email:"), gbc);
-        gbc.gridx = 3; gbc.weightx = 0.5;
-        grid.add(detailEmailVal, gbc);
-
-        gbc.gridx = 0; gbc.gridy = 3; gbc.weightx = 0.0;
-        grid.add(new JLabel("Sách đang mượn / Hạn mức:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 0.5;
-        grid.add(detailBorrowVal, gbc);
-
-        gbc.gridx = 2; gbc.weightx = 0.0;
-        grid.add(new JLabel("Trạng thái:"), gbc);
-        gbc.gridx = 3; gbc.weightx = 0.5;
-        grid.add(detailStatusVal, gbc);
-
-        panel.add(grid, BorderLayout.CENTER);
-        return panel;
-    }
-
-    private void initStudentProfileUI() {
-        setLayout(new BorderLayout());
-        setBackground(Color.WHITE);
-        setBorder(BorderFactory.createEmptyBorder(25, 30, 25, 30));
-
-        JPanel headerPanel = new JPanel(new GridLayout(2, 1, 0, 5));
-        headerPanel.setOpaque(false);
-        JLabel title = new JLabel("Hồ Sơ Cá Nhân Sinh Viên");
-        title.setFont(title.getFont().deriveFont(Font.BOLD, 20.0f));
-        JLabel subtitle = new JLabel("Thông tin tài khoản thư viện và hạn mức mượn sách");
-        subtitle.setFont(subtitle.getFont().deriveFont(Font.PLAIN, 12.5f));
-        subtitle.setForeground(Color.GRAY);
-        headerPanel.add(title);
-        headerPanel.add(subtitle);
-        add(headerPanel, BorderLayout.NORTH);
-
-        JPanel card = new JPanel(new GridBagLayout());
-        card.setBackground(new Color(250, 252, 255));
-        card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(225, 230, 238), 1),
-                BorderFactory.createEmptyBorder(20, 25, 20, 25)
-        ));
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(8, 8, 8, 8);
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-
-        profCodeVal = new JLabel("Đang tải...");
-        profNameVal = new JLabel("Đang tải...");
-        profClassVal = new JLabel("Đang tải...");
-        profPhoneVal = new JLabel("Đang tải...");
-        profEmailVal = new JLabel("Đang tải...");
-        profBorrowVal = new JLabel("Đang tải...");
-        profStatusVal = new JLabel("Đang tải...");
-
-        addProfileRow(card, gbc, 0, "Mã số sinh viên:", profCodeVal);
-        addProfileRow(card, gbc, 1, "Họ và tên:", profNameVal);
-        addProfileRow(card, gbc, 2, "Lớp / Khóa học:", profClassVal);
-        addProfileRow(card, gbc, 3, "Số điện thoại:", profPhoneVal);
-        addProfileRow(card, gbc, 4, "Địa chỉ Email:", profEmailVal);
-        addProfileRow(card, gbc, 5, "Tình trạng mượn sách:", profBorrowVal);
-        addProfileRow(card, gbc, 6, "Trạng thái tài khoản:", profStatusVal);
-
-        add(card, BorderLayout.CENTER);
-    }
-
-    private void addProfileRow(JPanel panel, GridBagConstraints gbc, int row, String label, JLabel valueLabel) {
-        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.3;
-        JLabel lbl = new JLabel(label);
-        lbl.setFont(lbl.getFont().deriveFont(Font.BOLD, 13.0f));
-        panel.add(lbl, gbc);
-
-        gbc.gridx = 1; gbc.weightx = 0.7;
-        valueLabel.setFont(valueLabel.getFont().deriveFont(Font.PLAIN, 13.0f));
-        panel.add(valueLabel, gbc);
     }
 
     public void loadStudents() {
@@ -428,12 +792,10 @@ public class StudentManagementPanel extends JPanel {
 
     private void applyFilter(boolean silent) {
         Long selectedId = null;
-        StudentDTO prevSel = getSelectedStudent();
-        if (prevSel != null) {
-            selectedId = prevSel.getId();
-        }
+        StudentDTO prev = getSelectedStudent();
+        if (prev != null) selectedId = prev.getId();
 
-        String filter = searchField.getText().trim().toLowerCase();
+        String kw = searchField.getText().trim().toLowerCase();
         int statusIdx = statusFilterCombo.getSelectedIndex();
 
         tableModel.setRowCount(0);
@@ -446,17 +808,17 @@ public class StudentManagementPanel extends JPanel {
             if (statusIdx == 2 && s.getStatus() != StudentStatus.SUSPENDED) continue;
             if (statusIdx == 3 && s.getStatus() != StudentStatus.GRADUATED) continue;
 
-            // Keyword filter (ID, Code, Name, Class, Phone, Email)
-            if (!filter.isEmpty()) {
+            // Search filter (StudentCode, FullName, ClassName, Email, Phone, ID)
+            if (!kw.isEmpty()) {
                 String idStr = s.getId() != null ? s.getId().toString() : "";
-                String code = s.getStudentCode() != null ? s.getStudentCode().toLowerCase() : "";
-                String name = s.getFullName() != null ? s.getFullName().toLowerCase() : "";
-                String cl = s.getClassName() != null ? s.getClassName().toLowerCase() : "";
-                String phone = s.getPhone() != null ? s.getPhone().toLowerCase() : "";
-                String email = s.getEmail() != null ? s.getEmail().toLowerCase() : "";
+                String sc = s.getStudentCode() != null ? s.getStudentCode().toLowerCase() : "";
+                String fn = s.getFullName() != null ? s.getFullName().toLowerCase() : "";
+                String cn = s.getClassName() != null ? s.getClassName().toLowerCase() : "";
+                String em = s.getEmail() != null ? s.getEmail().toLowerCase() : "";
+                String ph = s.getPhone() != null ? s.getPhone().toLowerCase() : "";
 
-                if (!idStr.contains(filter) && !code.contains(filter) && !name.contains(filter)
-                        && !cl.contains(filter) && !phone.contains(filter) && !email.contains(filter)) {
+                if (!idStr.contains(kw) && !sc.contains(kw) && !fn.contains(kw)
+                        && !cn.contains(kw) && !em.contains(kw) && !ph.contains(kw)) {
                     continue;
                 }
             }
@@ -472,7 +834,7 @@ public class StudentManagementPanel extends JPanel {
                     s.getClassName() != null ? s.getClassName() : "",
                     s.getPhone() != null ? s.getPhone() : "",
                     s.getEmail() != null ? s.getEmail() : "",
-                    String.format("%d / %d", s.getCurrentBorrowCount(), s.getMaxBorrowLimit()),
+                    s.getCurrentBorrowCount() + " / " + s.getMaxBorrowLimit(),
                     mapStudentStatus(s.getStatus())
             });
             count++;
@@ -616,7 +978,6 @@ public class StudentManagementPanel extends JPanel {
             return;
         }
 
-        // Confirmation 1: Explicit Warning
         int confirm1 = JOptionPane.showConfirmDialog(
                 this,
                 String.format("CẢNH BÁO NGUY HIỂM:\nBạn đang thực hiện XÓA VĨNH VIỄN sinh viên:\n%s (Mã SV: %s, ID: %d)\n\n"
@@ -633,7 +994,6 @@ public class StudentManagementPanel extends JPanel {
             return;
         }
 
-        // Confirmation 2: Final Confirmation
         int confirm2 = JOptionPane.showConfirmDialog(
                 this,
                 String.format("Xác nhận lần 2: Bạn thực sự muốn XÓA VĨNH VIỄN sinh viên %s (%s)?",
@@ -704,7 +1064,6 @@ public class StudentManagementPanel extends JPanel {
         }
     }
 
-
     public void loadStudentProfile() {
         profCodeVal.setText("Đang tải...");
         profNameVal.setText("Đang tải...");
@@ -747,4 +1106,65 @@ public class StudentManagementPanel extends JPanel {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Thông Báo Lỗi", JOptionPane.ERROR_MESSAGE);
         }
     }
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton activationCodeBtn;
+    private javax.swing.JPanel bottomBar;
+    private javax.swing.JLabel detailBorrowVal;
+    private javax.swing.JPanel detailCard;
+    private javax.swing.JLabel detailClassVal;
+    private javax.swing.JLabel detailCodeVal;
+    private javax.swing.JLabel detailEmailVal;
+    private javax.swing.JLabel detailHeader;
+    private javax.swing.JLabel detailIdVal;
+    private javax.swing.JLabel detailNameVal;
+    private javax.swing.JLabel detailPhoneVal;
+    private javax.swing.JLabel detailStatusVal;
+    private javax.swing.JButton editStudentBtn;
+    private javax.swing.JButton filterBtn;
+    private javax.swing.JPanel gridDetails;
+    private javax.swing.JButton hardDeleteStudentBtn;
+    private javax.swing.JLabel lblBorrow;
+    private javax.swing.JLabel lblClass;
+    private javax.swing.JLabel lblCode;
+    private javax.swing.JLabel lblEmail;
+    private javax.swing.JLabel lblId;
+    private javax.swing.JLabel lblName;
+    private javax.swing.JLabel lblPhone;
+    private javax.swing.JLabel lblProfBorrow;
+    private javax.swing.JLabel lblProfClass;
+    private javax.swing.JLabel lblProfCode;
+    private javax.swing.JLabel lblProfEmail;
+    private javax.swing.JLabel lblProfName;
+    private javax.swing.JLabel lblProfPhone;
+    private javax.swing.JLabel lblProfStatus;
+    private javax.swing.JLabel lblSearch;
+    private javax.swing.JLabel lblStatus;
+    private javax.swing.JPanel leftPanel;
+    private javax.swing.JButton newStudentBtn;
+    private javax.swing.JLabel profBorrowVal;
+    private javax.swing.JPanel profileCard;
+    private javax.swing.JPanel profileHeaderPanel;
+    private javax.swing.JLabel profileSubtitle;
+    private javax.swing.JLabel profileTitle;
+    private javax.swing.JLabel profClassVal;
+    private javax.swing.JLabel profCodeVal;
+    private javax.swing.JLabel profEmailVal;
+    private javax.swing.JLabel profNameVal;
+    private javax.swing.JLabel profPhoneVal;
+    private javax.swing.JLabel profStatusVal;
+    private javax.swing.JButton refreshBtn;
+    private javax.swing.JButton resetBtn;
+    private javax.swing.JPanel rightPanel;
+    private javax.swing.JTextField searchField;
+    private javax.swing.JSplitPane splitPane;
+    private javax.swing.JPanel staffPanel;
+    private javax.swing.JComboBox<String> statusFilterCombo;
+    private javax.swing.JLabel statusLabel;
+    private javax.swing.JPanel studentProfilePanel;
+    private javax.swing.JTable studentTable;
+    private javax.swing.JButton suspendStudentBtn;
+    private javax.swing.JScrollPane tableScroll;
+    private javax.swing.JPanel topToolbar;
+    // End of variables declaration//GEN-END:variables
 }

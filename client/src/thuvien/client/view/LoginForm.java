@@ -1,26 +1,15 @@
 package thuvien.client.view;
 
-import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JPasswordField;
-import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import thuvien.client.controller.ClientAuthController;
 import thuvien.client.network.NetworkClient;
+import thuvien.client.network.RMIClient;
 import thuvien.client.view.common.AsyncWorker;
 import thuvien.common.dto.UserSessionDTO;
 import thuvien.common.exception.AuthenticationException;
@@ -28,7 +17,7 @@ import thuvien.common.exception.NetworkException;
 
 /**
  * Authentication dialog / window for the Remote School Library client.
- * Connects to the server over TCP, handles login, and displays user-friendly status and errors.
+ * Connects to the server over Java RMI, handles login, and displays user-friendly status and errors.
  */
 public class LoginForm extends JFrame {
     private static final Logger LOGGER = Logger.getLogger(LoginForm.class.getName());
@@ -36,149 +25,239 @@ public class LoginForm extends JFrame {
     private final NetworkClient networkClient;
     private final ClientAuthController authController;
 
-    private JTextField serverHostField;
-    private JTextField serverPortField;
-    private JButton testConnectionButton;
-
-    private JTextField usernameField;
-    private JPasswordField passwordField;
-    private JButton loginButton;
-    private JLabel statusLabel;
-
-    private JButton registerButton;
+    public LoginForm() {
+        this(new RMIClient());
+    }
 
     public LoginForm(NetworkClient networkClient) {
         this.networkClient = networkClient;
         this.authController = new ClientAuthController(networkClient);
-        initUI();
+        initComponents();
+        initCustom();
     }
 
-    private void initUI() {
-        setTitle("Hệ Thống Quản Lý Thư Viện - Đăng Nhập");
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    private void initCustom() {
         setSize(480, 440);
         setLocationRelativeTo(null);
-        setResizable(false);
+        getRootPane().setBorder(BorderFactory.createEmptyBorder(18, 25, 18, 25));
 
-        JPanel mainPanel = new JPanel(new BorderLayout(10, 12));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(18, 25, 18, 25));
+        if (networkClient != null) {
+            serverHostField.setText(networkClient.getHost());
+            serverPortField.setText(String.valueOf(networkClient.getPort()));
+        }
 
-        // Header
-        JPanel headerPanel = new JPanel(new BorderLayout(0, 4));
-        JLabel headerLabel = new JLabel("Quản Lý Thư Viện Trường Học", JLabel.CENTER);
-        headerLabel.setFont(headerLabel.getFont().deriveFont(Font.BOLD, 18.0f));
-        JLabel subHeaderLabel = new JLabel("Ứng Dụng Khách Kết Nối Java RMI", JLabel.CENTER);
-        subHeaderLabel.setFont(subHeaderLabel.getFont().deriveFont(Font.PLAIN, 12.0f));
-        subHeaderLabel.setForeground(new Color(100, 100, 100));
-        headerPanel.add(headerLabel, BorderLayout.NORTH);
-        headerPanel.add(subHeaderLabel, BorderLayout.SOUTH);
-        mainPanel.add(headerPanel, BorderLayout.NORTH);
-
-        // Form fields
-        JPanel formPanel = new JPanel(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 6, 5, 6);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-
-        // Row 0: Server IP
-        gbc.gridx = 0; gbc.gridy = 0;
-        gbc.weightx = 0.0;
-        JLabel hostLabel = new JLabel("Server IP:");
-        hostLabel.setFont(hostLabel.getFont().deriveFont(Font.BOLD));
-        formPanel.add(hostLabel, gbc);
-
-        gbc.gridx = 1;
-        gbc.weightx = 1.0;
-        serverHostField = new JTextField(networkClient.getHost(), 15);
-        formPanel.add(serverHostField, gbc);
-
-        // Row 1: Server Port
-        gbc.gridx = 0; gbc.gridy = 1;
-        gbc.weightx = 0.0;
-        JLabel portLabel = new JLabel("Port:");
-        portLabel.setFont(portLabel.getFont().deriveFont(Font.BOLD));
-        formPanel.add(portLabel, gbc);
-
-        gbc.gridx = 1;
-        gbc.weightx = 1.0;
-        serverPortField = new JTextField(String.valueOf(networkClient.getPort()), 15);
-        formPanel.add(serverPortField, gbc);
-
-        // Row 2: Test Connection button
-        gbc.gridx = 1; gbc.gridy = 2;
-        gbc.weightx = 1.0;
-        testConnectionButton = new JButton("Kiểm tra kết nối");
-        testConnectionButton.addActionListener(e -> performTestConnection());
-        formPanel.add(testConnectionButton, gbc);
-
-        // Row 3: Username
-        gbc.gridx = 0; gbc.gridy = 3;
-        gbc.weightx = 0.0;
-        JLabel userLabel = new JLabel("Tên đăng nhập:");
-        userLabel.setFont(userLabel.getFont().deriveFont(Font.BOLD));
-        formPanel.add(userLabel, gbc);
-
-        gbc.gridx = 1;
-        gbc.weightx = 1.0;
-        usernameField = new JTextField(15);
-        formPanel.add(usernameField, gbc);
-
-        // Row 4: Password
-        gbc.gridx = 0; gbc.gridy = 4;
-        gbc.weightx = 0.0;
-        JLabel passLabel = new JLabel("Mật khẩu:");
-        passLabel.setFont(passLabel.getFont().deriveFont(Font.BOLD));
-        formPanel.add(passLabel, gbc);
-
-        gbc.gridx = 1;
-        gbc.weightx = 1.0;
-        passwordField = new JPasswordField(15);
-        formPanel.add(passwordField, gbc);
-
-        mainPanel.add(formPanel, BorderLayout.CENTER);
-
-        // Bottom area (Status + Action buttons)
-        JPanel bottomPanel = new JPanel(new BorderLayout(5, 8));
-        statusLabel = new JLabel("Vui lòng nhập tài khoản và mật khẩu.", JLabel.CENTER);
-        statusLabel.setForeground(new Color(80, 80, 80));
-        bottomPanel.add(statusLabel, BorderLayout.NORTH);
-
-        JPanel buttonPanel = new JPanel(new BorderLayout(0, 8));
-
-        JPanel loginRow = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        loginButton = new JButton("Đăng nhập");
-        loginButton.setPreferredSize(new Dimension(140, 32));
-        loginButton.setFont(loginButton.getFont().deriveFont(Font.BOLD));
-        loginButton.addActionListener(e -> performLogin());
-        loginRow.add(loginButton);
-        buttonPanel.add(loginRow, BorderLayout.NORTH);
-
-        JPanel regRow = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        registerButton = new JButton("Chưa có tài khoản? Đăng ký tại đây");
-        registerButton.setFont(registerButton.getFont().deriveFont(Font.PLAIN, 12.0f));
-        registerButton.setForeground(new Color(30, 80, 160));
-        registerButton.setBorderPainted(false);
-        registerButton.setContentAreaFilled(false);
-        registerButton.setFocusPainted(false);
-        registerButton.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
-        registerButton.addActionListener(e -> {
-            if (!applyServerSettingsFromUI()) {
-                return;
-            }
-            StudentRegistrationDialog dialog = new StudentRegistrationDialog(this, networkClient);
-            dialog.setVisible(true);
-        });
-        regRow.add(registerButton);
-        buttonPanel.add(regRow, BorderLayout.SOUTH);
-
-        bottomPanel.add(buttonPanel, BorderLayout.SOUTH);
-
-        mainPanel.add(bottomPanel, BorderLayout.SOUTH);
-        setContentPane(mainPanel);
-
-        // Enter key submits form
         getRootPane().setDefaultButton(loginButton);
     }
+
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+        java.awt.GridBagConstraints gridBagConstraints;
+
+        headerPanel = new javax.swing.JPanel();
+        headerLabel = new javax.swing.JLabel();
+        subHeaderLabel = new javax.swing.JLabel();
+        formPanel = new javax.swing.JPanel();
+        hostLabel = new javax.swing.JLabel();
+        serverHostField = new javax.swing.JTextField();
+        portLabel = new javax.swing.JLabel();
+        serverPortField = new javax.swing.JTextField();
+        testConnectionButton = new javax.swing.JButton();
+        userLabel = new javax.swing.JLabel();
+        usernameField = new javax.swing.JTextField();
+        passLabel = new javax.swing.JLabel();
+        passwordField = new javax.swing.JPasswordField();
+        bottomPanel = new javax.swing.JPanel();
+        statusLabel = new javax.swing.JLabel();
+        buttonPanel = new javax.swing.JPanel();
+        loginRow = new javax.swing.JPanel();
+        loginButton = new javax.swing.JButton();
+        regRow = new javax.swing.JPanel();
+        registerButton = new javax.swing.JButton();
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setTitle("Hệ Thống Quản Lý Thư Viện - Đăng Nhập");
+        setResizable(false);
+        getContentPane().setLayout(new java.awt.BorderLayout(10, 12));
+
+        headerPanel.setOpaque(false);
+        headerPanel.setLayout(new java.awt.BorderLayout(0, 4));
+
+        headerLabel.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
+        headerLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        headerLabel.setText("Quản Lý Thư Viện Trường Học");
+        headerPanel.add(headerLabel, java.awt.BorderLayout.NORTH);
+
+        subHeaderLabel.setFont(new java.awt.Font("Segoe UI", 0, 12)); // NOI18N
+        subHeaderLabel.setForeground(new java.awt.Color(100, 100, 100));
+        subHeaderLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        subHeaderLabel.setText("Ũng Dụng Khách Kết Nối Java RMI");
+        headerPanel.add(subHeaderLabel, java.awt.BorderLayout.SOUTH);
+
+        getContentPane().add(headerPanel, java.awt.BorderLayout.NORTH);
+
+        formPanel.setOpaque(false);
+        formPanel.setLayout(new java.awt.GridBagLayout());
+
+        hostLabel.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        hostLabel.setText("Server IP:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.insets = new java.awt.Insets(5, 6, 5, 6);
+        formPanel.add(hostLabel, gridBagConstraints);
+
+        serverHostField.setColumns(15);
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.weightx = 1.0;
+        gridBagConstraints.insets = new java.awt.Insets(5, 6, 5, 6);
+        formPanel.add(serverHostField, gridBagConstraints);
+
+        portLabel.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        portLabel.setText("Port:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.insets = new java.awt.Insets(5, 6, 5, 6);
+        formPanel.add(portLabel, gridBagConstraints);
+
+        serverPortField.setColumns(15);
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.weightx = 1.0;
+        gridBagConstraints.insets = new java.awt.Insets(5, 6, 5, 6);
+        formPanel.add(serverPortField, gridBagConstraints);
+
+        testConnectionButton.setText("Kiểm tra kết nối");
+        testConnectionButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                testConnectionButtonActionPerformed(evt);
+            }
+        });
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.weightx = 1.0;
+        gridBagConstraints.insets = new java.awt.Insets(5, 6, 5, 6);
+        formPanel.add(testConnectionButton, gridBagConstraints);
+
+        userLabel.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        userLabel.setText("Tên đăng nhập:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.insets = new java.awt.Insets(5, 6, 5, 6);
+        formPanel.add(userLabel, gridBagConstraints);
+
+        usernameField.setColumns(15);
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.weightx = 1.0;
+        gridBagConstraints.insets = new java.awt.Insets(5, 6, 5, 6);
+        formPanel.add(usernameField, gridBagConstraints);
+
+        passLabel.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        passLabel.setText("Mật khẩu:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 4;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.insets = new java.awt.Insets(5, 6, 5, 6);
+        formPanel.add(passLabel, gridBagConstraints);
+
+        passwordField.setColumns(15);
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 4;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.weightx = 1.0;
+        gridBagConstraints.insets = new java.awt.Insets(5, 6, 5, 6);
+        formPanel.add(passwordField, gridBagConstraints);
+
+        getContentPane().add(formPanel, java.awt.BorderLayout.CENTER);
+
+        bottomPanel.setOpaque(false);
+        bottomPanel.setLayout(new java.awt.BorderLayout(5, 8));
+
+        statusLabel.setForeground(new java.awt.Color(80, 80, 80));
+        statusLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        statusLabel.setText("Vui lòng nhập tài khoản và mật khẩu.");
+        bottomPanel.add(statusLabel, java.awt.BorderLayout.NORTH);
+
+        buttonPanel.setOpaque(false);
+        buttonPanel.setLayout(new java.awt.BorderLayout(0, 8));
+
+        loginRow.setOpaque(false);
+
+        loginButton.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        loginButton.setText("Đăng nhập");
+        loginButton.setPreferredSize(new java.awt.Dimension(140, 32));
+        loginButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                loginButtonActionPerformed(evt);
+            }
+        });
+        loginRow.add(loginButton);
+
+        buttonPanel.add(loginRow, java.awt.BorderLayout.NORTH);
+
+        regRow.setOpaque(false);
+
+        registerButton.setFont(new java.awt.Font("Segoe UI", 0, 12)); // NOI18N
+        registerButton.setForeground(new java.awt.Color(30, 80, 160));
+        registerButton.setText("Chưa có tài khoản? Đăng ký tại đây");
+        registerButton.setBorderPainted(false);
+        registerButton.setContentAreaFilled(false);
+        registerButton.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        registerButton.setFocusPainted(false);
+        registerButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                registerButtonActionPerformed(evt);
+            }
+        });
+        regRow.add(registerButton);
+
+        buttonPanel.add(regRow, java.awt.BorderLayout.SOUTH);
+
+        bottomPanel.add(buttonPanel, java.awt.BorderLayout.SOUTH);
+
+        getContentPane().add(bottomPanel, java.awt.BorderLayout.SOUTH);
+
+        pack();
+        setLocationRelativeTo(null);
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void testConnectionButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_testConnectionButtonActionPerformed
+        performTestConnection();
+    }//GEN-LAST:event_testConnectionButtonActionPerformed
+
+    private void loginButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loginButtonActionPerformed
+        performLogin();
+    }//GEN-LAST:event_loginButtonActionPerformed
+
+    private void registerButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_registerButtonActionPerformed
+        if (!applyServerSettingsFromUI()) {
+            return;
+        }
+        StudentRegistrationDialog dialog = new StudentRegistrationDialog(this, networkClient);
+        dialog.setVisible(true);
+    }//GEN-LAST:event_registerButtonActionPerformed
 
     private void setInputsEnabled(boolean enabled) {
         serverHostField.setEnabled(enabled);
@@ -334,4 +413,26 @@ public class LoginForm extends JFrame {
         );
     }
 
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JPanel bottomPanel;
+    private javax.swing.JPanel buttonPanel;
+    private javax.swing.JPanel formPanel;
+    private javax.swing.JLabel headerLabel;
+    private javax.swing.JPanel headerPanel;
+    private javax.swing.JLabel hostLabel;
+    private javax.swing.JButton loginButton;
+    private javax.swing.JPanel loginRow;
+    private javax.swing.JLabel passLabel;
+    private javax.swing.JPasswordField passwordField;
+    private javax.swing.JLabel portLabel;
+    private javax.swing.JPanel regRow;
+    private javax.swing.JButton registerButton;
+    private javax.swing.JTextField serverHostField;
+    private javax.swing.JTextField serverPortField;
+    private javax.swing.JLabel statusLabel;
+    private javax.swing.JLabel subHeaderLabel;
+    private javax.swing.JButton testConnectionButton;
+    private javax.swing.JLabel userLabel;
+    private javax.swing.JTextField usernameField;
+    // End of variables declaration//GEN-END:variables
 }

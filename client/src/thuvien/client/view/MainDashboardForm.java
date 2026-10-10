@@ -4,22 +4,20 @@ import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import thuvien.client.controller.ClientAuthController;
 import thuvien.client.network.NetworkClient;
+import thuvien.client.network.RMIClient;
 import thuvien.client.session.ClientSession;
 import thuvien.client.view.common.AsyncWorker;
 import thuvien.client.view.panels.AuditLogManagementPanel;
@@ -40,168 +38,83 @@ public class MainDashboardForm extends JFrame {
 
     private final NetworkClient networkClient;
     private final UserSessionDTO session;
-
-    private JPanel contentCards;
     private CardLayout cardLayout;
+
+    public MainDashboardForm() {
+        this(new RMIClient(), createDesignSession());
+    }
 
     public MainDashboardForm(NetworkClient networkClient, UserSessionDTO session) {
         this.networkClient = networkClient;
-        this.session = session;
-        initUI();
+        this.session = session != null ? session : createDesignSession();
+        initComponents();
+        initCustom();
     }
 
-    private void initUI() {
+    private static UserSessionDTO createDesignSession() {
+        UserSessionDTO dummy = new UserSessionDTO();
+        dummy.setUserId(1L);
+        dummy.setUsername("admin");
+        dummy.setFullName("Quản Trị Viên");
+        dummy.setRole(UserRole.ADMIN);
+        dummy.setToken("DEMO_TOKEN");
+        return dummy;
+    }
+
+    private void initCustom() {
         setTitle(String.format("Quản Lý Thư Viện - %s (%s)", session.getFullName(), getRoleDisplayName(session.getRole())));
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1020, 700);
         setMinimumSize(new Dimension(880, 560));
         setLocationRelativeTo(null);
 
-        JPanel rootPanel = new JPanel(new BorderLayout());
-
-        // =====================================================================
-        // 1. Top Navigation Bar
-        // =====================================================================
-        JPanel topBar = new JPanel(new BorderLayout());
-        topBar.setBackground(new Color(245, 247, 250));
         topBar.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(215, 220, 228)),
                 BorderFactory.createEmptyBorder(12, 20, 12, 20)
         ));
 
-        JPanel titlePanel = new JPanel(new GridLayout(2, 1, 0, 2));
-        titlePanel.setOpaque(false);
-        JLabel appTitle = new JLabel("Hệ Thống Quản Lý Thư Viện Trường Học");
-        appTitle.setFont(appTitle.getFont().deriveFont(Font.BOLD, 17.0f));
-        JLabel subTitle = new JLabel("Ứng Dụng Khách Kết Nối TCP Từ Xa — Kiến Trúc Phân Tán 3 Lớp");
-        subTitle.setFont(subTitle.getFont().deriveFont(Font.PLAIN, 11.0f));
-        subTitle.setForeground(new Color(110, 115, 125));
-        titlePanel.add(appTitle);
-        titlePanel.add(subTitle);
-        topBar.add(titlePanel, BorderLayout.WEST);
-
-        // User profile and Logout button
-        JPanel userPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
-        userPanel.setOpaque(false);
-
-        String roleBadge = String.format("<html><b>%s</b> &nbsp;|&nbsp; Vai trò: <span style='color:#0055aa;'>%s</span></html>",
-                session.getFullName(), getRoleDisplayName(session.getRole()));
-        JLabel userLabel = new JLabel(roleBadge);
-        userLabel.setFont(userLabel.getFont().deriveFont(13.0f));
-        userPanel.add(userLabel);
-
-        JButton changePwdBtn = new JButton("Đổi mật khẩu");
-        changePwdBtn.setPreferredSize(new Dimension(115, 28));
-        changePwdBtn.setFocusPainted(false);
-        changePwdBtn.addActionListener(e -> {
-            ChangePasswordDialog dialog = new ChangePasswordDialog(this, networkClient);
-            dialog.setVisible(true);
-        });
-        userPanel.add(changePwdBtn);
-
-        JButton logoutBtn = new JButton("Đăng xuất");
-        logoutBtn.setPreferredSize(new Dimension(95, 28));
-        logoutBtn.setFocusPainted(false);
-        logoutBtn.addActionListener(e -> logout());
-        userPanel.add(logoutBtn);
-
-        topBar.add(userPanel, BorderLayout.EAST);
-        rootPanel.add(topBar, BorderLayout.NORTH);
-
-        // =====================================================================
-        // 2. Sidebar Navigation (Role-Aware)
-        // =====================================================================
-        JPanel sidebar = new JPanel();
-        sidebar.setLayout(new GridLayout(9, 1, 0, 6));
-        sidebar.setPreferredSize(new Dimension(225, 0));
-        sidebar.setBackground(new Color(238, 241, 246));
         sidebar.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(215, 220, 228)),
                 BorderFactory.createEmptyBorder(15, 10, 15, 10)
         ));
 
+        String roleBadge = String.format("<html><b>%s</b> &nbsp;|&nbsp; Vai trò: <span style='color:#0055aa;'>%s</span></html>",
+                session.getFullName(), getRoleDisplayName(session.getRole()));
+        userLabel.setText(roleBadge);
+
         UserRole role = session.getRole();
-
-        // Shared Home Navigation
-        String homeLabel = (role == UserRole.STUDENT) ? "Trang chủ sinh viên" : "Trang chủ / Phiên làm việc";
-        JButton homeBtn = createNavButton(homeLabel);
-        homeBtn.addActionListener(e -> cardLayout.show(contentCards, "HOME"));
-        sidebar.add(homeBtn);
-
-        // Staff-specific navigation
-        if (role == UserRole.ADMIN || role == UserRole.LIBRARIAN) {
-            JButton overviewBtn = createNavButton("Tổng quan hệ thống");
-            overviewBtn.addActionListener(e -> cardLayout.show(contentCards, "OVERVIEW"));
-            sidebar.add(overviewBtn);
-
-            JButton booksBtn = createNavButton("Quản lý sách");
-            booksBtn.addActionListener(e -> cardLayout.show(contentCards, "BOOKS"));
-            sidebar.add(booksBtn);
-
-            JButton studentsBtn = createNavButton("Hồ sơ sinh viên");
-            studentsBtn.addActionListener(e -> cardLayout.show(contentCards, "STUDENTS"));
-            sidebar.add(studentsBtn);
-
-            JButton borrowBtn = createNavButton("Mượn & Trả sách");
-            borrowBtn.addActionListener(e -> cardLayout.show(contentCards, "CIRCULATION"));
-            sidebar.add(borrowBtn);
-
-            JButton finesBtn = createNavButton("Quản lý tiền phạt");
-            finesBtn.addActionListener(e -> cardLayout.show(contentCards, "FINES"));
-            sidebar.add(finesBtn);
-
-            JButton reservationsBtn = createNavButton("Đặt trước sách");
-            reservationsBtn.addActionListener(e -> cardLayout.show(contentCards, "RESERVATIONS"));
-            sidebar.add(reservationsBtn);
-
-            if (role == UserRole.ADMIN) {
-                JButton auditBtn = createNavButton("Nhật ký & Báo cáo");
-                auditBtn.addActionListener(e -> cardLayout.show(contentCards, "AUDIT_LOGS"));
-                sidebar.add(auditBtn);
-            }
-        } else if (role == UserRole.STUDENT) {
-            JButton searchBooksBtn = createNavButton("Tra cứu danh mục sách");
-            searchBooksBtn.addActionListener(e -> cardLayout.show(contentCards, "BOOKS"));
-            sidebar.add(searchBooksBtn);
-
-            JButton myBorrowsBtn = createNavButton("Sách đang mượn");
-            myBorrowsBtn.addActionListener(e -> cardLayout.show(contentCards, "MY_BORROWS"));
-            sidebar.add(myBorrowsBtn);
-
-            JButton myReservationsBtn = createNavButton("Sách đã đặt trước");
-            myReservationsBtn.addActionListener(e -> cardLayout.show(contentCards, "MY_RESERVATIONS"));
-            sidebar.add(myReservationsBtn);
-
-            JButton myFinesBtn = createNavButton("Khoản phạt của tôi");
-            myFinesBtn.addActionListener(e -> cardLayout.show(contentCards, "MY_FINES"));
-            sidebar.add(myFinesBtn);
-
-            JButton profileBtn = createNavButton("Hồ sơ cá nhân");
-            profileBtn.addActionListener(e -> cardLayout.show(contentCards, "PROFILE"));
-            sidebar.add(profileBtn);
+        if (role == UserRole.STUDENT) {
+            homeBtn.setText("Trang chủ sinh viên");
+            overviewBtn.setVisible(false);
+            auditBtn.setVisible(false);
+            booksBtn.setText("Tra cứu sách");
+            studentsBtn.setText("Hồ sơ cá nhân");
+            borrowBtn.setText("Sách đang mượn");
+            finesBtn.setText("Khoản phạt của tôi");
+            reservationsBtn.setText("Sách đã đặt trước");
+        } else {
+            homeBtn.setText("Trang chủ / Phiên");
+            overviewBtn.setVisible(true);
+            booksBtn.setText("Quản lý sách");
+            studentsBtn.setText("Hồ sơ sinh viên");
+            borrowBtn.setText("Mượn & Trả sách");
+            finesBtn.setText("Quản lý tiền phạt");
+            reservationsBtn.setText("Đặt trước sách");
+            auditBtn.setVisible(role == UserRole.ADMIN);
         }
 
-        rootPanel.add(sidebar, BorderLayout.WEST);
+        cardLayout = (CardLayout) contentCards.getLayout();
 
-        // =====================================================================
-        // 3. Content Area (CardLayout Foundation)
-        // =====================================================================
-        cardLayout = new CardLayout();
-        contentCards = new JPanel(cardLayout);
-        contentCards.setBackground(Color.WHITE);
-
-        // Default Card: Home & Session Status
         if (role == UserRole.STUDENT) {
             contentCards.add(new StudentDashboardPanel(networkClient), "HOME");
+            contentCards.add(new BookManagementPanel(networkClient), "BOOKS");
+            contentCards.add(new BorrowManagementPanel(networkClient), "CIRCULATION");
+            contentCards.add(new ReservationManagementPanel(networkClient), "RESERVATIONS");
+            contentCards.add(new FineManagementPanel(networkClient), "FINES");
+            contentCards.add(new StudentManagementPanel(networkClient), "STUDENTS");
         } else {
             contentCards.add(createHomeSessionPanel(), "HOME");
-        }
-
-        // Live Book Management Panel (Shared)
-        contentCards.add(new BookManagementPanel(networkClient), "BOOKS");
-
-        if (role == UserRole.ADMIN || role == UserRole.LIBRARIAN) {
             contentCards.add(new DashboardOverviewPanel(networkClient), "OVERVIEW");
+            contentCards.add(new BookManagementPanel(networkClient), "BOOKS");
             contentCards.add(new StudentManagementPanel(networkClient), "STUDENTS");
             contentCards.add(new BorrowManagementPanel(networkClient), "CIRCULATION");
             contentCards.add(new FineManagementPanel(networkClient), "FINES");
@@ -209,19 +122,241 @@ public class MainDashboardForm extends JFrame {
             if (role == UserRole.ADMIN) {
                 contentCards.add(new AuditLogManagementPanel(networkClient), "AUDIT_LOGS");
             }
-        } else if (role == UserRole.STUDENT) {
-            contentCards.add(new BorrowManagementPanel(networkClient), "MY_BORROWS");
-            contentCards.add(new ReservationManagementPanel(networkClient), "MY_RESERVATIONS");
-            contentCards.add(new FineManagementPanel(networkClient), "MY_FINES");
-            contentCards.add(new StudentManagementPanel(networkClient), "PROFILE");
         }
 
-        rootPanel.add(contentCards, BorderLayout.CENTER);
-        setContentPane(rootPanel);
-
-        // Show HOME by default
         cardLayout.show(contentCards, "HOME");
     }
+
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        topBar = new javax.swing.JPanel();
+        titlePanel = new javax.swing.JPanel();
+        appTitle = new javax.swing.JLabel();
+        subTitle = new javax.swing.JLabel();
+        userPanel = new javax.swing.JPanel();
+        userLabel = new javax.swing.JLabel();
+        changePwdBtn = new javax.swing.JButton();
+        logoutBtn = new javax.swing.JButton();
+        sidebar = new javax.swing.JPanel();
+        homeBtn = new javax.swing.JButton();
+        overviewBtn = new javax.swing.JButton();
+        booksBtn = new javax.swing.JButton();
+        studentsBtn = new javax.swing.JButton();
+        borrowBtn = new javax.swing.JButton();
+        finesBtn = new javax.swing.JButton();
+        reservationsBtn = new javax.swing.JButton();
+        auditBtn = new javax.swing.JButton();
+        contentCards = new javax.swing.JPanel();
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setTitle("Hệ Thống Quản Lý Thư Viện");
+        setMinimumSize(new java.awt.Dimension(880, 560));
+
+        topBar.setBackground(new java.awt.Color(245, 247, 250));
+        topBar.setLayout(new java.awt.BorderLayout());
+
+        titlePanel.setOpaque(false);
+        titlePanel.setLayout(new java.awt.GridLayout(2, 1, 0, 2));
+
+        appTitle.setFont(new java.awt.Font("Segoe UI", 1, 17)); // NOI18N
+        appTitle.setText("Hệ Thống Quản Lý Thư Viện Trường Học");
+        titlePanel.add(appTitle);
+
+        subTitle.setFont(new java.awt.Font("Segoe UI", 0, 11)); // NOI18N
+        subTitle.setForeground(new java.awt.Color(110, 115, 125));
+        subTitle.setText("Ứng Dụng Khách Kết Nối Java RMI — Kiến Trúc Phân Tán 3 Lớp");
+        titlePanel.add(subTitle);
+
+        topBar.add(titlePanel, java.awt.BorderLayout.WEST);
+
+        userPanel.setOpaque(false);
+        userPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 15, 0));
+
+        userLabel.setFont(new java.awt.Font("Segoe UI", 0, 13)); // NOI18N
+        userLabel.setText("User Role");
+        userPanel.add(userLabel);
+
+        changePwdBtn.setText("Đổi mật khẩu");
+        changePwdBtn.setFocusPainted(false);
+        changePwdBtn.setPreferredSize(new java.awt.Dimension(115, 28));
+        changePwdBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                changePwdBtnActionPerformed(evt);
+            }
+        });
+        userPanel.add(changePwdBtn);
+
+        logoutBtn.setText("Đăng xuất");
+        logoutBtn.setFocusPainted(false);
+        logoutBtn.setPreferredSize(new java.awt.Dimension(95, 28));
+        logoutBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                logoutBtnActionPerformed(evt);
+            }
+        });
+        userPanel.add(logoutBtn);
+
+        topBar.add(userPanel, java.awt.BorderLayout.EAST);
+
+        getContentPane().add(topBar, java.awt.BorderLayout.NORTH);
+
+        sidebar.setBackground(new java.awt.Color(238, 241, 246));
+        sidebar.setPreferredSize(new java.awt.Dimension(225, 0));
+        sidebar.setLayout(new java.awt.GridLayout(9, 1, 0, 6));
+
+        homeBtn.setBackground(new java.awt.Color(255, 255, 255));
+        homeBtn.setFont(new java.awt.Font("Segoe UI", 0, 12)); // NOI18N
+        homeBtn.setText("Trang chủ");
+        homeBtn.setFocusPainted(false);
+        homeBtn.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        homeBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                homeBtnActionPerformed(evt);
+            }
+        });
+        sidebar.add(homeBtn);
+
+        overviewBtn.setBackground(new java.awt.Color(255, 255, 255));
+        overviewBtn.setFont(new java.awt.Font("Segoe UI", 0, 12)); // NOI18N
+        overviewBtn.setText("Tổng quan hệ thống");
+        overviewBtn.setFocusPainted(false);
+        overviewBtn.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        overviewBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                overviewBtnActionPerformed(evt);
+            }
+        });
+        sidebar.add(overviewBtn);
+
+        booksBtn.setBackground(new java.awt.Color(255, 255, 255));
+        booksBtn.setFont(new java.awt.Font("Segoe UI", 0, 12)); // NOI18N
+        booksBtn.setText("Quản lý sách");
+        booksBtn.setFocusPainted(false);
+        booksBtn.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        booksBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                booksBtnActionPerformed(evt);
+            }
+        });
+        sidebar.add(booksBtn);
+
+        studentsBtn.setBackground(new java.awt.Color(255, 255, 255));
+        studentsBtn.setFont(new java.awt.Font("Segoe UI", 0, 12)); // NOI18N
+        studentsBtn.setText("Hồ sơ sinh viên");
+        studentsBtn.setFocusPainted(false);
+        studentsBtn.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        studentsBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                studentsBtnActionPerformed(evt);
+            }
+        });
+        sidebar.add(studentsBtn);
+
+        borrowBtn.setBackground(new java.awt.Color(255, 255, 255));
+        borrowBtn.setFont(new java.awt.Font("Segoe UI", 0, 12)); // NOI18N
+        borrowBtn.setText("Mượn & Trả sách");
+        borrowBtn.setFocusPainted(false);
+        borrowBtn.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        borrowBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                borrowBtnActionPerformed(evt);
+            }
+        });
+        sidebar.add(borrowBtn);
+
+        finesBtn.setBackground(new java.awt.Color(255, 255, 255));
+        finesBtn.setFont(new java.awt.Font("Segoe UI", 0, 12)); // NOI18N
+        finesBtn.setText("Quản lý tiền phạt");
+        finesBtn.setFocusPainted(false);
+        finesBtn.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        finesBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                finesBtnActionPerformed(evt);
+            }
+        });
+        sidebar.add(finesBtn);
+
+        reservationsBtn.setBackground(new java.awt.Color(255, 255, 255));
+        reservationsBtn.setFont(new java.awt.Font("Segoe UI", 0, 12)); // NOI18N
+        reservationsBtn.setText("Đặt trước sách");
+        reservationsBtn.setFocusPainted(false);
+        reservationsBtn.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        reservationsBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                reservationsBtnActionPerformed(evt);
+            }
+        });
+        sidebar.add(reservationsBtn);
+
+        auditBtn.setBackground(new java.awt.Color(255, 255, 255));
+        auditBtn.setFont(new java.awt.Font("Segoe UI", 0, 12)); // NOI18N
+        auditBtn.setText("Nhật ký & Báo cáo");
+        auditBtn.setFocusPainted(false);
+        auditBtn.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        auditBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                auditBtnActionPerformed(evt);
+            }
+        });
+        sidebar.add(auditBtn);
+
+        getContentPane().add(sidebar, java.awt.BorderLayout.WEST);
+
+        contentCards.setBackground(new java.awt.Color(255, 255, 255));
+        contentCards.setLayout(new java.awt.CardLayout());
+        getContentPane().add(contentCards, java.awt.BorderLayout.CENTER);
+
+        pack();
+        setLocationRelativeTo(null);
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void changePwdBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_changePwdBtnActionPerformed
+        ChangePasswordDialog dialog = new ChangePasswordDialog(this, networkClient);
+        dialog.setVisible(true);
+    }//GEN-LAST:event_changePwdBtnActionPerformed
+
+    private void logoutBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_logoutBtnActionPerformed
+        logout();
+    }//GEN-LAST:event_logoutBtnActionPerformed
+
+    private void homeBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_homeBtnActionPerformed
+        cardLayout.show(contentCards, "HOME");
+    }//GEN-LAST:event_homeBtnActionPerformed
+
+    private void overviewBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_overviewBtnActionPerformed
+        cardLayout.show(contentCards, "OVERVIEW");
+    }//GEN-LAST:event_overviewBtnActionPerformed
+
+    private void booksBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_booksBtnActionPerformed
+        cardLayout.show(contentCards, "BOOKS");
+    }//GEN-LAST:event_booksBtnActionPerformed
+
+    private void studentsBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_studentsBtnActionPerformed
+        cardLayout.show(contentCards, "STUDENTS");
+    }//GEN-LAST:event_studentsBtnActionPerformed
+
+    private void borrowBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_borrowBtnActionPerformed
+        cardLayout.show(contentCards, "CIRCULATION");
+    }//GEN-LAST:event_borrowBtnActionPerformed
+
+    private void finesBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_finesBtnActionPerformed
+        cardLayout.show(contentCards, "FINES");
+    }//GEN-LAST:event_finesBtnActionPerformed
+
+    private void reservationsBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_reservationsBtnActionPerformed
+        cardLayout.show(contentCards, "RESERVATIONS");
+    }//GEN-LAST:event_reservationsBtnActionPerformed
+
+    private void auditBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_auditBtnActionPerformed
+        cardLayout.show(contentCards, "AUDIT_LOGS");
+    }//GEN-LAST:event_auditBtnActionPerformed
 
     private String getRoleDisplayName(UserRole role) {
         if (role == null) return "Chưa xác định";
@@ -231,15 +366,6 @@ public class MainDashboardForm extends JFrame {
             case STUDENT: return "Sinh viên (STUDENT)";
             default: return role.name();
         }
-    }
-
-    private JButton createNavButton(String text) {
-        JButton btn = new JButton(text);
-        btn.setHorizontalAlignment(SwingConstants.LEFT);
-        btn.setFocusPainted(false);
-        btn.setBackground(Color.WHITE);
-        btn.setFont(btn.getFont().deriveFont(12.5f));
-        return btn;
     }
 
     private JPanel createHomeSessionPanel() {
@@ -252,7 +378,7 @@ public class MainDashboardForm extends JFrame {
         headerPanel.setOpaque(false);
         JLabel welcomeTitle = new JLabel("Xin chào, " + session.getFullName() + "!");
         welcomeTitle.setFont(welcomeTitle.getFont().deriveFont(Font.BOLD, 22.0f));
-        JLabel welcomeSub = new JLabel("Ứng Dụng Quản Lý Thư Viện Trường Học (Giao thức mạng TCP Socket)");
+        JLabel welcomeSub = new JLabel("Ứng Dụng Quản Lý Thư Viện Trường Học (Giao thức mạng TCP Socket / Java RMI)");
         welcomeSub.setFont(welcomeSub.getFont().deriveFont(Font.PLAIN, 13.0f));
         welcomeSub.setForeground(Color.GRAY);
         headerPanel.add(welcomeTitle);
@@ -281,7 +407,7 @@ public class MainDashboardForm extends JFrame {
                 ? session.getToken().substring(0, 8) + "..."
                 : (session.getToken() != null ? session.getToken() : "N/A");
         addInfoRow(cardPanel, gbc, row++, "Mã phiên làm việc (Token):", maskedToken);
-        addInfoRow(cardPanel, gbc, row++, "Giao thức truyền tải mạng:", "TCP Socket nhị phân nguyên bản (Port 8888)");
+        addInfoRow(cardPanel, gbc, row++, "Giao thức truyền tải mạng:", "Java RMI over TCP (Registry 1099, Service 1100)");
         addInfoRow(cardPanel, gbc, row++, "Trạng thái ứng dụng:", "Đang kết nối & Sẵn sàng hoạt động");
 
         panel.add(cardPanel, BorderLayout.CENTER);
@@ -320,7 +446,6 @@ public class MainDashboardForm extends JFrame {
         );
 
         if (confirm == JOptionPane.YES_OPTION) {
-            // Asynchronously notify server of logout, clear local session, and disconnect socket
             AsyncWorker.run(
                     () -> {
                         new ClientAuthController(networkClient).logout();
@@ -331,7 +456,6 @@ public class MainDashboardForm extends JFrame {
                         SwingUtilities.invokeLater(() -> new LoginForm(networkClient).setVisible(true));
                     },
                     (ex) -> {
-                        // Even if server communication fails, session is cleared locally
                         ClientSession.getInstance().clear();
                         networkClient.disconnect();
                         dispose();
@@ -340,4 +464,25 @@ public class MainDashboardForm extends JFrame {
             );
         }
     }
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JLabel appTitle;
+    private javax.swing.JButton auditBtn;
+    private javax.swing.JButton booksBtn;
+    private javax.swing.JButton borrowBtn;
+    private javax.swing.JButton changePwdBtn;
+    private javax.swing.JPanel contentCards;
+    private javax.swing.JButton finesBtn;
+    private javax.swing.JButton homeBtn;
+    private javax.swing.JButton logoutBtn;
+    private javax.swing.JButton overviewBtn;
+    private javax.swing.JButton reservationsBtn;
+    private javax.swing.JPanel sidebar;
+    private javax.swing.JButton studentsBtn;
+    private javax.swing.JLabel subTitle;
+    private javax.swing.JPanel titlePanel;
+    private javax.swing.JPanel topBar;
+    private javax.swing.JLabel userLabel;
+    private javax.swing.JPanel userPanel;
+    // End of variables declaration//GEN-END:variables
 }

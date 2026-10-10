@@ -1,12 +1,7 @@
 package thuvien.client.view.panels;
 
-import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -14,15 +9,8 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JSplitPane;
-import javax.swing.JTable;
-import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
@@ -54,25 +42,7 @@ public class BorrowManagementPanel extends JPanel {
     private final ClientBorrowController borrowController;
     private final boolean isStaff;
 
-    private JTable recordTable;
     private DefaultTableModel tableModel;
-    private JTextField searchField;
-    private JComboBox<String> statusFilterCombo;
-    private JButton refreshBtn;
-    private JButton newBorrowBtn;
-    private JButton returnBtn;
-    private JLabel statusLabel;
-
-    // Detail card labels
-    private JLabel detailIdVal;
-    private JLabel detailStudentVal;
-    private JLabel detailBookVal;
-    private JLabel detailBorrowDateVal;
-    private JLabel detailDueDateVal;
-    private JLabel detailReturnDateVal;
-    private JLabel detailStatusVal;
-    private JLabel detailNotesVal;
-
     private List<BorrowRecordDTO> allRecords = new ArrayList<>();
     private javax.swing.Timer pollTimer;
     private volatile boolean isRefreshing = false;
@@ -82,74 +52,29 @@ public class BorrowManagementPanel extends JPanel {
         this.borrowController = new ClientBorrowController(networkClient);
         this.isStaff = ClientSession.getInstance().isAdmin() || ClientSession.getInstance().isLibrarian();
 
-        initUI();
+        initComponents();
+        initCustom();
         loadRecords();
         initAutoRefresh();
     }
 
-    private void initUI() {
-        setLayout(new BorderLayout(5, 5));
+    private void initCustom() {
         setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
-        setBackground(Color.WHITE);
-
-        // Top Toolbar
-        JPanel topToolbar = new JPanel(new BorderLayout(10, 0));
-        topToolbar.setOpaque(false);
         topToolbar.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+        tableScroll.setBorder(BorderFactory.createLineBorder(new Color(220, 225, 230)));
+        detailCard.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 230)),
+                BorderFactory.createEmptyBorder(10, 15, 10, 15)
+        ));
+        bottomBar.setBorder(BorderFactory.createEmptyBorder(6, 4, 4, 4));
 
-        JPanel leftControls = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-        leftControls.setOpaque(false);
-
-        leftControls.add(new JLabel("Tìm kiếm lượt mượn:"));
-        searchField = new JTextField(13);
-        searchField.setToolTipText("Tìm kiếm theo Mã phiếu, Mã SV, Tên SV, Tên sách hoặc ISBN");
-        searchField.addActionListener(e -> applyFilter(false));
-        SearchAutoCompleteHelper.attach(searchField, "BORROW", new ClientSearchSuggestionController(networkClient), () -> applyFilter(false));
-        leftControls.add(searchField);
-
-        statusFilterCombo = new JComboBox<>(new String[]{"Tất cả trạng thái", "Đang mượn (Chưa trả)", "Đã trả", "Quá hạn"});
-        statusFilterCombo.addActionListener(e -> applyFilter(false));
-        leftControls.add(statusFilterCombo);
-
-        JButton filterBtn = new JButton("Tìm");
-        filterBtn.addActionListener(e -> applyFilter(false));
-        leftControls.add(filterBtn);
-
-        JButton resetBtn = new JButton("Xóa bộ lọc");
-        resetBtn.addActionListener(e -> {
-            searchField.setText("");
-            statusFilterCombo.setSelectedIndex(0);
-            applyFilter(false);
-        });
-        leftControls.add(resetBtn);
-
-        refreshBtn = new JButton("Làm mới");
-        refreshBtn.addActionListener(e -> loadRecords());
-        leftControls.add(refreshBtn);
-
-        topToolbar.add(leftControls, BorderLayout.WEST);
-
-        // Action controls (Right)
-        JPanel rightControls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        rightControls.setOpaque(false);
-
-        if (isStaff) {
-            newBorrowBtn = new JButton("Lập Phiếu Mượn");
-            newBorrowBtn.setBackground(new Color(230, 245, 230));
-            newBorrowBtn.addActionListener(e -> openBorrowDialog());
-            rightControls.add(newBorrowBtn);
-
-            returnBtn = new JButton("Nhận Trả Sách");
-            returnBtn.setBackground(new Color(230, 240, 255));
-            returnBtn.setEnabled(false);
-            returnBtn.addActionListener(e -> performReturn());
-            rightControls.add(returnBtn);
+        if (!isStaff) {
+            newBorrowBtn.setVisible(false);
+            returnBtn.setVisible(false);
         }
 
-        topToolbar.add(rightControls, BorderLayout.EAST);
-        add(topToolbar, BorderLayout.NORTH);
+        SearchAutoCompleteHelper.attach(searchField, "BORROW", new ClientSearchSuggestionController(networkClient), () -> applyFilter(false));
 
-        // Table
         String[] columns = isStaff
                 ? new String[]{"Mã Phiếu", "Mã SV", "Tên Sinh Viên", "Tên Sách", "Ngày Mượn", "Hạn Trả", "Ngày Trả", "Trạng Thái"}
                 : new String[]{"Mã Phiếu", "Tên Sách", "Mã ISBN", "Ngày Mượn", "Hạn Trả", "Ngày Trả", "Trạng Thái"};
@@ -161,7 +86,7 @@ public class BorrowManagementPanel extends JPanel {
             }
         };
 
-        recordTable = new JTable(tableModel);
+        recordTable.setModel(tableModel);
         recordTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         recordTable.setRowHeight(24);
         recordTable.getTableHeader().setFont(recordTable.getTableHeader().getFont().deriveFont(Font.BOLD));
@@ -176,28 +101,369 @@ public class BorrowManagementPanel extends JPanel {
                 updateDetails(r);
             }
         });
-
-        JScrollPane tableScroll = new JScrollPane(recordTable);
-        tableScroll.setBorder(BorderFactory.createLineBorder(new Color(220, 225, 230)));
-
-        JPanel detailCard = createDetailPanel();
-
-        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, tableScroll, detailCard);
-        splitPane.setResizeWeight(0.65);
-        splitPane.setDividerSize(6);
-        add(splitPane, BorderLayout.CENTER);
-
-        // Bottom Status
-        JPanel bottomBar = new JPanel(new BorderLayout());
-        bottomBar.setOpaque(false);
-        bottomBar.setBorder(BorderFactory.createEmptyBorder(6, 4, 4, 4));
-
-        statusLabel = new JLabel("Sẵn sàng");
-        statusLabel.setFont(statusLabel.getFont().deriveFont(Font.PLAIN, 12.0f));
-        bottomBar.add(statusLabel, BorderLayout.WEST);
-
-        add(bottomBar, BorderLayout.SOUTH);
     }
+
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+        java.awt.GridBagConstraints gridBagConstraints;
+
+        topToolbar = new javax.swing.JPanel();
+        leftControls = new javax.swing.JPanel();
+        lblSearch = new javax.swing.JLabel();
+        searchField = new javax.swing.JTextField();
+        statusFilterCombo = new javax.swing.JComboBox<String>();
+        filterBtn = new javax.swing.JButton();
+        resetBtn = new javax.swing.JButton();
+        refreshBtn = new javax.swing.JButton();
+        rightControls = new javax.swing.JPanel();
+        newBorrowBtn = new javax.swing.JButton();
+        returnBtn = new javax.swing.JButton();
+        splitPane = new javax.swing.JSplitPane();
+        tableScroll = new javax.swing.JScrollPane();
+        recordTable = new javax.swing.JTable();
+        detailCard = new javax.swing.JPanel();
+        detailHeader = new javax.swing.JLabel();
+        gridDetails = new javax.swing.JPanel();
+        lblMpm = new javax.swing.JLabel();
+        detailIdVal = new javax.swing.JLabel();
+        lblSv = new javax.swing.JLabel();
+        detailStudentVal = new javax.swing.JLabel();
+        lblSm = new javax.swing.JLabel();
+        detailBookVal = new javax.swing.JLabel();
+        lblTt = new javax.swing.JLabel();
+        detailStatusVal = new javax.swing.JLabel();
+        lblNm = new javax.swing.JLabel();
+        detailBorrowDateVal = new javax.swing.JLabel();
+        lblHt = new javax.swing.JLabel();
+        detailDueDateVal = new javax.swing.JLabel();
+        lblNttt = new javax.swing.JLabel();
+        detailReturnDateVal = new javax.swing.JLabel();
+        lblGc = new javax.swing.JLabel();
+        detailNotesVal = new javax.swing.JLabel();
+        bottomBar = new javax.swing.JPanel();
+        statusLabel = new javax.swing.JLabel();
+
+        setBackground(new java.awt.Color(255, 255, 255));
+        setLayout(new java.awt.BorderLayout(5, 5));
+
+        topToolbar.setOpaque(false);
+        topToolbar.setLayout(new java.awt.BorderLayout(10, 0));
+
+        leftControls.setOpaque(false);
+        leftControls.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 6, 0));
+
+        lblSearch.setText("Tìm kiếm lượt mượn:");
+        leftControls.add(lblSearch);
+
+        searchField.setColumns(13);
+        searchField.setToolTipText("Tìm kiếm theo Mã phiếu, Mã SV, Tên SV, Tên sách hoặc ISBN");
+        searchField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                searchFieldActionPerformed(evt);
+            }
+        });
+        leftControls.add(searchField);
+
+        statusFilterCombo.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Tất cả trạng thái", "Đang mượn (Chưa trả)", "Đã trả", "Quá hạn" }));
+        statusFilterCombo.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                statusFilterComboActionPerformed(evt);
+            }
+        });
+        leftControls.add(statusFilterCombo);
+
+        filterBtn.setText("Tìm");
+        filterBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                filterBtnActionPerformed(evt);
+            }
+        });
+        leftControls.add(filterBtn);
+
+        resetBtn.setText("Xóa bộ lọc");
+        resetBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                resetBtnActionPerformed(evt);
+            }
+        });
+        leftControls.add(resetBtn);
+
+        refreshBtn.setText("Làm mới");
+        refreshBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                refreshBtnActionPerformed(evt);
+            }
+        });
+        leftControls.add(refreshBtn);
+
+        topToolbar.add(leftControls, java.awt.BorderLayout.WEST);
+
+        rightControls.setOpaque(false);
+        rightControls.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 6, 0));
+
+        newBorrowBtn.setBackground(new java.awt.Color(230, 245, 230));
+        newBorrowBtn.setText("Lập Phiếu Mượn");
+        newBorrowBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                newBorrowBtnActionPerformed(evt);
+            }
+        });
+        rightControls.add(newBorrowBtn);
+
+        returnBtn.setBackground(new java.awt.Color(230, 240, 255));
+        returnBtn.setText("Nhận Trả Sách");
+        returnBtn.setEnabled(false);
+        returnBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                returnBtnActionPerformed(evt);
+            }
+        });
+        rightControls.add(returnBtn);
+
+        topToolbar.add(rightControls, java.awt.BorderLayout.EAST);
+
+        add(topToolbar, java.awt.BorderLayout.NORTH);
+
+        splitPane.setDividerSize(6);
+        splitPane.setOrientation(javax.swing.JSplitPane.VERTICAL_SPLIT);
+        splitPane.setResizeWeight(0.65);
+
+        recordTable.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+
+            },
+            new String [] {
+                "Mã Phiếu", "Mã SV", "Tên Sinh Viên", "Tên Sách", "Ngày Mượn", "Hạn Trả", "Ngày Trả", "Trạng Thái"
+            }
+        ) {
+            boolean[] canEdit = new boolean [] {
+                false, false, false, false, false, false, false, false
+            };
+
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit [columnIndex];
+            }
+        });
+        recordTable.setAutoCreateRowSorter(true);
+        recordTable.setRowHeight(24);
+        recordTable.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+        tableScroll.setViewportView(recordTable);
+
+        splitPane.setTopComponent(tableScroll);
+
+        detailCard.setBackground(new java.awt.Color(248, 250, 252));
+        detailCard.setLayout(new java.awt.BorderLayout(10, 10));
+
+        detailHeader.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        detailHeader.setText("Thông Tin Chi Tiết Lượt Mượn Được Chọn");
+        detailCard.add(detailHeader, java.awt.BorderLayout.NORTH);
+
+        gridDetails.setOpaque(false);
+        gridDetails.setLayout(new java.awt.GridBagLayout());
+
+        lblMpm.setText("Mã phiếu mượn:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblMpm, gridBagConstraints);
+
+        detailIdVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailIdVal, gridBagConstraints);
+
+        lblSv.setText("Sinh viên:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 2;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblSv, gridBagConstraints);
+
+        detailStudentVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 3;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailStudentVal, gridBagConstraints);
+
+        lblSm.setText("Sách mượn:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblSm, gridBagConstraints);
+
+        detailBookVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailBookVal, gridBagConstraints);
+
+        lblTt.setText("Trạng thái:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 2;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblTt, gridBagConstraints);
+
+        detailStatusVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 3;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailStatusVal, gridBagConstraints);
+
+        lblNm.setText("Ngày mượn:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblNm, gridBagConstraints);
+
+        detailBorrowDateVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailBorrowDateVal, gridBagConstraints);
+
+        lblHt.setText("Hạn trả:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 2;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblHt, gridBagConstraints);
+
+        detailDueDateVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 3;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailDueDateVal, gridBagConstraints);
+
+        lblNttt.setText("Ngày trả thực tế:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblNttt, gridBagConstraints);
+
+        detailReturnDateVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailReturnDateVal, gridBagConstraints);
+
+        lblGc.setText("Ghi chú:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 2;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblGc, gridBagConstraints);
+
+        detailNotesVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 3;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailNotesVal, gridBagConstraints);
+
+        detailCard.add(gridDetails, java.awt.BorderLayout.CENTER);
+
+        splitPane.setBottomComponent(detailCard);
+
+        add(splitPane, java.awt.BorderLayout.CENTER);
+
+        bottomBar.setOpaque(false);
+        bottomBar.setLayout(new java.awt.BorderLayout());
+
+        statusLabel.setFont(new java.awt.Font("Segoe UI", 0, 12)); // NOI18N
+        statusLabel.setText("Sẵn sàng");
+        bottomBar.add(statusLabel, java.awt.BorderLayout.WEST);
+
+        add(bottomBar, java.awt.BorderLayout.SOUTH);
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void searchFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_searchFieldActionPerformed
+        applyFilter(false);
+    }//GEN-LAST:event_searchFieldActionPerformed
+
+    private void statusFilterComboActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_statusFilterComboActionPerformed
+        applyFilter(false);
+    }//GEN-LAST:event_statusFilterComboActionPerformed
+
+    private void filterBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_filterBtnActionPerformed
+        applyFilter(false);
+    }//GEN-LAST:event_filterBtnActionPerformed
+
+    private void resetBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetBtnActionPerformed
+        searchField.setText("");
+        statusFilterCombo.setSelectedIndex(0);
+        applyFilter(false);
+    }//GEN-LAST:event_resetBtnActionPerformed
+
+    private void refreshBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshBtnActionPerformed
+        loadRecords();
+    }//GEN-LAST:event_refreshBtnActionPerformed
+
+    private void newBorrowBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_newBorrowBtnActionPerformed
+        openBorrowDialog();
+    }//GEN-LAST:event_newBorrowBtnActionPerformed
+
+    private void returnBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_returnBtnActionPerformed
+        performReturn();
+    }//GEN-LAST:event_returnBtnActionPerformed
 
     private void initAutoRefresh() {
         pollTimer = new javax.swing.Timer(6000, e -> {
@@ -221,78 +487,6 @@ public class BorrowManagementPanel extends JPanel {
             @Override
             public void ancestorMoved(javax.swing.event.AncestorEvent event) {}
         });
-    }
-
-    private JPanel createDetailPanel() {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setBackground(new Color(248, 250, 252));
-        panel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 230)),
-                BorderFactory.createEmptyBorder(10, 15, 10, 15)
-        ));
-
-        JLabel header = new JLabel("Thông Tin Chi Tiết Lượt Mượn Được Chọn");
-        header.setFont(header.getFont().deriveFont(Font.BOLD, 13.0f));
-        panel.add(header, BorderLayout.NORTH);
-
-        JPanel grid = new JPanel(new GridBagLayout());
-        grid.setOpaque(false);
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(3, 8, 3, 8);
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-
-        detailIdVal = new JLabel("Chưa chọn");
-        detailStudentVal = new JLabel("Chưa chọn");
-        detailBookVal = new JLabel("Chưa chọn");
-        detailBorrowDateVal = new JLabel("Chưa chọn");
-        detailDueDateVal = new JLabel("Chưa chọn");
-        detailReturnDateVal = new JLabel("Chưa chọn");
-        detailStatusVal = new JLabel("Chưa chọn");
-        detailNotesVal = new JLabel("Chưa chọn");
-
-        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.0;
-        grid.add(new JLabel("Mã phiếu mượn:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 0.5;
-        grid.add(detailIdVal, gbc);
-
-        gbc.gridx = 2; gbc.weightx = 0.0;
-        grid.add(new JLabel("Sinh viên:"), gbc);
-        gbc.gridx = 3; gbc.weightx = 0.5;
-        grid.add(detailStudentVal, gbc);
-
-        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0.0;
-        grid.add(new JLabel("Sách mượn:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 0.5;
-        grid.add(detailBookVal, gbc);
-
-        gbc.gridx = 2; gbc.weightx = 0.0;
-        grid.add(new JLabel("Trạng thái:"), gbc);
-        gbc.gridx = 3; gbc.weightx = 0.5;
-        grid.add(detailStatusVal, gbc);
-
-        gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0.0;
-        grid.add(new JLabel("Ngày mượn:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 0.5;
-        grid.add(detailBorrowDateVal, gbc);
-
-        gbc.gridx = 2; gbc.weightx = 0.0;
-        grid.add(new JLabel("Hạn trả:"), gbc);
-        gbc.gridx = 3; gbc.weightx = 0.5;
-        grid.add(detailDueDateVal, gbc);
-
-        gbc.gridx = 0; gbc.gridy = 3; gbc.weightx = 0.0;
-        grid.add(new JLabel("Ngày trả thực tế:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 0.5;
-        grid.add(detailReturnDateVal, gbc);
-
-        gbc.gridx = 2; gbc.weightx = 0.0;
-        grid.add(new JLabel("Ghi chú:"), gbc);
-        gbc.gridx = 3; gbc.weightx = 0.5;
-        grid.add(detailNotesVal, gbc);
-
-        panel.add(grid, BorderLayout.CENTER);
-        return panel;
     }
 
     public void loadRecords() {
@@ -535,4 +729,42 @@ public class BorrowManagementPanel extends JPanel {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Lỗi Mượn Trả", JOptionPane.ERROR_MESSAGE);
         }
     }
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JPanel bottomBar;
+    private javax.swing.JLabel detailBookVal;
+    private javax.swing.JLabel detailBorrowDateVal;
+    private javax.swing.JPanel detailCard;
+    private javax.swing.JLabel detailDueDateVal;
+    private javax.swing.JLabel detailHeader;
+    private javax.swing.JLabel detailIdVal;
+    private javax.swing.JLabel detailNotesVal;
+    private javax.swing.JLabel detailReturnDateVal;
+    private javax.swing.JLabel detailStatusVal;
+    private javax.swing.JLabel detailStudentVal;
+    private javax.swing.JButton filterBtn;
+    private javax.swing.JPanel gridDetails;
+    private javax.swing.JLabel lblGc;
+    private javax.swing.JLabel lblHt;
+    private javax.swing.JLabel lblMpm;
+    private javax.swing.JLabel lblNm;
+    private javax.swing.JLabel lblNttt;
+    private javax.swing.JLabel lblSearch;
+    private javax.swing.JLabel lblSm;
+    private javax.swing.JLabel lblSv;
+    private javax.swing.JLabel lblTt;
+    private javax.swing.JPanel leftControls;
+    private javax.swing.JButton newBorrowBtn;
+    private javax.swing.JTable recordTable;
+    private javax.swing.JButton refreshBtn;
+    private javax.swing.JButton resetBtn;
+    private javax.swing.JButton returnBtn;
+    private javax.swing.JPanel rightControls;
+    private javax.swing.JTextField searchField;
+    private javax.swing.JSplitPane splitPane;
+    private javax.swing.JComboBox<String> statusFilterCombo;
+    private javax.swing.JLabel statusLabel;
+    private javax.swing.JScrollPane tableScroll;
+    private javax.swing.JPanel topToolbar;
+    // End of variables declaration//GEN-END:variables
 }

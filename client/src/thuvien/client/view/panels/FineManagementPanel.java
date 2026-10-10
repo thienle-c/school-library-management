@@ -1,8 +1,6 @@
 package thuvien.client.view.panels;
 
-import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.FlowLayout;
 import java.awt.Font;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
@@ -11,17 +9,9 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JSpinner;
-import javax.swing.JTable;
-import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
-import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.table.DefaultTableModel;
@@ -48,19 +38,7 @@ public class FineManagementPanel extends JPanel {
     private final ClientFineController fineController;
     private final boolean isStaff;
 
-    private JTable fineTable;
     private DefaultTableModel tableModel;
-    private JTextField searchField;
-    private JComboBox<String> statusFilterCombo;
-    private JButton searchBtn;
-    private JButton clearFilterBtn;
-    private JButton refreshBtn;
-    private JButton payFineBtn;
-    private JSpinner calcDaysSpinner;
-    private JButton calcBtn;
-    private JLabel statusLabel;
-    private JLabel summaryLabel;
-
     private List<FineDTO> allFines = new ArrayList<>();
     private List<FineDTO> currentFiltered = new ArrayList<>();
     private Timer pollTimer;
@@ -71,91 +49,29 @@ public class FineManagementPanel extends JPanel {
         this.fineController = new ClientFineController(networkClient);
         this.isStaff = ClientSession.getInstance().isAdmin() || ClientSession.getInstance().isLibrarian();
 
-        initUI();
+        initComponents();
+        initCustom();
         loadFines();
         startAutoRefresh();
     }
 
-    private void initUI() {
-        setLayout(new BorderLayout(5, 5));
+    private void initCustom() {
         setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
-        setBackground(Color.WHITE);
+        filterBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(230, 235, 240)));
+        tableScroll.setBorder(BorderFactory.createLineBorder(new Color(220, 225, 230)));
+        bottomBar.setBorder(BorderFactory.createEmptyBorder(6, 4, 4, 4));
 
-        // North container
-        JPanel northPanel = new JPanel(new BorderLayout(5, 8));
-        northPanel.setOpaque(false);
+        titleLabel.setText(isStaff ? "Quản lý Tiền phạt & Phí quá hạn" : "Tiền phạt quá hạn của tôi");
 
-        // Header toolbar
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setOpaque(false);
-
-        JLabel title = new JLabel(isStaff ? "Quản lý Tiền phạt & Phí quá hạn" : "Tiền phạt quá hạn của tôi");
-        title.setFont(title.getFont().deriveFont(Font.BOLD, 16.0f));
-        title.setForeground(new Color(25, 45, 80));
-        headerPanel.add(title, BorderLayout.WEST);
-
-        JPanel rightHeaderPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        rightHeaderPanel.setOpaque(false);
-
-        if (isStaff) {
-            rightHeaderPanel.add(new JLabel("Số ngày:"));
-            calcDaysSpinner = new JSpinner(new SpinnerNumberModel(5, 1, 365, 1));
-            rightHeaderPanel.add(calcDaysSpinner);
-
-            calcBtn = new JButton("Tính phí phạt");
-            calcBtn.setToolTipText("Tính mức tiền phạt theo số ngày quá hạn");
-            calcBtn.addActionListener(e -> calculateFinePreview());
-            rightHeaderPanel.add(calcBtn);
-
-            payFineBtn = new JButton("Thu tiền / Đã nộp");
-            payFineBtn.setBackground(new Color(225, 245, 230));
-            payFineBtn.setEnabled(false);
-            payFineBtn.setToolTipText("Đánh dấu khoản phạt đã được thanh toán");
-            payFineBtn.addActionListener(e -> performPayFine());
-            rightHeaderPanel.add(payFineBtn);
+        if (!isStaff) {
+            lblCalcDays.setVisible(false);
+            calcDaysSpinner.setVisible(false);
+            calcBtn.setVisible(false);
+            payFineBtn.setVisible(false);
         }
 
-        refreshBtn = new JButton("Làm mới");
-        refreshBtn.setToolTipText("Tải lại danh sách từ máy chủ");
-        refreshBtn.addActionListener(e -> loadFines());
-        rightHeaderPanel.add(refreshBtn);
-
-        headerPanel.add(rightHeaderPanel, BorderLayout.EAST);
-        northPanel.add(headerPanel, BorderLayout.NORTH);
-
-        // Search & Filter Toolbar
-        JPanel filterBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
-        filterBar.setOpaque(false);
-        filterBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(230, 235, 240)));
-
-        filterBar.add(new JLabel("Tìm kiếm:"));
-        searchField = new JTextField(20);
-        searchField.setToolTipText("Tìm theo Mã phạt, Mã SV, Tên sinh viên, Mã mượn...");
-        searchField.addActionListener(e -> applyFilter());
         SearchAutoCompleteHelper.attach(searchField, "FINE", new ClientSearchSuggestionController(networkClient), this::applyFilter);
-        filterBar.add(searchField);
 
-        filterBar.add(new JLabel("Trạng thái:"));
-        statusFilterCombo = new JComboBox<>(new String[]{
-                "Tất cả",
-                "Chưa thanh toán",
-                "Đã thanh toán"
-        });
-        statusFilterCombo.addActionListener(e -> applyFilter());
-        filterBar.add(statusFilterCombo);
-
-        searchBtn = new JButton("Tìm");
-        searchBtn.addActionListener(e -> applyFilter());
-        filterBar.add(searchBtn);
-
-        clearFilterBtn = new JButton("Xóa bộ lọc");
-        clearFilterBtn.addActionListener(e -> resetFilter());
-        filterBar.add(clearFilterBtn);
-
-        northPanel.add(filterBar, BorderLayout.SOUTH);
-        add(northPanel, BorderLayout.NORTH);
-
-        // Table
         String[] columns = isStaff
                 ? new String[]{"Mã phạt", "Mã mượn", "Mã SV", "Tên sinh viên", "Tên sách", "Số ngày quá hạn", "Số tiền (VNĐ)", "Trạng thái", "Ngày tạo"}
                 : new String[]{"Mã phạt", "Mã mượn", "Tên sách", "Số ngày quá hạn", "Số tiền (VNĐ)", "Trạng thái", "Ngày tạo"};
@@ -167,7 +83,7 @@ public class FineManagementPanel extends JPanel {
             }
         };
 
-        fineTable = new JTable(tableModel);
+        fineTable.setModel(tableModel);
         fineTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         fineTable.setRowHeight(25);
         fineTable.getTableHeader().setFont(fineTable.getTableHeader().getFont().deriveFont(Font.BOLD));
@@ -179,27 +95,205 @@ public class FineManagementPanel extends JPanel {
                 payFineBtn.setEnabled(selected != null && !selected.isPaid());
             }
         });
-
-        JScrollPane tableScroll = new JScrollPane(fineTable);
-        tableScroll.setBorder(BorderFactory.createLineBorder(new Color(220, 225, 230)));
-        add(tableScroll, BorderLayout.CENTER);
-
-        // Bottom Bar
-        JPanel bottomBar = new JPanel(new BorderLayout());
-        bottomBar.setOpaque(false);
-        bottomBar.setBorder(BorderFactory.createEmptyBorder(6, 4, 4, 4));
-
-        statusLabel = new JLabel("Sẵn sàng");
-        statusLabel.setFont(statusLabel.getFont().deriveFont(Font.PLAIN, 12.0f));
-        bottomBar.add(statusLabel, BorderLayout.WEST);
-
-        summaryLabel = new JLabel("");
-        summaryLabel.setFont(summaryLabel.getFont().deriveFont(Font.BOLD, 12.5f));
-        summaryLabel.setForeground(new Color(180, 50, 40));
-        bottomBar.add(summaryLabel, BorderLayout.EAST);
-
-        add(bottomBar, BorderLayout.SOUTH);
     }
+
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        northPanel = new javax.swing.JPanel();
+        headerPanel = new javax.swing.JPanel();
+        titleLabel = new javax.swing.JLabel();
+        rightHeaderPanel = new javax.swing.JPanel();
+        lblCalcDays = new javax.swing.JLabel();
+        calcDaysSpinner = new javax.swing.JSpinner();
+        calcBtn = new javax.swing.JButton();
+        payFineBtn = new javax.swing.JButton();
+        refreshBtn = new javax.swing.JButton();
+        filterBar = new javax.swing.JPanel();
+        lblSearch = new javax.swing.JLabel();
+        searchField = new javax.swing.JTextField();
+        lblStatus = new javax.swing.JLabel();
+        statusFilterCombo = new javax.swing.JComboBox<String>();
+        searchBtn = new javax.swing.JButton();
+        clearFilterBtn = new javax.swing.JButton();
+        tableScroll = new javax.swing.JScrollPane();
+        fineTable = new javax.swing.JTable();
+        bottomBar = new javax.swing.JPanel();
+        statusLabel = new javax.swing.JLabel();
+        summaryLabel = new javax.swing.JLabel();
+
+        setBackground(new java.awt.Color(255, 255, 255));
+        setLayout(new java.awt.BorderLayout(5, 5));
+
+        northPanel.setOpaque(false);
+        northPanel.setLayout(new java.awt.BorderLayout(5, 8));
+
+        headerPanel.setOpaque(false);
+        headerPanel.setLayout(new java.awt.BorderLayout());
+
+        titleLabel.setFont(new java.awt.Font("Segoe UI", 1, 16)); // NOI18N
+        titleLabel.setForeground(new java.awt.Color(25, 45, 80));
+        titleLabel.setText("Quản lý Tiền phạt & Phí quá hạn");
+        headerPanel.add(titleLabel, java.awt.BorderLayout.WEST);
+
+        rightHeaderPanel.setOpaque(false);
+        rightHeaderPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 6, 0));
+
+        lblCalcDays.setText("Số ngày:");
+        rightHeaderPanel.add(lblCalcDays);
+
+        calcDaysSpinner.setModel(new javax.swing.SpinnerNumberModel(5, 1, 365, 1));
+        rightHeaderPanel.add(calcDaysSpinner);
+
+        calcBtn.setText("Tính phí phạt");
+        calcBtn.setToolTipText("Tính mức tiền phạt theo số ngày quá hạn");
+        calcBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                calcBtnActionPerformed(evt);
+            }
+        });
+        rightHeaderPanel.add(calcBtn);
+
+        payFineBtn.setBackground(new java.awt.Color(225, 245, 230));
+        payFineBtn.setText("Thu tiền / Đã nộp");
+        payFineBtn.setToolTipText("Đánh dấu khoản phạt đã được thanh toán");
+        payFineBtn.setEnabled(false);
+        payFineBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                payFineBtnActionPerformed(evt);
+            }
+        });
+        rightHeaderPanel.add(payFineBtn);
+
+        refreshBtn.setText("Làm mới");
+        refreshBtn.setToolTipText("Tải lại danh sách từ máy chủ");
+        refreshBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                refreshBtnActionPerformed(evt);
+            }
+        });
+        rightHeaderPanel.add(refreshBtn);
+
+        headerPanel.add(rightHeaderPanel, java.awt.BorderLayout.EAST);
+
+        northPanel.add(headerPanel, java.awt.BorderLayout.NORTH);
+
+        filterBar.setOpaque(false);
+        filterBar.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 4));
+
+        lblSearch.setText("Tìm kiếm:");
+        filterBar.add(lblSearch);
+
+        searchField.setColumns(20);
+        searchField.setToolTipText("Tìm theo Mã phạt, Mã SV, Tên sinh viên, Mã mượn...");
+        searchField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                searchFieldActionPerformed(evt);
+            }
+        });
+        filterBar.add(searchField);
+
+        lblStatus.setText("Trạng thái:");
+        filterBar.add(lblStatus);
+
+        statusFilterCombo.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Tất cả", "Chưa thanh toán", "Đã thanh toán" }));
+        statusFilterCombo.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                statusFilterComboActionPerformed(evt);
+            }
+        });
+        filterBar.add(statusFilterCombo);
+
+        searchBtn.setText("Tìm");
+        searchBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                searchBtnActionPerformed(evt);
+            }
+        });
+        filterBar.add(searchBtn);
+
+        clearFilterBtn.setText("Xóa bộ lọc");
+        clearFilterBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                clearFilterBtnActionPerformed(evt);
+            }
+        });
+        filterBar.add(clearFilterBtn);
+
+        northPanel.add(filterBar, java.awt.BorderLayout.SOUTH);
+
+        add(northPanel, java.awt.BorderLayout.NORTH);
+
+        fineTable.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+
+            },
+            new String [] {
+                "Mã phạt", "Mã mượn", "Mã SV", "Tên sinh viên", "Tên sách", "Số ngày quá hạn", "Số tiền (VNĐ)", "Trạng thái", "Ngày tạo"
+            }
+        ) {
+            boolean[] canEdit = new boolean [] {
+                false, false, false, false, false, false, false, false, false
+            };
+
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit [columnIndex];
+            }
+        });
+        fineTable.setAutoCreateRowSorter(true);
+        fineTable.setRowHeight(25);
+        fineTable.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+        tableScroll.setViewportView(fineTable);
+
+        add(tableScroll, java.awt.BorderLayout.CENTER);
+
+        bottomBar.setOpaque(false);
+        bottomBar.setLayout(new java.awt.BorderLayout());
+
+        statusLabel.setFont(new java.awt.Font("Segoe UI", 0, 12)); // NOI18N
+        statusLabel.setText("Sẵn sàng");
+        bottomBar.add(statusLabel, java.awt.BorderLayout.WEST);
+
+        summaryLabel.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        summaryLabel.setForeground(new java.awt.Color(180, 50, 40));
+        bottomBar.add(summaryLabel, java.awt.BorderLayout.EAST);
+
+        add(bottomBar, java.awt.BorderLayout.SOUTH);
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void calcBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_calcBtnActionPerformed
+        calculateFinePreview();
+    }//GEN-LAST:event_calcBtnActionPerformed
+
+    private void payFineBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_payFineBtnActionPerformed
+        performPayFine();
+    }//GEN-LAST:event_payFineBtnActionPerformed
+
+    private void refreshBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshBtnActionPerformed
+        loadFines();
+    }//GEN-LAST:event_refreshBtnActionPerformed
+
+    private void searchFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_searchFieldActionPerformed
+        applyFilter();
+    }//GEN-LAST:event_searchFieldActionPerformed
+
+    private void statusFilterComboActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_statusFilterComboActionPerformed
+        applyFilter();
+    }//GEN-LAST:event_statusFilterComboActionPerformed
+
+    private void searchBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_searchBtnActionPerformed
+        applyFilter();
+    }//GEN-LAST:event_searchBtnActionPerformed
+
+    private void clearFilterBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearFilterBtnActionPerformed
+        resetFilter();
+    }//GEN-LAST:event_clearFilterBtnActionPerformed
 
     private void startAutoRefresh() {
         pollTimer = new Timer(6000, e -> {
@@ -461,4 +555,28 @@ public class FineManagementPanel extends JPanel {
             JOptionPane.showMessageDialog(this, "Thao tác thất bại: " + ex.getMessage(), "Lỗi tiền phạt", JOptionPane.ERROR_MESSAGE);
         }
     }
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JPanel bottomBar;
+    private javax.swing.JButton calcBtn;
+    private javax.swing.JSpinner calcDaysSpinner;
+    private javax.swing.JButton clearFilterBtn;
+    private javax.swing.JPanel filterBar;
+    private javax.swing.JTable fineTable;
+    private javax.swing.JPanel headerPanel;
+    private javax.swing.JLabel lblCalcDays;
+    private javax.swing.JLabel lblSearch;
+    private javax.swing.JLabel lblStatus;
+    private javax.swing.JPanel northPanel;
+    private javax.swing.JButton payFineBtn;
+    private javax.swing.JButton refreshBtn;
+    private javax.swing.JPanel rightHeaderPanel;
+    private javax.swing.JButton searchBtn;
+    private javax.swing.JTextField searchField;
+    private javax.swing.JComboBox<String> statusFilterCombo;
+    private javax.swing.JLabel statusLabel;
+    private javax.swing.JLabel summaryLabel;
+    private javax.swing.JScrollPane tableScroll;
+    private javax.swing.JLabel titleLabel;
+    // End of variables declaration//GEN-END:variables
 }

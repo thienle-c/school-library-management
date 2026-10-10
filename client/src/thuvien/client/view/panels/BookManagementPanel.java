@@ -1,12 +1,7 @@
 package thuvien.client.view.panels;
 
-import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.text.SimpleDateFormat;
@@ -16,15 +11,8 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JSplitPane;
-import javax.swing.JTable;
-import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
@@ -55,31 +43,7 @@ public class BookManagementPanel extends JPanel {
     private final NetworkClient networkClient;
     private final ClientBookController bookController;
 
-    private JTextField searchField;
-    private JComboBox<Object> categoryFilterCombo;
-    private JComboBox<String> statusFilterCombo;
-    private JButton searchBtn;
-    private JButton resetBtn;
-    private JButton refreshBtn;
-    private JButton newBookBtn;
-    private JButton editBookBtn;
-    private JButton deleteBookBtn;
-
-    private JTable bookTable;
     private DefaultTableModel tableModel;
-    private JLabel statusLabel;
-
-    // Detail Panel Components
-    private JLabel detailTitleVal;
-    private JLabel detailIsbnVal;
-    private JLabel detailCategoryVal;
-    private JLabel detailAuthorsVal;
-    private JLabel detailPublisherVal;
-    private JLabel detailYearVal;
-    private JLabel detailCopiesVal;
-    private JLabel detailShelfVal;
-    private JLabel detailStatusVal;
-
     private List<BookDTO> currentBookList = new ArrayList<>();
     private javax.swing.Timer pollTimer;
     private volatile boolean isRefreshing = false;
@@ -88,94 +52,32 @@ public class BookManagementPanel extends JPanel {
         this.networkClient = networkClient;
         this.bookController = new ClientBookController(networkClient);
 
-        initUI();
+        initComponents();
+        initCustom();
         loadCategories();
         loadBooks();
         initAutoRefresh();
     }
 
-    private void initUI() {
-        setLayout(new BorderLayout(5, 5));
+    private void initCustom() {
         setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
-        setBackground(Color.WHITE);
-
-        // =====================================================================
-        // 1. Top Toolbar (Search Bar + Action Buttons)
-        // =====================================================================
-        JPanel topToolbar = new JPanel(new BorderLayout(10, 0));
-        topToolbar.setOpaque(false);
         topToolbar.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
-
-        // Search Section (Left)
-        JPanel searchSection = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-        searchSection.setOpaque(false);
-
-        searchSection.add(new JLabel("Tìm kiếm:"));
-        searchField = new JTextField(14);
-        searchField.setToolTipText("Tìm kiếm theo tên sách, tác giả, thể loại, ISBN, NXB, vị trí kệ hoặc ID");
-        searchField.addActionListener(e -> loadBooks());
-        SearchAutoCompleteHelper.attach(searchField, "BOOK", new ClientSearchSuggestionController(networkClient), this::loadBooks);
-        searchSection.add(searchField);
-
-        categoryFilterCombo = new JComboBox<>(new Object[]{"Tất cả thể loại"});
-        categoryFilterCombo.setToolTipText("Lọc theo thể loại");
-        categoryFilterCombo.addActionListener(e -> loadBooks());
-        searchSection.add(categoryFilterCombo);
-
-        statusFilterCombo = new JComboBox<>(new String[]{"Tất cả trạng thái", "Còn sách (Có sẵn)", "Hết sách"});
-        statusFilterCombo.setToolTipText("Lọc theo tình trạng sách");
-        statusFilterCombo.addActionListener(e -> loadBooks());
-        searchSection.add(statusFilterCombo);
-
-        searchBtn = new JButton("Tìm kiếm");
-        searchBtn.addActionListener(e -> loadBooks());
-        searchSection.add(searchBtn);
-
-        resetBtn = new JButton("Xóa bộ lọc");
-        resetBtn.addActionListener(e -> {
-            searchField.setText("");
-            categoryFilterCombo.setSelectedIndex(0);
-            statusFilterCombo.setSelectedIndex(0);
-            loadBooks();
-        });
-        searchSection.add(resetBtn);
-
-        refreshBtn = new JButton("Làm mới");
-        refreshBtn.addActionListener(e -> loadBooks());
-        searchSection.add(refreshBtn);
-
-        topToolbar.add(searchSection, BorderLayout.WEST);
-
-        // Administrative Buttons (Right) - Role Aware
-        JPanel actionSection = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        actionSection.setOpaque(false);
+        tableScroll.setBorder(BorderFactory.createLineBorder(new Color(220, 225, 230)));
+        detailCard.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 230)),
+                BorderFactory.createEmptyBorder(10, 15, 10, 15)
+        ));
+        bottomBar.setBorder(BorderFactory.createEmptyBorder(6, 4, 4, 4));
 
         boolean isStaff = ClientSession.getInstance().isAdmin() || ClientSession.getInstance().isLibrarian();
-
-        if (isStaff) {
-            newBookBtn = new JButton("Thêm Sách Mới");
-            newBookBtn.setBackground(new Color(230, 245, 230));
-            newBookBtn.addActionListener(e -> openCreateDialog());
-            actionSection.add(newBookBtn);
-
-            editBookBtn = new JButton("Chỉnh Sửa");
-            editBookBtn.setEnabled(false);
-            editBookBtn.addActionListener(e -> openEditDialog());
-            actionSection.add(editBookBtn);
-
-            deleteBookBtn = new JButton("Xóa Sách");
-            deleteBookBtn.setBackground(new Color(255, 235, 235));
-            deleteBookBtn.setEnabled(false);
-            deleteBookBtn.addActionListener(e -> confirmDelete());
-            actionSection.add(deleteBookBtn);
+        if (!isStaff) {
+            newBookBtn.setVisible(false);
+            editBookBtn.setVisible(false);
+            deleteBookBtn.setVisible(false);
         }
 
-        topToolbar.add(actionSection, BorderLayout.EAST);
-        add(topToolbar, BorderLayout.NORTH);
+        SearchAutoCompleteHelper.attach(searchField, "BOOK", new ClientSearchSuggestionController(networkClient), this::loadBooks);
 
-        // =====================================================================
-        // 2. Center: Table & Details in JSplitPane
-        // =====================================================================
         String[] columns = {"Mã ID", "Mã ISBN", "Tên Sách", "Thể Loại", "Nhà Xuất Bản", "Năm XB", "Tổng Bản", "Có Sẵn", "Trạng Thái"};
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
@@ -184,13 +86,12 @@ public class BookManagementPanel extends JPanel {
             }
         };
 
-        bookTable = new JTable(tableModel);
+        bookTable.setModel(tableModel);
         bookTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         bookTable.setRowHeight(24);
         bookTable.getTableHeader().setFont(bookTable.getTableHeader().getFont().deriveFont(Font.BOLD));
         bookTable.setAutoCreateRowSorter(true);
 
-        // Table column widths
         if (bookTable.getColumnModel().getColumnCount() >= 9) {
             bookTable.getColumnModel().getColumn(0).setPreferredWidth(50);
             bookTable.getColumnModel().getColumn(1).setPreferredWidth(120);
@@ -209,42 +110,430 @@ public class BookManagementPanel extends JPanel {
             }
         });
 
-        // Double click on row
         bookTable.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2 && bookTable.getSelectedRow() != -1) {
-                    if (isStaff) {
+                    if (ClientSession.getInstance().isAdmin() || ClientSession.getInstance().isLibrarian()) {
                         openEditDialog();
                     }
                 }
             }
         });
-
-        JScrollPane tableScroll = new JScrollPane(bookTable);
-        tableScroll.setBorder(BorderFactory.createLineBorder(new Color(220, 225, 230)));
-
-        // Detail Panel
-        JPanel detailCard = createDetailPanel();
-
-        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, tableScroll, detailCard);
-        splitPane.setResizeWeight(0.65);
-        splitPane.setDividerSize(6);
-        add(splitPane, BorderLayout.CENTER);
-
-        // =====================================================================
-        // 3. Bottom Status Bar
-        // =====================================================================
-        JPanel bottomBar = new JPanel(new BorderLayout());
-        bottomBar.setOpaque(false);
-        bottomBar.setBorder(BorderFactory.createEmptyBorder(6, 4, 4, 4));
-
-        statusLabel = new JLabel("Sẵn sàng");
-        statusLabel.setFont(statusLabel.getFont().deriveFont(Font.PLAIN, 12.0f));
-        bottomBar.add(statusLabel, BorderLayout.WEST);
-
-        add(bottomBar, BorderLayout.SOUTH);
     }
+
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+        java.awt.GridBagConstraints gridBagConstraints;
+
+        topToolbar = new javax.swing.JPanel();
+        searchSection = new javax.swing.JPanel();
+        lblSearch = new javax.swing.JLabel();
+        searchField = new javax.swing.JTextField();
+        categoryFilterCombo = new javax.swing.JComboBox<Object>();
+        statusFilterCombo = new javax.swing.JComboBox<String>();
+        searchBtn = new javax.swing.JButton();
+        resetBtn = new javax.swing.JButton();
+        refreshBtn = new javax.swing.JButton();
+        actionSection = new javax.swing.JPanel();
+        newBookBtn = new javax.swing.JButton();
+        editBookBtn = new javax.swing.JButton();
+        deleteBookBtn = new javax.swing.JButton();
+        splitPane = new javax.swing.JSplitPane();
+        tableScroll = new javax.swing.JScrollPane();
+        bookTable = new javax.swing.JTable();
+        detailCard = new javax.swing.JPanel();
+        detailHeader = new javax.swing.JLabel();
+        gridDetails = new javax.swing.JPanel();
+        lblTitle = new javax.swing.JLabel();
+        detailTitleVal = new javax.swing.JLabel();
+        lblIsbn = new javax.swing.JLabel();
+        detailIsbnVal = new javax.swing.JLabel();
+        lblCategory = new javax.swing.JLabel();
+        detailCategoryVal = new javax.swing.JLabel();
+        lblAuthors = new javax.swing.JLabel();
+        detailAuthorsVal = new javax.swing.JLabel();
+        lblPublisher = new javax.swing.JLabel();
+        detailPublisherVal = new javax.swing.JLabel();
+        lblYear = new javax.swing.JLabel();
+        detailYearVal = new javax.swing.JLabel();
+        lblCopies = new javax.swing.JLabel();
+        detailCopiesVal = new javax.swing.JLabel();
+        lblShelf = new javax.swing.JLabel();
+        detailShelfVal = new javax.swing.JLabel();
+        lblStatus = new javax.swing.JLabel();
+        detailStatusVal = new javax.swing.JLabel();
+        bottomBar = new javax.swing.JPanel();
+        statusLabel = new javax.swing.JLabel();
+
+        setBackground(new java.awt.Color(255, 255, 255));
+        setLayout(new java.awt.BorderLayout(5, 5));
+
+        topToolbar.setOpaque(false);
+        topToolbar.setLayout(new java.awt.BorderLayout(10, 0));
+
+        searchSection.setOpaque(false);
+        searchSection.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 6, 0));
+
+        lblSearch.setText("Tìm kiếm:");
+        searchSection.add(lblSearch);
+
+        searchField.setColumns(14);
+        searchField.setToolTipText("Tìm kiếm theo tên sách, tác giả, thể loại, ISBN, NXB, vị trí kệ hoặc ID");
+        searchField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                searchFieldActionPerformed(evt);
+            }
+        });
+        searchSection.add(searchField);
+
+        categoryFilterCombo.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Tất cả thể loại" }));
+        categoryFilterCombo.setToolTipText("Lọc theo thể loại");
+        categoryFilterCombo.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                categoryFilterComboActionPerformed(evt);
+            }
+        });
+        searchSection.add(categoryFilterCombo);
+
+        statusFilterCombo.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Tất cả trạng thái", "Còn sách (Có sẵn)", "Hết sách" }));
+        statusFilterCombo.setToolTipText("Lọc theo tình trạng sách");
+        statusFilterCombo.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                statusFilterComboActionPerformed(evt);
+            }
+        });
+        searchSection.add(statusFilterCombo);
+
+        searchBtn.setText("Tìm kiếm");
+        searchBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                searchBtnActionPerformed(evt);
+            }
+        });
+        searchSection.add(searchBtn);
+
+        resetBtn.setText("Xóa bộ lọc");
+        resetBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                resetBtnActionPerformed(evt);
+            }
+        });
+        searchSection.add(resetBtn);
+
+        refreshBtn.setText("Làm mới");
+        refreshBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                refreshBtnActionPerformed(evt);
+            }
+        });
+        searchSection.add(refreshBtn);
+
+        topToolbar.add(searchSection, java.awt.BorderLayout.WEST);
+
+        actionSection.setOpaque(false);
+        actionSection.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 0));
+
+        newBookBtn.setBackground(new java.awt.Color(230, 245, 230));
+        newBookBtn.setText("Thêm Sách Mới");
+        newBookBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                newBookBtnActionPerformed(evt);
+            }
+        });
+        actionSection.add(newBookBtn);
+
+        editBookBtn.setText("Chỉnh Sửa");
+        editBookBtn.setEnabled(false);
+        editBookBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                editBookBtnActionPerformed(evt);
+            }
+        });
+        actionSection.add(editBookBtn);
+
+        deleteBookBtn.setBackground(new java.awt.Color(255, 235, 235));
+        deleteBookBtn.setText("Xóa Sách");
+        deleteBookBtn.setEnabled(false);
+        deleteBookBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                deleteBookBtnActionPerformed(evt);
+            }
+        });
+        actionSection.add(deleteBookBtn);
+
+        topToolbar.add(actionSection, java.awt.BorderLayout.EAST);
+
+        add(topToolbar, java.awt.BorderLayout.NORTH);
+
+        splitPane.setDividerSize(6);
+        splitPane.setOrientation(javax.swing.JSplitPane.VERTICAL_SPLIT);
+        splitPane.setResizeWeight(0.65);
+
+        bookTable.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+
+            },
+            new String [] {
+                "Mã ID", "Mã ISBN", "Tên Sách", "Thể Loại", "Nhà Xuất Bản", "Năm XB", "Tổng Bản", "Có Sẵn", "Trạng Thái"
+            }
+        ) {
+            boolean[] canEdit = new boolean [] {
+                false, false, false, false, false, false, false, false, false
+            };
+
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit [columnIndex];
+            }
+        });
+        bookTable.setAutoCreateRowSorter(true);
+        bookTable.setRowHeight(24);
+        bookTable.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+        tableScroll.setViewportView(bookTable);
+
+        splitPane.setTopComponent(tableScroll);
+
+        detailCard.setBackground(new java.awt.Color(248, 250, 252));
+        detailCard.setLayout(new java.awt.BorderLayout(10, 10));
+
+        detailHeader.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        detailHeader.setText("Thông Tin Chi Tiết Sách Được Chọn");
+        detailCard.add(detailHeader, java.awt.BorderLayout.NORTH);
+
+        gridDetails.setOpaque(false);
+        gridDetails.setLayout(new java.awt.GridBagLayout());
+
+        lblTitle.setText("Tên sách:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblTitle, gridBagConstraints);
+
+        detailTitleVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailTitleVal, gridBagConstraints);
+
+        lblIsbn.setText("Mã ISBN:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 2;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblIsbn, gridBagConstraints);
+
+        detailIsbnVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 3;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailIsbnVal, gridBagConstraints);
+
+        lblCategory.setText("Thể loại:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblCategory, gridBagConstraints);
+
+        detailCategoryVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailCategoryVal, gridBagConstraints);
+
+        lblAuthors.setText("Tác giả:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 2;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblAuthors, gridBagConstraints);
+
+        detailAuthorsVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 3;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailAuthorsVal, gridBagConstraints);
+
+        lblPublisher.setText("Nhà xuất bản:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblPublisher, gridBagConstraints);
+
+        detailPublisherVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailPublisherVal, gridBagConstraints);
+
+        lblYear.setText("Năm XB & Tái bản:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 2;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblYear, gridBagConstraints);
+
+        detailYearVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 3;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailYearVal, gridBagConstraints);
+
+        lblCopies.setText("Số lượng bản:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblCopies, gridBagConstraints);
+
+        detailCopiesVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailCopiesVal, gridBagConstraints);
+
+        lblShelf.setText("Vị trí kệ:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 2;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblShelf, gridBagConstraints);
+
+        detailShelfVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 3;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailShelfVal, gridBagConstraints);
+
+        lblStatus.setText("Trạng thái:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 4;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(lblStatus, gridBagConstraints);
+
+        detailStatusVal.setText("Chưa chọn");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 4;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        gridBagConstraints.weightx = 0.5;
+        gridBagConstraints.insets = new java.awt.Insets(3, 8, 3, 8);
+        gridDetails.add(detailStatusVal, gridBagConstraints);
+
+        detailCard.add(gridDetails, java.awt.BorderLayout.CENTER);
+
+        splitPane.setBottomComponent(detailCard);
+
+        add(splitPane, java.awt.BorderLayout.CENTER);
+
+        bottomBar.setOpaque(false);
+        bottomBar.setLayout(new java.awt.BorderLayout());
+
+        statusLabel.setFont(new java.awt.Font("Segoe UI", 0, 12)); // NOI18N
+        statusLabel.setText("Sẵn sàng");
+        bottomBar.add(statusLabel, java.awt.BorderLayout.WEST);
+
+        add(bottomBar, java.awt.BorderLayout.SOUTH);
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void searchFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_searchFieldActionPerformed
+        loadBooks();
+    }//GEN-LAST:event_searchFieldActionPerformed
+
+    private void categoryFilterComboActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_categoryFilterComboActionPerformed
+        loadBooks();
+    }//GEN-LAST:event_categoryFilterComboActionPerformed
+
+    private void statusFilterComboActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_statusFilterComboActionPerformed
+        loadBooks();
+    }//GEN-LAST:event_statusFilterComboActionPerformed
+
+    private void searchBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_searchBtnActionPerformed
+        loadBooks();
+    }//GEN-LAST:event_searchBtnActionPerformed
+
+    private void resetBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetBtnActionPerformed
+        searchField.setText("");
+        categoryFilterCombo.setSelectedIndex(0);
+        statusFilterCombo.setSelectedIndex(0);
+        loadBooks();
+    }//GEN-LAST:event_resetBtnActionPerformed
+
+    private void refreshBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshBtnActionPerformed
+        loadBooks();
+    }//GEN-LAST:event_refreshBtnActionPerformed
+
+    private void newBookBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_newBookBtnActionPerformed
+        openCreateDialog();
+    }//GEN-LAST:event_newBookBtnActionPerformed
+
+    private void editBookBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_editBookBtnActionPerformed
+        openEditDialog();
+    }//GEN-LAST:event_editBookBtnActionPerformed
+
+    private void deleteBookBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_deleteBookBtnActionPerformed
+        confirmDelete();
+    }//GEN-LAST:event_deleteBookBtnActionPerformed
 
     private void initAutoRefresh() {
         pollTimer = new javax.swing.Timer(6000, e -> {
@@ -288,89 +577,6 @@ public class BookManagementPanel extends JPanel {
                 },
                 (Exception ex) -> LOGGER.log(Level.FINE, "Failed loading categories for filter", ex)
         );
-    }
-
-    private JPanel createDetailPanel() {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setBackground(new Color(248, 250, 252));
-        panel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 230)),
-                BorderFactory.createEmptyBorder(10, 15, 10, 15)
-        ));
-
-        JLabel header = new JLabel("Thông Tin Chi Tiết Sách Được Chọn");
-        header.setFont(header.getFont().deriveFont(Font.BOLD, 13.0f));
-        panel.add(header, BorderLayout.NORTH);
-
-        JPanel grid = new JPanel(new GridBagLayout());
-        grid.setOpaque(false);
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(3, 8, 3, 8);
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-
-        detailTitleVal = new JLabel("Chưa chọn");
-        detailIsbnVal = new JLabel("Chưa chọn");
-        detailCategoryVal = new JLabel("Chưa chọn");
-        detailAuthorsVal = new JLabel("Chưa chọn");
-        detailPublisherVal = new JLabel("Chưa chọn");
-        detailYearVal = new JLabel("Chưa chọn");
-        detailCopiesVal = new JLabel("Chưa chọn");
-        detailShelfVal = new JLabel("Chưa chọn");
-        detailStatusVal = new JLabel("Chưa chọn");
-
-        // Row 0
-        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.0;
-        grid.add(new JLabel("Tên sách:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 0.5;
-        grid.add(detailTitleVal, gbc);
-
-        gbc.gridx = 2; gbc.weightx = 0.0;
-        grid.add(new JLabel("Mã ISBN:"), gbc);
-        gbc.gridx = 3; gbc.weightx = 0.5;
-        grid.add(detailIsbnVal, gbc);
-
-        // Row 1
-        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0.0;
-        grid.add(new JLabel("Thể loại:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 0.5;
-        grid.add(detailCategoryVal, gbc);
-
-        gbc.gridx = 2; gbc.weightx = 0.0;
-        grid.add(new JLabel("Tác giả:"), gbc);
-        gbc.gridx = 3; gbc.weightx = 0.5;
-        grid.add(detailAuthorsVal, gbc);
-
-        // Row 2
-        gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0.0;
-        grid.add(new JLabel("Nhà xuất bản:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 0.5;
-        grid.add(detailPublisherVal, gbc);
-
-        gbc.gridx = 2; gbc.weightx = 0.0;
-        grid.add(new JLabel("Năm XB & Tái bản:"), gbc);
-        gbc.gridx = 3; gbc.weightx = 0.5;
-        grid.add(detailYearVal, gbc);
-
-        // Row 3
-        gbc.gridx = 0; gbc.gridy = 3; gbc.weightx = 0.0;
-        grid.add(new JLabel("Số lượng bản:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 0.5;
-        grid.add(detailCopiesVal, gbc);
-
-        gbc.gridx = 2; gbc.weightx = 0.0;
-        grid.add(new JLabel("Vị trí kệ:"), gbc);
-        gbc.gridx = 3; gbc.weightx = 0.5;
-        grid.add(detailShelfVal, gbc);
-
-        // Row 4
-        gbc.gridx = 0; gbc.gridy = 4; gbc.weightx = 0.0;
-        grid.add(new JLabel("Trạng thái:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 0.5;
-        grid.add(detailStatusVal, gbc);
-
-        panel.add(grid, BorderLayout.CENTER);
-        return panel;
     }
 
     private void setControlsEnabled(boolean enabled) {
@@ -653,4 +859,46 @@ public class BookManagementPanel extends JPanel {
                     JOptionPane.ERROR_MESSAGE);
         }
     }
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JPanel actionSection;
+    private javax.swing.JTable bookTable;
+    private javax.swing.JPanel bottomBar;
+    private javax.swing.JComboBox<Object> categoryFilterCombo;
+    private javax.swing.JButton deleteBookBtn;
+    private javax.swing.JLabel detailAuthorsVal;
+    private javax.swing.JPanel detailCard;
+    private javax.swing.JLabel detailCategoryVal;
+    private javax.swing.JLabel detailCopiesVal;
+    private javax.swing.JLabel detailHeader;
+    private javax.swing.JLabel detailIsbnVal;
+    private javax.swing.JLabel detailPublisherVal;
+    private javax.swing.JLabel detailShelfVal;
+    private javax.swing.JLabel detailStatusVal;
+    private javax.swing.JLabel detailTitleVal;
+    private javax.swing.JLabel detailYearVal;
+    private javax.swing.JButton editBookBtn;
+    private javax.swing.JPanel gridDetails;
+    private javax.swing.JLabel lblAuthors;
+    private javax.swing.JLabel lblCategory;
+    private javax.swing.JLabel lblCopies;
+    private javax.swing.JLabel lblIsbn;
+    private javax.swing.JLabel lblPublisher;
+    private javax.swing.JLabel lblSearch;
+    private javax.swing.JLabel lblShelf;
+    private javax.swing.JLabel lblStatus;
+    private javax.swing.JLabel lblTitle;
+    private javax.swing.JLabel lblYear;
+    private javax.swing.JButton newBookBtn;
+    private javax.swing.JButton refreshBtn;
+    private javax.swing.JButton resetBtn;
+    private javax.swing.JButton searchBtn;
+    private javax.swing.JTextField searchField;
+    private javax.swing.JPanel searchSection;
+    private javax.swing.JSplitPane splitPane;
+    private javax.swing.JComboBox<String> statusFilterCombo;
+    private javax.swing.JLabel statusLabel;
+    private javax.swing.JScrollPane tableScroll;
+    private javax.swing.JPanel topToolbar;
+    // End of variables declaration//GEN-END:variables
 }

@@ -1,25 +1,15 @@
 package thuvien.client.view.panels;
 
-import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.GridLayout;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JSplitPane;
-import javax.swing.JTable;
-import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
@@ -44,22 +34,7 @@ public class AuditLogManagementPanel extends JPanel {
     private final NetworkClient networkClient;
     private final ClientAuditLogController auditLogController;
 
-    private JComboBox<Integer> limitCombo;
-    private JTextField filterField;
-    private JButton refreshBtn;
-    private JTable logTable;
     private DefaultTableModel tableModel;
-    private JLabel statusLabel;
-
-    // Detail inspector
-    private JLabel detailIdVal;
-    private JLabel detailTimeVal;
-    private JLabel detailUserVal;
-    private JLabel detailActionVal;
-    private JLabel detailEntityVal;
-    private JLabel detailEntityIdVal;
-    private JLabel detailNotesVal;
-
     private List<AuditLogDTO> allLogs = new ArrayList<>();
     private Timer pollTimer;
     private boolean isPolling = false;
@@ -68,68 +43,16 @@ public class AuditLogManagementPanel extends JPanel {
         this.networkClient = networkClient;
         this.auditLogController = new ClientAuditLogController(networkClient);
 
-        initUI();
+        initComponents();
+        initCustom();
         loadAuditLogs();
         startAutoRefresh();
     }
 
-    private void initUI() {
-        setLayout(new BorderLayout(5, 5));
+    private void initCustom() {
         setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
-        setBackground(Color.WHITE);
-
-        // =====================================================================
-        // 1. Top Toolbar
-        // =====================================================================
-        JPanel topToolbar = new JPanel(new BorderLayout(10, 0));
-        topToolbar.setOpaque(false);
         topToolbar.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
 
-        JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-        leftPanel.setOpaque(false);
-
-        JLabel title = new JLabel("Nhật ký Hệ thống & Sự kiện Bảo mật");
-        title.setFont(title.getFont().deriveFont(Font.BOLD, 16.0f));
-        title.setForeground(new Color(25, 45, 80));
-        leftPanel.add(title);
-
-        leftPanel.add(new JLabel("Số lượng:"));
-        limitCombo = new JComboBox<>(new Integer[]{25, 50, 100, 200});
-        limitCombo.setSelectedItem(50);
-        limitCombo.addActionListener(e -> loadAuditLogs());
-        leftPanel.add(limitCombo);
-
-        refreshBtn = new JButton("Làm mới");
-        refreshBtn.addActionListener(e -> loadAuditLogs());
-        leftPanel.add(refreshBtn);
-
-        topToolbar.add(leftPanel, BorderLayout.WEST);
-
-        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        rightPanel.setOpaque(false);
-        rightPanel.add(new JLabel("Tìm kiếm:"));
-        filterField = new JTextField(15);
-        filterField.setToolTipText("Lọc theo hành động, người dùng, đối tượng hoặc chi tiết...");
-        filterField.addActionListener(e -> applyFilter());
-        rightPanel.add(filterField);
-
-        JButton filterBtn = new JButton("Tìm");
-        filterBtn.addActionListener(e -> applyFilter());
-        rightPanel.add(filterBtn);
-
-        JButton resetBtn = new JButton("Xóa bộ lọc");
-        resetBtn.addActionListener(e -> {
-            filterField.setText("");
-            applyFilter();
-        });
-        rightPanel.add(resetBtn);
-
-        topToolbar.add(rightPanel, BorderLayout.EAST);
-        add(topToolbar, BorderLayout.NORTH);
-
-        // =====================================================================
-        // 2. Table & Detail Split
-        // =====================================================================
         String[] columnNames = {"Mã", "Thời gian", "Người thực hiện", "Hành động", "Đối tượng", "Mã ĐT", "Chi tiết thao tác"};
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
@@ -138,7 +61,7 @@ public class AuditLogManagementPanel extends JPanel {
             }
         };
 
-        logTable = new JTable(tableModel);
+        logTable.setModel(tableModel);
         logTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         logTable.setRowHeight(25);
         logTable.getTableHeader().setFont(logTable.getTableHeader().getFont().deriveFont(Font.BOLD));
@@ -157,70 +80,296 @@ public class AuditLogManagementPanel extends JPanel {
             }
         });
 
-        JScrollPane tableScroll = new JScrollPane(logTable);
         tableScroll.getViewport().setBackground(Color.WHITE);
 
-        // Detail Inspector Panel
-        JPanel detailCard = createDetailPanel();
-
-        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, tableScroll, detailCard);
-        splitPane.setResizeWeight(0.72);
-        splitPane.setContinuousLayout(true);
-        splitPane.setBorder(null);
-
-        add(splitPane, BorderLayout.CENTER);
-
-        // =====================================================================
-        // 3. Status Bar
-        // =====================================================================
-        statusLabel = new JLabel("Sẵn sàng.");
-        statusLabel.setFont(statusLabel.getFont().deriveFont(Font.ITALIC, 11.5f));
-        statusLabel.setForeground(new Color(110, 115, 125));
-        statusLabel.setBorder(BorderFactory.createEmptyBorder(6, 4, 2, 4));
-        add(statusLabel, BorderLayout.SOUTH);
-    }
-
-    private JPanel createDetailPanel() {
-        JPanel panel = new JPanel(new BorderLayout(5, 5));
-        panel.setBackground(new Color(248, 250, 252));
-        panel.setBorder(BorderFactory.createCompoundBorder(
+        detailCard.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 235)),
                 BorderFactory.createEmptyBorder(8, 12, 8, 12)
         ));
-
-        JLabel title = new JLabel("Chi tiết Bản ghi Nhật ký");
-        title.setFont(title.getFont().deriveFont(Font.BOLD, 12.5f));
-        title.setForeground(new Color(50, 60, 75));
-        panel.add(title, BorderLayout.NORTH);
-
-        JPanel grid = new JPanel(new GridLayout(4, 2, 10, 4));
-        grid.setOpaque(false);
-
-        detailIdVal = addField(grid, "Mã nhật ký:");
-        detailTimeVal = addField(grid, "Thời gian ghi nhận:");
-        detailUserVal = addField(grid, "Tài khoản thực hiện:");
-        detailActionVal = addField(grid, "Loại hành động:");
-        detailEntityVal = addField(grid, "Đối tượng tác động:");
-        detailEntityIdVal = addField(grid, "Mã đối tượng:");
-        detailNotesVal = addField(grid, "Chi tiết thao tác:");
-
-        panel.add(grid, BorderLayout.CENTER);
-        return panel;
+        splitPane.setBorder(null);
+        statusLabel.setBorder(BorderFactory.createEmptyBorder(6, 4, 2, 4));
     }
 
-    private JLabel addField(JPanel panel, String labelText) {
-        JPanel fPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        fPanel.setOpaque(false);
-        JLabel lbl = new JLabel(labelText);
-        lbl.setFont(lbl.getFont().deriveFont(Font.BOLD, 11.5f));
-        lbl.setForeground(new Color(80, 85, 95));
-        JLabel val = new JLabel("—");
-        val.setFont(val.getFont().deriveFont(Font.PLAIN, 11.5f));
-        fPanel.add(lbl);
-        fPanel.add(val);
-        panel.add(fPanel);
-        return val;
-    }
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        topToolbar = new javax.swing.JPanel();
+        leftPanel = new javax.swing.JPanel();
+        titleLabel = new javax.swing.JLabel();
+        lblLimit = new javax.swing.JLabel();
+        limitCombo = new javax.swing.JComboBox<Integer>();
+        refreshBtn = new javax.swing.JButton();
+        rightPanel = new javax.swing.JPanel();
+        lblSearch = new javax.swing.JLabel();
+        filterField = new javax.swing.JTextField();
+        filterBtn = new javax.swing.JButton();
+        resetBtn = new javax.swing.JButton();
+        splitPane = new javax.swing.JSplitPane();
+        tableScroll = new javax.swing.JScrollPane();
+        logTable = new javax.swing.JTable();
+        detailCard = new javax.swing.JPanel();
+        detailTitle = new javax.swing.JLabel();
+        detailGrid = new javax.swing.JPanel();
+        pnlDetailId = new javax.swing.JPanel();
+        lblDetailId = new javax.swing.JLabel();
+        detailIdVal = new javax.swing.JLabel();
+        pnlDetailTime = new javax.swing.JPanel();
+        lblDetailTime = new javax.swing.JLabel();
+        detailTimeVal = new javax.swing.JLabel();
+        pnlDetailUser = new javax.swing.JPanel();
+        lblDetailUser = new javax.swing.JLabel();
+        detailUserVal = new javax.swing.JLabel();
+        pnlDetailAction = new javax.swing.JPanel();
+        lblDetailAction = new javax.swing.JLabel();
+        detailActionVal = new javax.swing.JLabel();
+        pnlDetailEntity = new javax.swing.JPanel();
+        lblDetailEntity = new javax.swing.JLabel();
+        detailEntityVal = new javax.swing.JLabel();
+        pnlDetailEntityId = new javax.swing.JPanel();
+        lblDetailEntityId = new javax.swing.JLabel();
+        detailEntityIdVal = new javax.swing.JLabel();
+        pnlDetailNotes = new javax.swing.JPanel();
+        lblDetailNotes = new javax.swing.JLabel();
+        detailNotesVal = new javax.swing.JLabel();
+        statusLabel = new javax.swing.JLabel();
+
+        setBackground(new java.awt.Color(255, 255, 255));
+        setLayout(new java.awt.BorderLayout(5, 5));
+
+        topToolbar.setOpaque(false);
+        topToolbar.setLayout(new java.awt.BorderLayout(10, 0));
+
+        leftPanel.setOpaque(false);
+        leftPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
+
+        titleLabel.setFont(new java.awt.Font("Segoe UI", 1, 16)); // NOI18N
+        titleLabel.setForeground(new java.awt.Color(25, 45, 80));
+        titleLabel.setText("Nhật ký Hệ thống & Sự kiện Bảo mật");
+        leftPanel.add(titleLabel);
+
+        lblLimit.setText("Số lượng:");
+        leftPanel.add(lblLimit);
+
+        limitCombo.setModel(new javax.swing.DefaultComboBoxModel(new Integer[] { 25, 50, 100, 200 }));
+        limitCombo.setSelectedItem(50);
+        limitCombo.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                limitComboActionPerformed(evt);
+            }
+        });
+        leftPanel.add(limitCombo);
+
+        refreshBtn.setText("Làm mới");
+        refreshBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                refreshBtnActionPerformed(evt);
+            }
+        });
+        leftPanel.add(refreshBtn);
+
+        topToolbar.add(leftPanel, java.awt.BorderLayout.WEST);
+
+        rightPanel.setOpaque(false);
+        rightPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 0));
+
+        lblSearch.setText("Tìm kiếm:");
+        rightPanel.add(lblSearch);
+
+        filterField.setColumns(15);
+        filterField.setToolTipText("Lọc theo hành động, người dùng, đối tượng hoặc chi tiết...");
+        filterField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                filterFieldActionPerformed(evt);
+            }
+        });
+        rightPanel.add(filterField);
+
+        filterBtn.setText("Tìm");
+        filterBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                filterBtnActionPerformed(evt);
+            }
+        });
+        rightPanel.add(filterBtn);
+
+        resetBtn.setText("Xóa bộ lọc");
+        resetBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                resetBtnActionPerformed(evt);
+            }
+        });
+        rightPanel.add(resetBtn);
+
+        topToolbar.add(rightPanel, java.awt.BorderLayout.EAST);
+
+        add(topToolbar, java.awt.BorderLayout.NORTH);
+
+        splitPane.setOrientation(javax.swing.JSplitPane.VERTICAL_SPLIT);
+        splitPane.setResizeWeight(0.72);
+        splitPane.setContinuousLayout(true);
+
+        logTable.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+
+            },
+            new String [] {
+                "Mã", "Thời gian", "Người thực hiện", "Hành động", "Đối tượng", "Mã ĐT", "Chi tiết thao tác"
+            }
+        ) {
+            boolean[] canEdit = new boolean [] {
+                false, false, false, false, false, false, false
+            };
+
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit [columnIndex];
+            }
+        });
+        logTable.setRowHeight(25);
+        logTable.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+        tableScroll.setViewportView(logTable);
+
+        splitPane.setTopComponent(tableScroll);
+
+        detailCard.setBackground(new java.awt.Color(248, 250, 252));
+        detailCard.setLayout(new java.awt.BorderLayout(5, 5));
+
+        detailTitle.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        detailTitle.setForeground(new java.awt.Color(50, 60, 75));
+        detailTitle.setText("Chi tiết Bản ghi Nhật ký");
+        detailCard.add(detailTitle, java.awt.BorderLayout.NORTH);
+
+        detailGrid.setOpaque(false);
+        detailGrid.setLayout(new java.awt.GridLayout(4, 2, 10, 4));
+
+        pnlDetailId.setOpaque(false);
+        pnlDetailId.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 0));
+
+        lblDetailId.setFont(new java.awt.Font("Segoe UI", 1, 11)); // NOI18N
+        lblDetailId.setForeground(new java.awt.Color(80, 85, 95));
+        lblDetailId.setText("Mã nhật ký:");
+        pnlDetailId.add(lblDetailId);
+
+        detailIdVal.setText("—");
+        pnlDetailId.add(detailIdVal);
+
+        detailGrid.add(pnlDetailId);
+
+        pnlDetailTime.setOpaque(false);
+        pnlDetailTime.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 0));
+
+        lblDetailTime.setFont(new java.awt.Font("Segoe UI", 1, 11)); // NOI18N
+        lblDetailTime.setForeground(new java.awt.Color(80, 85, 95));
+        lblDetailTime.setText("Thời gian ghi nhận:");
+        pnlDetailTime.add(lblDetailTime);
+
+        detailTimeVal.setText("—");
+        pnlDetailTime.add(detailTimeVal);
+
+        detailGrid.add(pnlDetailTime);
+
+        pnlDetailUser.setOpaque(false);
+        pnlDetailUser.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 0));
+
+        lblDetailUser.setFont(new java.awt.Font("Segoe UI", 1, 11)); // NOI18N
+        lblDetailUser.setForeground(new java.awt.Color(80, 85, 95));
+        lblDetailUser.setText("Tài khoản thực hiện:");
+        pnlDetailUser.add(lblDetailUser);
+
+        detailUserVal.setText("—");
+        pnlDetailUser.add(detailUserVal);
+
+        detailGrid.add(pnlDetailUser);
+
+        pnlDetailAction.setOpaque(false);
+        pnlDetailAction.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 0));
+
+        lblDetailAction.setFont(new java.awt.Font("Segoe UI", 1, 11)); // NOI18N
+        lblDetailAction.setForeground(new java.awt.Color(80, 85, 95));
+        lblDetailAction.setText("Loại hành động:");
+        pnlDetailAction.add(lblDetailAction);
+
+        detailActionVal.setText("—");
+        pnlDetailAction.add(detailActionVal);
+
+        detailGrid.add(pnlDetailAction);
+
+        pnlDetailEntity.setOpaque(false);
+        pnlDetailEntity.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 0));
+
+        lblDetailEntity.setFont(new java.awt.Font("Segoe UI", 1, 11)); // NOI18N
+        lblDetailEntity.setForeground(new java.awt.Color(80, 85, 95));
+        lblDetailEntity.setText("Đối tượng tác động:");
+        pnlDetailEntity.add(lblDetailEntity);
+
+        detailEntityVal.setText("—");
+        pnlDetailEntity.add(detailEntityVal);
+
+        detailGrid.add(pnlDetailEntity);
+
+        pnlDetailEntityId.setOpaque(false);
+        pnlDetailEntityId.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 0));
+
+        lblDetailEntityId.setFont(new java.awt.Font("Segoe UI", 1, 11)); // NOI18N
+        lblDetailEntityId.setForeground(new java.awt.Color(80, 85, 95));
+        lblDetailEntityId.setText("Mã đối tượng:");
+        pnlDetailEntityId.add(lblDetailEntityId);
+
+        detailEntityIdVal.setText("—");
+        pnlDetailEntityId.add(detailEntityIdVal);
+
+        detailGrid.add(pnlDetailEntityId);
+
+        pnlDetailNotes.setOpaque(false);
+        pnlDetailNotes.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 0));
+
+        lblDetailNotes.setFont(new java.awt.Font("Segoe UI", 1, 11)); // NOI18N
+        lblDetailNotes.setForeground(new java.awt.Color(80, 85, 95));
+        lblDetailNotes.setText("Chi tiết thao tác:");
+        pnlDetailNotes.add(lblDetailNotes);
+
+        detailNotesVal.setText("—");
+        pnlDetailNotes.add(detailNotesVal);
+
+        detailGrid.add(pnlDetailNotes);
+
+        detailCard.add(detailGrid, java.awt.BorderLayout.CENTER);
+
+        splitPane.setBottomComponent(detailCard);
+
+        add(splitPane, java.awt.BorderLayout.CENTER);
+
+        statusLabel.setFont(new java.awt.Font("Segoe UI", 2, 11)); // NOI18N
+        statusLabel.setForeground(new java.awt.Color(110, 115, 125));
+        statusLabel.setText("Sẵn sàng.");
+        add(statusLabel, java.awt.BorderLayout.SOUTH);
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void limitComboActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_limitComboActionPerformed
+        loadAuditLogs();
+    }//GEN-LAST:event_limitComboActionPerformed
+
+    private void refreshBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshBtnActionPerformed
+        loadAuditLogs();
+    }//GEN-LAST:event_refreshBtnActionPerformed
+
+    private void filterFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_filterFieldActionPerformed
+        applyFilter();
+    }//GEN-LAST:event_filterFieldActionPerformed
+
+    private void filterBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_filterBtnActionPerformed
+        applyFilter();
+    }//GEN-LAST:event_filterBtnActionPerformed
+
+    private void resetBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetBtnActionPerformed
+        filterField.setText("");
+        applyFilter();
+    }//GEN-LAST:event_resetBtnActionPerformed
 
     private void startAutoRefresh() {
         pollTimer = new Timer(6000, e -> {
@@ -402,4 +551,46 @@ public class AuditLogManagementPanel extends JPanel {
                     JOptionPane.ERROR_MESSAGE);
         }
     }
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JPanel detailCard;
+    private javax.swing.JPanel detailGrid;
+    private javax.swing.JLabel detailIdVal;
+    private javax.swing.JLabel detailTimeVal;
+    private javax.swing.JLabel detailUserVal;
+    private javax.swing.JLabel detailActionVal;
+    private javax.swing.JLabel detailEntityVal;
+    private javax.swing.JLabel detailEntityIdVal;
+    private javax.swing.JLabel detailNotesVal;
+    private javax.swing.JLabel detailTitle;
+    private javax.swing.JButton filterBtn;
+    private javax.swing.JTextField filterField;
+    private javax.swing.JLabel lblDetailAction;
+    private javax.swing.JLabel lblDetailEntity;
+    private javax.swing.JLabel lblDetailEntityId;
+    private javax.swing.JLabel lblDetailId;
+    private javax.swing.JLabel lblDetailNotes;
+    private javax.swing.JLabel lblDetailTime;
+    private javax.swing.JLabel lblDetailUser;
+    private javax.swing.JLabel lblLimit;
+    private javax.swing.JLabel lblSearch;
+    private javax.swing.JComboBox<Integer> limitCombo;
+    private javax.swing.JTable logTable;
+    private javax.swing.JPanel leftPanel;
+    private javax.swing.JPanel pnlDetailAction;
+    private javax.swing.JPanel pnlDetailEntity;
+    private javax.swing.JPanel pnlDetailEntityId;
+    private javax.swing.JPanel pnlDetailId;
+    private javax.swing.JPanel pnlDetailNotes;
+    private javax.swing.JPanel pnlDetailTime;
+    private javax.swing.JPanel pnlDetailUser;
+    private javax.swing.JButton refreshBtn;
+    private javax.swing.JButton resetBtn;
+    private javax.swing.JPanel rightPanel;
+    private javax.swing.JSplitPane splitPane;
+    private javax.swing.JLabel statusLabel;
+    private javax.swing.JScrollPane tableScroll;
+    private javax.swing.JLabel titleLabel;
+    private javax.swing.JPanel topToolbar;
+    // End of variables declaration//GEN-END:variables
 }

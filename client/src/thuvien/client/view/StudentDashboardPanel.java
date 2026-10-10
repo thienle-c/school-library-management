@@ -1,21 +1,10 @@
 package thuvien.client.view;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.GridLayout;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
-import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JSplitPane;
-import javax.swing.JTable;
 import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
 import thuvien.client.controller.ClientDashboardController;
@@ -33,15 +22,8 @@ public class StudentDashboardPanel extends JPanel {
     private final NetworkClient networkClient;
     private final ClientDashboardController dashboardController;
 
-    private JLabel welcomeLabel;
-    private JLabel activeBorrowsVal;
-    private JLabel overdueBorrowsVal;
-    private JLabel unpaidFinesVal;
-    private JLabel pendingReservationsVal;
-
     private DefaultTableModel borrowTableModel;
     private DefaultTableModel reservationTableModel;
-    private JButton refreshButton;
 
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("dd/MM/yyyy");
     private static final NumberFormat CURRENCY_FORMAT = NumberFormat.getInstance(new Locale("vi", "VN"));
@@ -49,51 +31,13 @@ public class StudentDashboardPanel extends JPanel {
     public StudentDashboardPanel(NetworkClient networkClient) {
         this.networkClient = networkClient;
         this.dashboardController = new ClientDashboardController(networkClient);
-        initUI();
+        initComponents();
+        initCustom();
         loadData();
     }
 
-    private void initUI() {
-        setLayout(new BorderLayout(10, 10));
-        setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
-
-        // Header
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        welcomeLabel = new JLabel("Đang tải thông tin sinh viên...");
-        welcomeLabel.setFont(welcomeLabel.getFont().deriveFont(Font.BOLD, 18.0f));
-
-        refreshButton = new JButton("Làm mới dữ liệu");
-        refreshButton.setFont(refreshButton.getFont().deriveFont(Font.PLAIN, 12.0f));
-        refreshButton.addActionListener(e -> loadData());
-
-        headerPanel.add(welcomeLabel, BorderLayout.WEST);
-        headerPanel.add(refreshButton, BorderLayout.EAST);
-        add(headerPanel, BorderLayout.NORTH);
-
-        // Center Content
-        JPanel centerPanel = new JPanel(new BorderLayout(10, 15));
-
-        // Metrics Grid (4 cards)
-        JPanel cardsPanel = new JPanel(new GridLayout(1, 4, 15, 0));
-        cardsPanel.setPreferredSize(new Dimension(0, 100));
-
-        activeBorrowsVal = new JLabel("0", JLabel.CENTER);
-        overdueBorrowsVal = new JLabel("0", JLabel.CENTER);
-        unpaidFinesVal = new JLabel("0 đ", JLabel.CENTER);
-        pendingReservationsVal = new JLabel("0", JLabel.CENTER);
-
-        cardsPanel.add(createMetricCard("SÁCH ĐANG MƯỢN", activeBorrowsVal, new Color(41, 128, 185)));
-        cardsPanel.add(createMetricCard("SÁCH QUÁ HẠN", overdueBorrowsVal, new Color(192, 57, 43)));
-        cardsPanel.add(createMetricCard("TIỀN PHẠT CHƯA ĐÓNG", unpaidFinesVal, new Color(211, 84, 0)));
-        cardsPanel.add(createMetricCard("YÊU CẦU ĐẶT TRƯỚC", pendingReservationsVal, new Color(142, 68, 173)));
-
-        centerPanel.add(cardsPanel, BorderLayout.NORTH);
-
-        // Split Pane with 2 Tables: Recent Borrows & Recent Reservations
-        JPanel borrowSection = new JPanel(new BorderLayout(0, 6));
-        JLabel borrowLbl = new JLabel("Danh Sách Mượn Gần Đây");
-        borrowLbl.setFont(borrowLbl.getFont().deriveFont(Font.BOLD, 14.0f));
-        borrowSection.add(borrowLbl, BorderLayout.NORTH);
+    private void initCustom() {
+        setBorder(javax.swing.BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
         borrowTableModel = new DefaultTableModel(new String[]{"Mã mượn", "Tên sách", "Ngày mượn", "Hạn trả", "Ngày trả", "Trạng thái"}, 0) {
             @Override
@@ -101,14 +45,7 @@ public class StudentDashboardPanel extends JPanel {
                 return false;
             }
         };
-        JTable borrowTable = new JTable(borrowTableModel);
-        borrowTable.setRowHeight(24);
-        borrowSection.add(new JScrollPane(borrowTable), BorderLayout.CENTER);
-
-        JPanel resSection = new JPanel(new BorderLayout(0, 6));
-        JLabel resLbl = new JLabel("Yêu Cầu Đặt Trước Sách");
-        resLbl.setFont(resLbl.getFont().deriveFont(Font.BOLD, 14.0f));
-        resSection.add(resLbl, BorderLayout.NORTH);
+        borrowTable.setModel(borrowTableModel);
 
         reservationTableModel = new DefaultTableModel(new String[]{"Mã ĐT", "Tên sách", "Ngày đặt", "Hạn nhận", "Trạng thái"}, 0) {
             @Override
@@ -116,37 +53,180 @@ public class StudentDashboardPanel extends JPanel {
                 return false;
             }
         };
-        JTable reservationTable = new JTable(reservationTableModel);
-        reservationTable.setRowHeight(24);
-        resSection.add(new JScrollPane(reservationTable), BorderLayout.CENTER);
+        reservationTable.setModel(reservationTableModel);
+    }
 
-        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, borrowSection, resSection);
-        splitPane.setResizeWeight(0.55);
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        headerPanel = new javax.swing.JPanel();
+        welcomeLabel = new javax.swing.JLabel();
+        refreshButton = new javax.swing.JButton();
+        centerPanel = new javax.swing.JPanel();
+        cardsPanel = new javax.swing.JPanel();
+        cardBorrows = new javax.swing.JPanel();
+        lblCard1Title = new javax.swing.JLabel();
+        activeBorrowsVal = new javax.swing.JLabel();
+        cardOverdue = new javax.swing.JPanel();
+        lblCard2Title = new javax.swing.JLabel();
+        overdueBorrowsVal = new javax.swing.JLabel();
+        cardFines = new javax.swing.JPanel();
+        lblCard3Title = new javax.swing.JLabel();
+        unpaidFinesVal = new javax.swing.JLabel();
+        cardReservations = new javax.swing.JPanel();
+        lblCard4Title = new javax.swing.JLabel();
+        pendingReservationsVal = new javax.swing.JLabel();
+        splitPane = new javax.swing.JSplitPane();
+        borrowSection = new javax.swing.JPanel();
+        borrowLbl = new javax.swing.JLabel();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        borrowTable = new javax.swing.JTable();
+        resSection = new javax.swing.JPanel();
+        resLbl = new javax.swing.JLabel();
+        jScrollPane2 = new javax.swing.JScrollPane();
+        reservationTable = new javax.swing.JTable();
+
+        setLayout(new java.awt.BorderLayout(10, 10));
+
+        headerPanel.setLayout(new java.awt.BorderLayout());
+
+        welcomeLabel.setFont(new java.awt.Font("Tahoma", 1, 18)); // NOI18N
+        welcomeLabel.setText("Đang tải thông tin sinh viên...");
+        headerPanel.add(welcomeLabel, java.awt.BorderLayout.WEST);
+
+        refreshButton.setText("Làm mới dữ liệu");
+        refreshButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                refreshButtonActionPerformed(evt);
+            }
+        });
+        headerPanel.add(refreshButton, java.awt.BorderLayout.EAST);
+
+        add(headerPanel, java.awt.BorderLayout.NORTH);
+
+        centerPanel.setLayout(new java.awt.BorderLayout(10, 15));
+
+        cardsPanel.setPreferredSize(new java.awt.Dimension(0, 100));
+        cardsPanel.setLayout(new java.awt.GridLayout(1, 4, 15, 0));
+
+        cardBorrows.setBackground(new java.awt.Color(255, 255, 255));
+        cardBorrows.setBorder(javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(220, 220, 220)), javax.swing.BorderFactory.createEmptyBorder(12, 10, 10, 10)));
+        cardBorrows.setLayout(new java.awt.BorderLayout(0, 4));
+
+        lblCard1Title.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
+        lblCard1Title.setForeground(new java.awt.Color(110, 110, 110));
+        lblCard1Title.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        lblCard1Title.setText("SÁCH ĐANG MƯỢN");
+        cardBorrows.add(lblCard1Title, java.awt.BorderLayout.NORTH);
+
+        activeBorrowsVal.setFont(new java.awt.Font("Tahoma", 1, 22)); // NOI18N
+        activeBorrowsVal.setForeground(new java.awt.Color(41, 128, 185));
+        activeBorrowsVal.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        activeBorrowsVal.setText("0");
+        cardBorrows.add(activeBorrowsVal, java.awt.BorderLayout.CENTER);
+
+        cardsPanel.add(cardBorrows);
+
+        cardOverdue.setBackground(new java.awt.Color(255, 255, 255));
+        cardOverdue.setBorder(javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(220, 220, 220)), javax.swing.BorderFactory.createEmptyBorder(12, 10, 10, 10)));
+        cardOverdue.setLayout(new java.awt.BorderLayout(0, 4));
+
+        lblCard2Title.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
+        lblCard2Title.setForeground(new java.awt.Color(110, 110, 110));
+        lblCard2Title.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        lblCard2Title.setText("SÁCH QUÁ HẠN");
+        cardOverdue.add(lblCard2Title, java.awt.BorderLayout.NORTH);
+
+        overdueBorrowsVal.setFont(new java.awt.Font("Tahoma", 1, 22)); // NOI18N
+        overdueBorrowsVal.setForeground(new java.awt.Color(192, 57, 43));
+        overdueBorrowsVal.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        overdueBorrowsVal.setText("0");
+        cardOverdue.add(overdueBorrowsVal, java.awt.BorderLayout.CENTER);
+
+        cardsPanel.add(cardOverdue);
+
+        cardFines.setBackground(new java.awt.Color(255, 255, 255));
+        cardFines.setBorder(javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(220, 220, 220)), javax.swing.BorderFactory.createEmptyBorder(12, 10, 10, 10)));
+        cardFines.setLayout(new java.awt.BorderLayout(0, 4));
+
+        lblCard3Title.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
+        lblCard3Title.setForeground(new java.awt.Color(110, 110, 110));
+        lblCard3Title.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        lblCard3Title.setText("TIỀN PHẠT CHƯA ĐÓNG");
+        cardFines.add(lblCard3Title, java.awt.BorderLayout.NORTH);
+
+        unpaidFinesVal.setFont(new java.awt.Font("Tahoma", 1, 22)); // NOI18N
+        unpaidFinesVal.setForeground(new java.awt.Color(211, 84, 0));
+        unpaidFinesVal.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        unpaidFinesVal.setText("0 đ");
+        cardFines.add(unpaidFinesVal, java.awt.BorderLayout.CENTER);
+
+        cardsPanel.add(cardFines);
+
+        cardReservations.setBackground(new java.awt.Color(255, 255, 255));
+        cardReservations.setBorder(javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(220, 220, 220)), javax.swing.BorderFactory.createEmptyBorder(12, 10, 10, 10)));
+        cardReservations.setLayout(new java.awt.BorderLayout(0, 4));
+
+        lblCard4Title.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
+        lblCard4Title.setForeground(new java.awt.Color(110, 110, 110));
+        lblCard4Title.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        lblCard4Title.setText("YÊU CẦU ĐẶT TRƯỚC");
+        cardReservations.add(lblCard4Title, java.awt.BorderLayout.NORTH);
+
+        pendingReservationsVal.setFont(new java.awt.Font("Tahoma", 1, 22)); // NOI18N
+        pendingReservationsVal.setForeground(new java.awt.Color(142, 68, 173));
+        pendingReservationsVal.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        pendingReservationsVal.setText("0");
+        cardReservations.add(pendingReservationsVal, java.awt.BorderLayout.CENTER);
+
+        cardsPanel.add(cardReservations);
+
+        centerPanel.add(cardsPanel, java.awt.BorderLayout.NORTH);
+
         splitPane.setDividerSize(6);
+        splitPane.setOrientation(javax.swing.JSplitPane.VERTICAL_SPLIT);
+        splitPane.setResizeWeight(0.55);
 
-        centerPanel.add(splitPane, BorderLayout.CENTER);
-        add(centerPanel, BorderLayout.CENTER);
-    }
+        borrowSection.setLayout(new java.awt.BorderLayout(0, 6));
 
-    private JPanel createMetricCard(String title, JLabel valueLabel, Color accentColor) {
-        JPanel card = new JPanel(new BorderLayout(0, 4));
-        card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(220, 220, 220), 1),
-                BorderFactory.createEmptyBorder(12, 10, 10, 10)
-        ));
-        card.setBackground(Color.WHITE);
+        borrowLbl.setFont(new java.awt.Font("Tahoma", 1, 14)); // NOI18N
+        borrowLbl.setText("Danh Sách Mượn Gần Đây");
+        borrowSection.add(borrowLbl, java.awt.BorderLayout.NORTH);
 
-        JLabel titleLabel = new JLabel(title, JLabel.CENTER);
-        titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 11.0f));
-        titleLabel.setForeground(new Color(110, 110, 110));
+        borrowTable.setRowHeight(24);
+        jScrollPane1.setViewportView(borrowTable);
 
-        valueLabel.setFont(valueLabel.getFont().deriveFont(Font.BOLD, 22.0f));
-        valueLabel.setForeground(accentColor);
+        borrowSection.add(jScrollPane1, java.awt.BorderLayout.CENTER);
 
-        card.add(titleLabel, BorderLayout.NORTH);
-        card.add(valueLabel, BorderLayout.CENTER);
-        return card;
-    }
+        splitPane.setLeftComponent(borrowSection);
+
+        resSection.setLayout(new java.awt.BorderLayout(0, 6));
+
+        resLbl.setFont(new java.awt.Font("Tahoma", 1, 14)); // NOI18N
+        resLbl.setText("Yêu Cầu Đặt Trước Sách");
+        resSection.add(resLbl, java.awt.BorderLayout.NORTH);
+
+        reservationTable.setRowHeight(24);
+        jScrollPane2.setViewportView(reservationTable);
+
+        resSection.add(jScrollPane2, java.awt.BorderLayout.CENTER);
+
+        splitPane.setRightComponent(resSection);
+
+        centerPanel.add(splitPane, java.awt.BorderLayout.CENTER);
+
+        add(centerPanel, java.awt.BorderLayout.CENTER);
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void refreshButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshButtonActionPerformed
+        loadData();
+    }//GEN-LAST:event_refreshButtonActionPerformed
 
     public void loadData() {
         refreshButton.setEnabled(false);
@@ -241,4 +321,33 @@ public class StudentDashboardPanel extends JPanel {
             default: return status;
         }
     }
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JLabel activeBorrowsVal;
+    private javax.swing.JLabel borrowLbl;
+    private javax.swing.JPanel borrowSection;
+    private javax.swing.JTable borrowTable;
+    private javax.swing.JPanel cardBorrows;
+    private javax.swing.JPanel cardFines;
+    private javax.swing.JPanel cardOverdue;
+    private javax.swing.JPanel cardReservations;
+    private javax.swing.JPanel cardsPanel;
+    private javax.swing.JPanel centerPanel;
+    private javax.swing.JPanel headerPanel;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JScrollPane jScrollPane2;
+    private javax.swing.JLabel lblCard1Title;
+    private javax.swing.JLabel lblCard2Title;
+    private javax.swing.JLabel lblCard3Title;
+    private javax.swing.JLabel lblCard4Title;
+    private javax.swing.JLabel overdueBorrowsVal;
+    private javax.swing.JLabel pendingReservationsVal;
+    private javax.swing.JButton refreshButton;
+    private javax.swing.JLabel resLbl;
+    private javax.swing.JPanel resSection;
+    private javax.swing.JTable reservationTable;
+    private javax.swing.JSplitPane splitPane;
+    private javax.swing.JLabel unpaidFinesVal;
+    private javax.swing.JLabel welcomeLabel;
+    // End of variables declaration//GEN-END:variables
 }

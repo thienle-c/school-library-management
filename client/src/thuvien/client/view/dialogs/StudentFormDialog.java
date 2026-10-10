@@ -1,23 +1,8 @@
 package thuvien.client.view.dialogs;
 
-import java.awt.BorderLayout;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.awt.Window;
-import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JDialog;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JSpinner;
-import javax.swing.JTextField;
-import javax.swing.SpinnerNumberModel;
 import thuvien.client.controller.ClientStudentController;
 import thuvien.client.network.NetworkClient;
 import thuvien.client.view.common.AsyncWorker;
@@ -32,130 +17,229 @@ public class StudentFormDialog extends JDialog {
     private final StudentDTO studentToEdit;
     private boolean saved = false;
 
-    private JTextField codeField;
-    private JTextField nameField;
-    private JTextField classField;
-    private JTextField phoneField;
-    private JTextField emailField;
-    private JSpinner limitSpinner;
-    private JComboBox<StudentStatus> statusCombo;
-
-    private JButton saveButton;
-    private JButton cancelButton;
-    private JLabel statusLabel;
-
     public StudentFormDialog(Window owner, NetworkClient networkClient, StudentDTO studentToEdit) {
-        super(owner, studentToEdit == null ? "Thêm Sinh Viên Mới" : "Chỉnh Sửa Sinh Viên (" + studentToEdit.getStudentCode() + ")", ModalityType.APPLICATION_MODAL);
+        super(owner, ModalityType.APPLICATION_MODAL);
         this.studentController = new ClientStudentController(networkClient);
         this.studentToEdit = studentToEdit;
-
-        initUI();
+        initComponents();
+        initCustom();
     }
 
-    private void initUI() {
+    private void initCustom() {
+        setTitle(studentToEdit == null ? "Thêm Sinh Viên Mới" : "Chỉnh Sửa Sinh Viên (" + studentToEdit.getStudentCode() + ")");
+        ((javax.swing.JComponent) getContentPane()).setBorder(javax.swing.BorderFactory.createEmptyBorder(15, 20, 15, 20));
         setSize(480, 430);
         setLocationRelativeTo(getOwner());
-        setResizable(false);
+        getRootPane().setDefaultButton(saveButton);
 
-        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
-
-        JPanel formPanel = new JPanel(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(6, 6, 6, 6);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-
-        int row = 0;
-
-        // Code
-        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.0;
-        formPanel.add(new JLabel("Mã sinh viên:*"), gbc);
-        gbc.gridx = 1; gbc.weightx = 1.0;
-        codeField = new JTextField(studentToEdit != null ? studentToEdit.getStudentCode() : "", 15);
         if (studentToEdit != null) {
+            codeField.setText(studentToEdit.getStudentCode());
             codeField.setEditable(false);
-        }
-        formPanel.add(codeField, gbc);
-        row++;
-
-        // Full Name
-        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.0;
-        formPanel.add(new JLabel("Họ và tên:*"), gbc);
-        gbc.gridx = 1; gbc.weightx = 1.0;
-        nameField = new JTextField(studentToEdit != null ? studentToEdit.getFullName() : "", 15);
-        formPanel.add(nameField, gbc);
-        row++;
-
-        // Class Name
-        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.0;
-        formPanel.add(new JLabel("Lớp / Khóa:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 1.0;
-        classField = new JTextField(studentToEdit != null && studentToEdit.getClassName() != null ? studentToEdit.getClassName() : "", 15);
-        formPanel.add(classField, gbc);
-        row++;
-
-        // Phone
-        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.0;
-        formPanel.add(new JLabel("Số điện thoại:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 1.0;
-        phoneField = new JTextField(studentToEdit != null && studentToEdit.getPhone() != null ? studentToEdit.getPhone() : "", 15);
-        formPanel.add(phoneField, gbc);
-        row++;
-
-        // Email
-        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.0;
-        formPanel.add(new JLabel("Địa chỉ Email:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 1.0;
-        emailField = new JTextField(studentToEdit != null && studentToEdit.getEmail() != null ? studentToEdit.getEmail() : "", 15);
-        formPanel.add(emailField, gbc);
-        row++;
-
-        // Max Borrow Limit
-        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.0;
-        formPanel.add(new JLabel("Hạn mức mượn:*"), gbc);
-        gbc.gridx = 1; gbc.weightx = 1.0;
-        int limit = studentToEdit != null ? studentToEdit.getMaxBorrowLimit() : 5;
-        limitSpinner = new JSpinner(new SpinnerNumberModel(limit, 1, 20, 1));
-        formPanel.add(limitSpinner, gbc);
-        row++;
-
-        // Status
-        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.0;
-        formPanel.add(new JLabel("Trạng thái:*"), gbc);
-        gbc.gridx = 1; gbc.weightx = 1.0;
-        statusCombo = new JComboBox<>(StudentStatus.values());
-        if (studentToEdit != null && studentToEdit.getStatus() != null) {
-            statusCombo.setSelectedItem(studentToEdit.getStatus());
+            nameField.setText(studentToEdit.getFullName());
+            classField.setText(studentToEdit.getClassName() != null ? studentToEdit.getClassName() : "");
+            phoneField.setText(studentToEdit.getPhone() != null ? studentToEdit.getPhone() : "");
+            emailField.setText(studentToEdit.getEmail() != null ? studentToEdit.getEmail() : "");
+            limitSpinner.setValue(studentToEdit.getMaxBorrowLimit());
+            if (studentToEdit.getStatus() != null) {
+                statusCombo.setSelectedItem(studentToEdit.getStatus());
+            }
+            saveButton.setText("Lưu Thay Đổi");
         } else {
             statusCombo.setSelectedItem(StudentStatus.ACTIVE);
+            saveButton.setText("Tạo Sinh Viên");
         }
-        formPanel.add(statusCombo, gbc);
+    }
 
-        mainPanel.add(formPanel, BorderLayout.CENTER);
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+        java.awt.GridBagConstraints gridBagConstraints;
 
-        // Bottom area
-        JPanel bottomPanel = new JPanel(new BorderLayout(5, 5));
-        statusLabel = new JLabel(" ", JLabel.CENTER);
-        statusLabel.setFont(statusLabel.getFont().deriveFont(Font.ITALIC, 11.5f));
-        bottomPanel.add(statusLabel, BorderLayout.NORTH);
+        formPanel = new javax.swing.JPanel();
+        lblCode = new javax.swing.JLabel();
+        codeField = new javax.swing.JTextField();
+        lblName = new javax.swing.JLabel();
+        nameField = new javax.swing.JTextField();
+        lblClass = new javax.swing.JLabel();
+        classField = new javax.swing.JTextField();
+        lblPhone = new javax.swing.JLabel();
+        phoneField = new javax.swing.JTextField();
+        lblEmail = new javax.swing.JLabel();
+        emailField = new javax.swing.JTextField();
+        lblLimit = new javax.swing.JLabel();
+        limitSpinner = new javax.swing.JSpinner();
+        lblStatus = new javax.swing.JLabel();
+        statusCombo = new javax.swing.JComboBox<StudentStatus>();
+        bottomPanel = new javax.swing.JPanel();
+        statusLabel = new javax.swing.JLabel();
+        buttonPanel = new javax.swing.JPanel();
+        cancelButton = new javax.swing.JButton();
+        saveButton = new javax.swing.JButton();
 
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
-        cancelButton = new JButton("Hủy bỏ");
-        cancelButton.addActionListener(e -> dispose());
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        setTitle("Thông Tin Sinh Viên");
+        setModal(true);
+        setResizable(false);
+        getContentPane().setLayout(new java.awt.BorderLayout(10, 10));
+
+        formPanel.setLayout(new java.awt.GridBagLayout());
+
+        lblCode.setText("Mã sinh viên:*");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.insets = new java.awt.Insets(6, 6, 6, 6);
+        formPanel.add(lblCode, gridBagConstraints);
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 0;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.weightx = 1.0;
+        gridBagConstraints.insets = new java.awt.Insets(6, 6, 6, 6);
+        formPanel.add(codeField, gridBagConstraints);
+
+        lblName.setText("Họ và tên:*");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.insets = new java.awt.Insets(6, 6, 6, 6);
+        formPanel.add(lblName, gridBagConstraints);
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 1;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.weightx = 1.0;
+        gridBagConstraints.insets = new java.awt.Insets(6, 6, 6, 6);
+        formPanel.add(nameField, gridBagConstraints);
+
+        lblClass.setText("Lớp / Khóa:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.insets = new java.awt.Insets(6, 6, 6, 6);
+        formPanel.add(lblClass, gridBagConstraints);
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 2;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.weightx = 1.0;
+        gridBagConstraints.insets = new java.awt.Insets(6, 6, 6, 6);
+        formPanel.add(classField, gridBagConstraints);
+
+        lblPhone.setText("Số điện thoại:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.insets = new java.awt.Insets(6, 6, 6, 6);
+        formPanel.add(lblPhone, gridBagConstraints);
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 3;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.weightx = 1.0;
+        gridBagConstraints.insets = new java.awt.Insets(6, 6, 6, 6);
+        formPanel.add(phoneField, gridBagConstraints);
+
+        lblEmail.setText("Địa chỉ Email:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 4;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.insets = new java.awt.Insets(6, 6, 6, 6);
+        formPanel.add(lblEmail, gridBagConstraints);
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 4;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.weightx = 1.0;
+        gridBagConstraints.insets = new java.awt.Insets(6, 6, 6, 6);
+        formPanel.add(emailField, gridBagConstraints);
+
+        lblLimit.setText("Hạn mức mượn:*");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 5;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.insets = new java.awt.Insets(6, 6, 6, 6);
+        formPanel.add(lblLimit, gridBagConstraints);
+
+        limitSpinner.setModel(new javax.swing.SpinnerNumberModel(5, 1, 20, 1));
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 5;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.weightx = 1.0;
+        gridBagConstraints.insets = new java.awt.Insets(6, 6, 6, 6);
+        formPanel.add(limitSpinner, gridBagConstraints);
+
+        lblStatus.setText("Trạng thái:*");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 6;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.insets = new java.awt.Insets(6, 6, 6, 6);
+        formPanel.add(lblStatus, gridBagConstraints);
+
+        statusCombo.setModel(new javax.swing.DefaultComboBoxModel<>(thuvien.common.enums.StudentStatus.values()));
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 6;
+        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gridBagConstraints.insets = new java.awt.Insets(6, 6, 6, 6);
+        formPanel.add(statusCombo, gridBagConstraints);
+
+        getContentPane().add(formPanel, java.awt.BorderLayout.CENTER);
+
+        bottomPanel.setLayout(new java.awt.BorderLayout(5, 5));
+
+        statusLabel.setFont(new java.awt.Font("Tahoma", 2, 11)); // NOI18N
+        statusLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        statusLabel.setText(" ");
+        bottomPanel.add(statusLabel, java.awt.BorderLayout.NORTH);
+
+        buttonPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 10, 5));
+
+        cancelButton.setText("Hủy bỏ");
+        cancelButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cancelButtonActionPerformed(evt);
+            }
+        });
         buttonPanel.add(cancelButton);
 
-        saveButton = new JButton(studentToEdit == null ? "Tạo Sinh Viên" : "Lưu Thay Đổi");
-        saveButton.setPreferredSize(new Dimension(130, 30));
-        saveButton.setFont(saveButton.getFont().deriveFont(Font.BOLD));
-        saveButton.addActionListener(e -> saveStudent());
+        saveButton.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
+        saveButton.setText("Lưu Thay Đổi");
+        saveButton.setPreferredSize(new java.awt.Dimension(130, 30));
+        saveButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                saveButtonActionPerformed(evt);
+            }
+        });
         buttonPanel.add(saveButton);
 
-        bottomPanel.add(buttonPanel, BorderLayout.SOUTH);
-        mainPanel.add(bottomPanel, BorderLayout.SOUTH);
+        bottomPanel.add(buttonPanel, java.awt.BorderLayout.SOUTH);
 
-        setContentPane(mainPanel);
-        getRootPane().setDefaultButton(saveButton);
-    }
+        getContentPane().add(bottomPanel, java.awt.BorderLayout.SOUTH);
+
+        pack();
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void cancelButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cancelButtonActionPerformed
+        dispose();
+    }//GEN-LAST:event_cancelButtonActionPerformed
+
+    private void saveButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveButtonActionPerformed
+        saveStudent();
+    }//GEN-LAST:event_saveButtonActionPerformed
 
     private void saveStudent() {
         String code = codeField.getText().trim();
@@ -217,4 +301,27 @@ public class StudentFormDialog extends JDialog {
     public boolean isSaved() {
         return saved;
     }
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JPanel bottomPanel;
+    private javax.swing.JPanel buttonPanel;
+    private javax.swing.JButton cancelButton;
+    private javax.swing.JTextField classField;
+    private javax.swing.JTextField codeField;
+    private javax.swing.JTextField emailField;
+    private javax.swing.JPanel formPanel;
+    private javax.swing.JLabel lblClass;
+    private javax.swing.JLabel lblCode;
+    private javax.swing.JLabel lblEmail;
+    private javax.swing.JLabel lblLimit;
+    private javax.swing.JLabel lblName;
+    private javax.swing.JLabel lblPhone;
+    private javax.swing.JLabel lblStatus;
+    private javax.swing.JSpinner limitSpinner;
+    private javax.swing.JTextField nameField;
+    private javax.swing.JTextField phoneField;
+    private javax.swing.JButton saveButton;
+    private javax.swing.JComboBox<StudentStatus> statusCombo;
+    private javax.swing.JLabel statusLabel;
+    // End of variables declaration//GEN-END:variables
 }
