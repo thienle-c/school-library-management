@@ -11,6 +11,7 @@ import thuvien.common.dto.BookSearchCriteriaDTO;
 import thuvien.common.dto.BorrowRecordDTO;
 import thuvien.common.dto.BorrowRequestDTO;
 import thuvien.common.dto.CategoryDTO;
+import thuvien.common.dto.CreateUserRequestDTO;
 import thuvien.common.dto.DeleteStudentRequestDTO;
 import thuvien.common.dto.LoginRequestDTO;
 import thuvien.common.dto.ReservationDTO;
@@ -775,10 +776,34 @@ public class RequestRouter {
     }
 
     private Response handleCreateUser(String reqId, Request request) throws LibraryException, ValidationException {
-        if (!(request.getPayload() instanceof UserDTO)) {
-            throw new ValidationException("Invalid payload for CREATE_USER: must be UserDTO.");
+        UserDTO user;
+        String initialPassword;
+
+        if (request.getPayload() instanceof CreateUserRequestDTO) {
+            CreateUserRequestDTO dto = (CreateUserRequestDTO) request.getPayload();
+            user = dto.getUser();
+            initialPassword = dto.getInitialPassword();
+        } else if (request.getPayload() instanceof UserDTO) {
+            user = (UserDTO) request.getPayload();
+            initialPassword = null;
+        } else {
+            throw new ValidationException("Invalid payload for CREATE_USER: expected CreateUserRequestDTO or UserDTO.");
         }
-        Long id = userService.createUser((UserDTO) request.getPayload(), "password123");
+
+        if (user == null) {
+            throw new ValidationException("User information is required.");
+        }
+        if (user.getUsername() == null || user.getUsername().trim().isEmpty()) {
+            throw new ValidationException("Username cannot be empty.");
+        }
+        if (initialPassword == null || initialPassword.trim().isEmpty()) {
+            throw new ValidationException("Initial password cannot be empty.");
+        }
+        if (initialPassword.length() < 6) {
+            throw new ValidationException("Initial password must be at least 6 characters long.");
+        }
+
+        Long id = userService.createUser(user, initialPassword);
         return new Response(reqId, StatusCode.CREATED, "User created successfully", id);
     }
 

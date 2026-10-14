@@ -18,7 +18,7 @@ public interface NetworkClient {
         return "127.0.0.1";
     }
     default int getPort() {
-        return 9999;
+        return 1099;
     }
     default boolean ping() throws NetworkException {
         Response resp = send(new Request(Action.PING, "PING"));

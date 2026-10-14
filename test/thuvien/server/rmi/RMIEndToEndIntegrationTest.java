@@ -64,17 +64,21 @@ public class RMIEndToEndIntegrationTest {
     private static Registry testRegistry;
     private static LibraryRemoteServiceImpl exportedService;
     private static boolean dbAvailable = false;
+    private static boolean isIsolatedTestDb = false;
 
     @BeforeClass
     public static void setUpRMIAndDatabase() throws Exception {
         System.setProperty("java.rmi.server.hostname", "127.0.0.1");
         try (Connection conn = DatabaseManager.getInstance().getConnection()) {
             dbAvailable = (conn != null && !conn.isClosed());
+            if (dbAvailable) {
+                isIsolatedTestDb = thuvien.server.TestDatabaseSafetyGuard.isSafeTestDatabase(conn);
+            }
         } catch (Exception e) {
             dbAvailable = false;
         }
 
-        if (dbAvailable) {
+        if (dbAvailable && isIsolatedTestDb) {
             try (Connection conn = DatabaseManager.getInstance().getConnection()) {
                 try (PreparedStatement psAdmin = conn.prepareStatement("UPDATE users SET password_hash = ?, is_active = 1 WHERE username = 'admin'")) {
                     psAdmin.setString(1, thuvien.server.security.PasswordHasher.hash("admin123"));
@@ -94,7 +98,17 @@ public class RMIEndToEndIntegrationTest {
                 try (PreparedStatement psStuRec = conn.prepareStatement("UPDATE students SET current_borrow_count = 0, status = 'ACTIVE' WHERE id = 1")) {
                     psStuRec.executeUpdate();
                 }
+                try (PreparedStatement psFines = conn.prepareStatement("DELETE FROM fines WHERE student_id = 1")) {
+                    psFines.executeUpdate();
+                }
+                try (PreparedStatement psBorrows = conn.prepareStatement("DELETE FROM borrow_records WHERE student_id = 1 AND book_id = 1")) {
+                    psBorrows.executeUpdate();
+                }
             }
+        } else {
+            // Guard: If not connected to school_library_test, disable DB testing to protect production data
+            dbAvailable = false;
+            System.err.println("[SAFETY — DATA-01] RMIEndToEndIntegrationTest database reset skipped: Not connected to an isolated test database (e.g. school_library_test).");
         }
 
         // Start dedicated in-process RMI registry and export remote service

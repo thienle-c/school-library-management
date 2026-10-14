@@ -378,7 +378,7 @@ public class MainDashboardForm extends JFrame {
         headerPanel.setOpaque(false);
         JLabel welcomeTitle = new JLabel("Xin chào, " + session.getFullName() + "!");
         welcomeTitle.setFont(welcomeTitle.getFont().deriveFont(Font.BOLD, 22.0f));
-        JLabel welcomeSub = new JLabel("Ứng Dụng Quản Lý Thư Viện Trường Học (Giao thức mạng TCP Socket / Java RMI)");
+        JLabel welcomeSub = new JLabel("Ứng Dụng Quản Lý Thư Viện Trường Học (Giao thức mạng Java RMI)");
         welcomeSub.setFont(welcomeSub.getFont().deriveFont(Font.PLAIN, 13.0f));
         welcomeSub.setForeground(Color.GRAY);
         headerPanel.add(welcomeTitle);

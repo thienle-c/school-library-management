@@ -17,7 +17,7 @@ import thuvien.common.protocol.Response;
 import thuvien.common.protocol.StatusCode;
 
 /**
- * Client controller for Student records and profile operations over TCP.
+ * Client controller for Student records and profile operations over Java RMI.
  */
 public class ClientStudentController {
     private final NetworkClient networkClient;
