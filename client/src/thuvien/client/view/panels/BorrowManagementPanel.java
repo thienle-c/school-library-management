@@ -1,7 +1,16 @@
 package thuvien.client.view.panels;
 
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.RenderingHints;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -9,10 +18,12 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BorderFactory;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
+import javax.swing.border.Border;
 import javax.swing.table.DefaultTableModel;
 import thuvien.client.controller.ClientBorrowController;
 import thuvien.client.controller.ClientSearchSuggestionController;
@@ -20,6 +31,7 @@ import thuvien.client.network.NetworkClient;
 import thuvien.client.session.ClientSession;
 import thuvien.client.view.LoginForm;
 import thuvien.client.view.common.AsyncWorker;
+import thuvien.client.view.common.ModernUIHelper;
 import thuvien.client.view.common.SearchAutoCompleteHelper;
 import thuvien.client.view.dialogs.BorrowDialog;
 import thuvien.common.dto.BorrowRecordDTO;
@@ -63,13 +75,115 @@ public class BorrowManagementPanel extends JPanel {
 
     private void initCustom() {
         setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+        setBackground(ModernUIHelper.BG_MAIN);
+
+        topToolbar.setOpaque(false);
         topToolbar.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
-        tableScroll.setBorder(BorderFactory.createLineBorder(new Color(220, 225, 230)));
+        leftControls.setOpaque(false);
+        rightControls.setOpaque(false);
+
+        lblSearch.setFont(ModernUIHelper.FONT_LABEL);
+        lblSearch.setForeground(ModernUIHelper.TEXT_PRIMARY);
+        ModernUIHelper.styleTextField(searchField);
+        searchField.addActionListener(e -> applyFilter(false));
+
+        ModernUIHelper.styleComboBox(statusFilterCombo);
+
+        ModernUIHelper.stylePrimaryButton(filterBtn, "Tìm kiếm");
+        filterBtn.setIcon(ModernUIHelper.getVectorIcon("SEARCH", 13, ModernUIHelper.CYAN_TEXT));
+        filterBtn.setIconTextGap(6);
+
+        ModernUIHelper.styleSecondaryButton(resetBtn, "Xóa bộ lọc");
+        resetBtn.setIcon(ModernUIHelper.getVectorIcon("RESET", 13, ModernUIHelper.TEXT_PRIMARY));
+        resetBtn.setIconTextGap(6);
+
+        ModernUIHelper.styleSecondaryButton(refreshBtn, "Làm mới");
+        refreshBtn.setIcon(ModernUIHelper.getVectorIcon("REFRESH", 13, ModernUIHelper.TEXT_PRIMARY));
+        refreshBtn.setIconTextGap(6);
+
+        ModernUIHelper.styleSuccessButton(newBorrowBtn, "Mượn sách mới");
+        newBorrowBtn.setIcon(ModernUIHelper.getVectorIcon("ADD", 13, Color.WHITE));
+        newBorrowBtn.setIconTextGap(6);
+
+        ModernUIHelper.stylePrimaryButton(returnBtn, "Nhận trả sách");
+        returnBtn.setIcon(ModernUIHelper.getVectorIcon("CHECK", 13, Color.WHITE));
+        returnBtn.setIconTextGap(6);
+
+        ModernUIHelper.styleSplitPane(splitPane);
+        tableScroll.setBorder(BorderFactory.createLineBorder(ModernUIHelper.BORDER_COLOR));
+        tableScroll.getViewport().setBackground(ModernUIHelper.BG_SURFACE);
+
+        detailCard.setBackground(ModernUIHelper.BG_SURFACE);
         detailCard.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 230)),
-                BorderFactory.createEmptyBorder(10, 15, 10, 15)
+                ModernUIHelper.createRoundedBorder(ModernUIHelper.BORDER_COLOR, 10, 0, 0, 0, 0),
+                BorderFactory.createEmptyBorder(14, 18, 14, 18)
         ));
+
+        detailHeader.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        detailHeader.setForeground(ModernUIHelper.TEXT_PRIMARY);
+        detailHeader.setText("Thông Tin Chi Tiết Lượt Mượn Được Chọn");
+        detailHeader.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, ModernUIHelper.BORDER_COLOR),
+                BorderFactory.createEmptyBorder(0, 0, 10, 0)
+        ));
+
+        // Format 8 field labels (#94A3B8, Font.BOLD 13px, fixed 140px width)
+        JLabel[] fieldLabels = {lblMpm, lblSv, lblSm, lblTt, lblNm, lblHt, lblNttt, lblGc};
+        String[] fieldTexts = {
+                "Mã phiếu mượn:", "Sinh viên:", "Sách mượn:", "Trạng thái:",
+                "Ngày mượn:", "Hạn trả:", "Ngày trả thực tế:", "Ghi chú:"
+        };
+        for (int i = 0; i < fieldLabels.length; i++) {
+            fieldLabels[i].setText(fieldTexts[i]);
+            fieldLabels[i].setFont(ModernUIHelper.FONT_LABEL);
+            fieldLabels[i].setForeground(ModernUIHelper.LABEL_DETAIL);
+            fieldLabels[i].setPreferredSize(new Dimension(140, 24));
+            fieldLabels[i].setMinimumSize(new Dimension(140, 24));
+        }
+
+        // Layout gridDetails with balanced 2 columns and 12px vertical spacing
+        gridDetails.removeAll();
+        gridDetails.setOpaque(false);
+        gridDetails.setLayout(new GridBagLayout());
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(6, 8, 6, 8); // 6px top + 6px bottom = 12px vertical spacing between rows
+
+        // Row 0: Mã phiếu mượn | detailIdVal || Sinh viên | detailStudentVal
+        gbc.gridy = 0;
+        gbc.gridx = 0; gbc.weightx = 0.0; gridDetails.add(lblMpm, gbc);
+        gbc.gridx = 1; gbc.weightx = 0.5; gridDetails.add(detailIdVal, gbc);
+        gbc.gridx = 2; gbc.weightx = 0.0; gridDetails.add(lblSv, gbc);
+        gbc.gridx = 3; gbc.weightx = 0.5; gridDetails.add(detailStudentVal, gbc);
+
+        // Row 1: Sách mượn | detailBookVal || Trạng thái | detailStatusVal
+        gbc.gridy = 1;
+        gbc.gridx = 0; gbc.weightx = 0.0; gridDetails.add(lblSm, gbc);
+        gbc.gridx = 1; gbc.weightx = 0.5; gridDetails.add(detailBookVal, gbc);
+        gbc.gridx = 2; gbc.weightx = 0.0; gridDetails.add(lblTt, gbc);
+        gbc.gridx = 3; gbc.weightx = 0.5; gridDetails.add(detailStatusVal, gbc);
+
+        // Row 2: Ngày mượn | detailBorrowDateVal || Hạn trả | detailDueDateVal
+        gbc.gridy = 2;
+        gbc.gridx = 0; gbc.weightx = 0.0; gridDetails.add(lblNm, gbc);
+        gbc.gridx = 1; gbc.weightx = 0.5; gridDetails.add(detailBorrowDateVal, gbc);
+        gbc.gridx = 2; gbc.weightx = 0.0; gridDetails.add(lblHt, gbc);
+        gbc.gridx = 3; gbc.weightx = 0.5; gridDetails.add(detailDueDateVal, gbc);
+
+        // Row 3: Ngày trả thực tế | detailReturnDateVal || Ghi chú | detailNotesVal
+        gbc.gridy = 3;
+        gbc.gridx = 0; gbc.weightx = 0.0; gridDetails.add(lblNttt, gbc);
+        gbc.gridx = 1; gbc.weightx = 0.5; gridDetails.add(detailReturnDateVal, gbc);
+        gbc.gridx = 2; gbc.weightx = 0.0; gridDetails.add(lblGc, gbc);
+        gbc.gridx = 3; gbc.weightx = 0.5; gridDetails.add(detailNotesVal, gbc);
+
+        clearDetails();
+
+        bottomBar.setOpaque(false);
         bottomBar.setBorder(BorderFactory.createEmptyBorder(6, 4, 4, 4));
+        statusLabel.setFont(ModernUIHelper.FONT_SMALL);
+        statusLabel.setForeground(ModernUIHelper.TEXT_MUTED);
 
         if (!isStaff) {
             newBorrowBtn.setVisible(false);
@@ -91,8 +205,7 @@ public class BorrowManagementPanel extends JPanel {
 
         recordTable.setModel(tableModel);
         recordTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        recordTable.setRowHeight(24);
-        recordTable.getTableHeader().setFont(recordTable.getTableHeader().getFont().deriveFont(Font.BOLD));
+        ModernUIHelper.styleTable(recordTable);
         recordTable.setAutoCreateRowSorter(true);
 
         recordTable.getSelectionModel().addListSelectionListener(e -> {
@@ -104,6 +217,7 @@ public class BorrowManagementPanel extends JPanel {
                 updateDetails(r);
             }
         });
+        ModernUIHelper.styleComponentTree(this);
     }
 
     /**
@@ -639,25 +753,103 @@ public class BorrowManagementPanel extends JPanel {
             return;
         }
 
-        detailIdVal.setText(r.getId().toString());
-        detailStudentVal.setText(String.format("%s (Mã SV: %s, ID: %d)", r.getStudentName(), r.getStudentCode(), r.getStudentId()));
-        detailBookVal.setText(String.format("%s (Mã sách: %d, ISBN: %s)", r.getBookTitle(), r.getBookId(), r.getBookIsbn()));
-        detailBorrowDateVal.setText(r.getBorrowDate() != null ? DATE_FMT.format(r.getBorrowDate()) : "N/A");
-        detailDueDateVal.setText(r.getDueDate() != null ? DATE_FMT.format(r.getDueDate()) : "N/A");
-        detailReturnDateVal.setText(r.getReturnDate() != null ? DATE_FMT.format(r.getReturnDate()) : "Chưa trả");
-        detailStatusVal.setText(mapBorrowStatus(r.getStatus()));
-        detailNotesVal.setText(r.getNotes() != null && !r.getNotes().isEmpty() ? r.getNotes() : "Không có");
+        ModernUIHelper.updateValueLabel(detailIdVal, r.getId().toString(), false);
+        ModernUIHelper.updateValueLabel(detailStudentVal, String.format("%s (Mã SV: %s, ID: %d)", r.getStudentName(), r.getStudentCode(), r.getStudentId()), false);
+        ModernUIHelper.updateValueLabel(detailBookVal, String.format("%s (Mã sách: %d, ISBN: %s)", r.getBookTitle(), r.getBookId(), r.getBookIsbn()), false);
+        ModernUIHelper.updateValueLabel(detailBorrowDateVal, r.getBorrowDate() != null ? DATE_FMT.format(r.getBorrowDate()) : "N/A", false);
+        ModernUIHelper.updateValueLabel(detailDueDateVal, r.getDueDate() != null ? DATE_FMT.format(r.getDueDate()) : "N/A", false);
+        ModernUIHelper.updateValueLabel(detailReturnDateVal, r.getReturnDate() != null ? DATE_FMT.format(r.getReturnDate()) : "Chưa trả", false);
+        ModernUIHelper.updateValueLabel(detailNotesVal, r.getNotes() != null && !r.getNotes().isEmpty() ? r.getNotes() : "Không có", false);
+
+        styleDetailStatusBadge(detailStatusVal, r.getStatus());
+
+        // Subtle 200ms highlight border to draw user focus to the detail frame
+        ModernUIHelper.highlightCardBorder(detailCard);
     }
 
     private void clearDetails() {
-        detailIdVal.setText("Chưa chọn");
-        detailStudentVal.setText("Chưa chọn");
-        detailBookVal.setText("Chưa chọn");
-        detailBorrowDateVal.setText("Chưa chọn");
-        detailDueDateVal.setText("Chưa chọn");
-        detailReturnDateVal.setText("Chưa chọn");
-        detailStatusVal.setText("Chưa chọn");
-        detailNotesVal.setText("Chưa chọn");
+        ModernUIHelper.updateValueLabel(detailIdVal, "Chưa chọn", true);
+        ModernUIHelper.updateValueLabel(detailStudentVal, "Chưa chọn", true);
+        ModernUIHelper.updateValueLabel(detailBookVal, "Chưa chọn", true);
+        ModernUIHelper.updateValueLabel(detailBorrowDateVal, "Chưa chọn", true);
+        ModernUIHelper.updateValueLabel(detailDueDateVal, "Chưa chọn", true);
+        ModernUIHelper.updateValueLabel(detailReturnDateVal, "Chưa chọn", true);
+        ModernUIHelper.updateValueLabel(detailNotesVal, "Chưa chọn", true);
+
+        detailStatusVal.setBorder(null);
+        detailStatusVal.setOpaque(false);
+        ModernUIHelper.updateValueLabel(detailStatusVal, "Chưa chọn", true);
+    }
+
+    private void styleDetailStatusBadge(JLabel lbl, BorrowStatus status) {
+        if (status == null) {
+            lbl.setBorder(null);
+            lbl.setOpaque(false);
+            ModernUIHelper.updateValueLabel(lbl, "Chưa chọn", true);
+            return;
+        }
+
+        final Color bg;
+        final Color fg;
+        final Color border;
+        final String text;
+
+        switch (status) {
+            case RETURNED:
+                bg = new Color(0x06, 0x4E, 0x3B);
+                fg = new Color(0x6E, 0xE7, 0xB7);
+                border = new Color(0x10, 0xB9, 0x81);
+                text = "Đã trả";
+                break;
+            case OVERDUE:
+                bg = new Color(0x7F, 0x1D, 0x1D);
+                fg = new Color(0xFC, 0xA5, 0xA5);
+                border = new Color(0xEF, 0x44, 0x44);
+                text = "Quá hạn";
+                break;
+            case ACTIVE:
+            default:
+                bg = new Color(0x1E, 0x3A, 0x8A);
+                fg = new Color(0x93, 0xC5, 0xFD);
+                border = new Color(0x3B, 0x82, 0xF6);
+                text = status == BorrowStatus.ACTIVE ? "Đang mượn" : status.name();
+                break;
+        }
+
+        lbl.setText(text);
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lbl.setForeground(fg);
+        lbl.setOpaque(false);
+        lbl.setBorder(new javax.swing.border.Border() {
+            @Override
+            public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB);
+
+                FontMetrics fm = g2.getFontMetrics(c.getFont());
+                int tw = fm.stringWidth(((JLabel) c).getText());
+                int bw = Math.min(width, tw + 20);
+                int bh = 22;
+                int by = (height - bh) / 2;
+
+                g2.setColor(bg);
+                g2.fillRoundRect(x, by, bw, bh, 10, 10);
+                g2.setColor(border);
+                g2.drawRoundRect(x, by, bw - 1, bh - 1, 10, 10);
+                g2.dispose();
+            }
+
+            @Override
+            public Insets getBorderInsets(Component c) {
+                return new Insets(2, 8, 2, 8);
+            }
+
+            @Override
+            public boolean isBorderOpaque() {
+                return false;
+            }
+        });
     }
 
     private void openBorrowDialog() {

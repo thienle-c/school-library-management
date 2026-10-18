@@ -22,6 +22,7 @@ import thuvien.client.network.NetworkClient;
 import thuvien.client.session.ClientSession;
 import thuvien.client.view.LoginForm;
 import thuvien.client.view.common.AsyncWorker;
+import thuvien.client.view.common.ModernUIHelper;
 import thuvien.client.view.common.SearchAutoCompleteHelper;
 import thuvien.client.view.dialogs.BookFormDialog;
 import thuvien.common.dto.BookDTO;
@@ -61,13 +62,83 @@ public class BookManagementPanel extends JPanel {
 
     private void initCustom() {
         setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+        setBackground(ModernUIHelper.BG_APP);
+
+        topToolbar.setOpaque(false);
         topToolbar.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
-        tableScroll.setBorder(BorderFactory.createLineBorder(new Color(220, 225, 230)));
-        detailCard.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 230)),
-                BorderFactory.createEmptyBorder(10, 15, 10, 15)
+        searchSection.setOpaque(false);
+        actionSection.setOpaque(false);
+
+        lblSearch.setFont(ModernUIHelper.FONT_LABEL);
+        lblSearch.setForeground(ModernUIHelper.TEXT_TITLE);
+        ModernUIHelper.styleTextField(searchField);
+        searchField.addActionListener(e -> loadBooks());
+
+        ModernUIHelper.stylePrimaryButton(searchBtn, "Tìm kiếm");
+        searchBtn.setIcon(ModernUIHelper.getVectorIcon("SEARCH", 13, ModernUIHelper.CYAN_TEXT));
+        searchBtn.setIconTextGap(6);
+
+        ModernUIHelper.styleSecondaryButton(resetBtn, "Đặt lại");
+        resetBtn.setIcon(ModernUIHelper.getVectorIcon("RESET", 13, ModernUIHelper.TEXT_PRIMARY));
+        resetBtn.setIconTextGap(6);
+
+        ModernUIHelper.styleSecondaryButton(refreshBtn, "Làm mới");
+        refreshBtn.setIcon(ModernUIHelper.getVectorIcon("REFRESH", 13, ModernUIHelper.TEXT_PRIMARY));
+        refreshBtn.setIconTextGap(6);
+
+        ModernUIHelper.styleSuccessButton(newBookBtn, "Thêm sách");
+        newBookBtn.setIcon(ModernUIHelper.getVectorIcon("ADD", 13, Color.WHITE));
+        newBookBtn.setIconTextGap(6);
+
+        ModernUIHelper.stylePrimaryButton(editBookBtn, "Chỉnh sửa");
+        editBookBtn.setIcon(ModernUIHelper.getVectorIcon("EDIT", 13, Color.WHITE));
+        editBookBtn.setIconTextGap(6);
+
+        ModernUIHelper.styleDangerButton(deleteBookBtn, "Xóa sách");
+        deleteBookBtn.setIcon(ModernUIHelper.getVectorIcon("DELETE", 13, Color.WHITE));
+        deleteBookBtn.setIconTextGap(6);
+
+        ModernUIHelper.styleComboBox(categoryFilterCombo);
+        ModernUIHelper.styleComboBox(statusFilterCombo);
+
+        ModernUIHelper.styleSplitPane(splitPane);
+        tableScroll.setBorder(BorderFactory.createLineBorder(ModernUIHelper.BORDER_COLOR));
+        tableScroll.getViewport().setBackground(ModernUIHelper.BG_SURFACE);
+
+        ModernUIHelper.styleCardPanel(detailCard);
+        detailHeader.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        detailHeader.setForeground(ModernUIHelper.TEXT_PRIMARY);
+        detailHeader.setText("Thông Tin Chi Tiết Đầu Sách");
+        detailHeader.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, ModernUIHelper.BORDER_COLOR),
+                BorderFactory.createEmptyBorder(0, 0, 10, 0)
         ));
+        gridDetails.setOpaque(false);
+
+        ModernUIHelper.styleLabel(lblTitle, "Tên sách:");
+        ModernUIHelper.styleLabel(lblIsbn, "Mã ISBN:");
+        ModernUIHelper.styleLabel(lblCategory, "Thể loại:");
+        ModernUIHelper.styleLabel(lblAuthors, "Tác giả:");
+        ModernUIHelper.styleLabel(lblPublisher, "Nhà xuất bản:");
+        ModernUIHelper.styleLabel(lblYear, "Năm & Tái bản:");
+        ModernUIHelper.styleLabel(lblCopies, "Số lượng bản:");
+        ModernUIHelper.styleLabel(lblShelf, "Vị trí kệ:");
+        ModernUIHelper.styleLabel(lblStatus, "Trạng thái:");
+
+        ModernUIHelper.styleValueLabel(detailTitleVal, "Chưa chọn");
+        ModernUIHelper.styleValueLabel(detailIsbnVal, "Chưa chọn");
+        ModernUIHelper.styleValueLabel(detailCategoryVal, "Chưa chọn");
+        ModernUIHelper.styleValueLabel(detailAuthorsVal, "Chưa chọn");
+        ModernUIHelper.styleValueLabel(detailPublisherVal, "Chưa chọn");
+        ModernUIHelper.styleValueLabel(detailYearVal, "Chưa chọn");
+        ModernUIHelper.styleValueLabel(detailCopiesVal, "Chưa chọn");
+        ModernUIHelper.styleValueLabel(detailShelfVal, "Chưa chọn");
+        ModernUIHelper.styleValueLabel(detailStatusVal, "Chưa chọn");
+
+        bottomBar.setOpaque(false);
         bottomBar.setBorder(BorderFactory.createEmptyBorder(6, 4, 4, 4));
+        statusLabel.setFont(ModernUIHelper.FONT_SMALL);
+        statusLabel.setForeground(ModernUIHelper.TEXT_MUTED);
 
         boolean isStaff = ClientSession.getInstance().isAdmin() || ClientSession.getInstance().isLibrarian();
         if (!isStaff) {
@@ -88,8 +159,7 @@ public class BookManagementPanel extends JPanel {
 
         bookTable.setModel(tableModel);
         bookTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        bookTable.setRowHeight(24);
-        bookTable.getTableHeader().setFont(bookTable.getTableHeader().getFont().deriveFont(Font.BOLD));
+        ModernUIHelper.styleTable(bookTable);
         bookTable.setAutoCreateRowSorter(true);
 
         if (bookTable.getColumnModel().getColumnCount() >= 9) {
@@ -120,6 +190,7 @@ public class BookManagementPanel extends JPanel {
                 }
             }
         });
+        ModernUIHelper.styleComponentTree(this);
     }
 
     /**

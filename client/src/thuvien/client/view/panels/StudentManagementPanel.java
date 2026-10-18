@@ -22,6 +22,7 @@ import thuvien.client.network.NetworkClient;
 import thuvien.client.session.ClientSession;
 import thuvien.client.view.LoginForm;
 import thuvien.client.view.common.AsyncWorker;
+import thuvien.client.view.common.ModernUIHelper;
 import thuvien.client.view.common.SearchAutoCompleteHelper;
 import thuvien.client.view.dialogs.StudentFormDialog;
 import thuvien.common.dto.StudentDTO;
@@ -67,15 +68,90 @@ public class StudentManagementPanel extends JPanel {
     }
 
     private void initCustom() {
+        setBackground(ModernUIHelper.BG_APP);
         if (isStaff) {
+            staffPanel.setBackground(ModernUIHelper.BG_APP);
             staffPanel.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+            topToolbar.setOpaque(false);
             topToolbar.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
-            tableScroll.setBorder(BorderFactory.createLineBorder(new Color(220, 225, 230)));
-            detailCard.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 230)),
-                    BorderFactory.createEmptyBorder(10, 15, 10, 15)
+            leftPanel.setOpaque(false);
+            rightPanel.setOpaque(false);
+
+            lblSearch.setFont(ModernUIHelper.FONT_LABEL);
+            lblSearch.setForeground(ModernUIHelper.TEXT_TITLE);
+            ModernUIHelper.styleTextField(searchField);
+            searchField.addActionListener(e -> applyFilter(false));
+
+            ModernUIHelper.styleComboBox(statusFilterCombo);
+
+            ModernUIHelper.stylePrimaryButton(filterBtn, "Tìm kiếm");
+            filterBtn.setIcon(ModernUIHelper.getVectorIcon("SEARCH", 13, ModernUIHelper.CYAN_TEXT));
+            filterBtn.setIconTextGap(6);
+
+            ModernUIHelper.styleSecondaryButton(resetBtn, "Đặt lại");
+            resetBtn.setIcon(ModernUIHelper.getVectorIcon("RESET", 13, ModernUIHelper.TEXT_PRIMARY));
+            resetBtn.setIconTextGap(6);
+
+            ModernUIHelper.styleSecondaryButton(refreshBtn, "Làm mới");
+            refreshBtn.setIcon(ModernUIHelper.getVectorIcon("REFRESH", 13, ModernUIHelper.TEXT_PRIMARY));
+            refreshBtn.setIconTextGap(6);
+
+            ModernUIHelper.styleSuccessButton(newStudentBtn, "Thêm sinh viên");
+            newStudentBtn.setIcon(ModernUIHelper.getVectorIcon("ADD", 13, Color.WHITE));
+            newStudentBtn.setIconTextGap(6);
+
+            ModernUIHelper.stylePrimaryButton(editStudentBtn, "Chỉnh sửa");
+            editStudentBtn.setIcon(ModernUIHelper.getVectorIcon("EDIT", 13, Color.WHITE));
+            editStudentBtn.setIconTextGap(6);
+
+            ModernUIHelper.styleDangerButton(suspendStudentBtn, "Đình chỉ");
+            suspendStudentBtn.setIcon(ModernUIHelper.getVectorIcon("AUDIT", 13, Color.WHITE));
+            suspendStudentBtn.setIconTextGap(6);
+
+            ModernUIHelper.styleSecondaryButton(activationCodeBtn, "Mã kích hoạt");
+            activationCodeBtn.setIcon(ModernUIHelper.getVectorIcon("KEY", 13, ModernUIHelper.TEXT_PRIMARY));
+            activationCodeBtn.setIconTextGap(6);
+
+            ModernUIHelper.styleDangerButton(hardDeleteStudentBtn, "Xóa vĩnh viễn");
+            hardDeleteStudentBtn.setIcon(ModernUIHelper.getVectorIcon("DELETE", 13, Color.WHITE));
+            hardDeleteStudentBtn.setIconTextGap(6);
+
+            ModernUIHelper.styleSplitPane(splitPane);
+            tableScroll.setBorder(BorderFactory.createLineBorder(ModernUIHelper.BORDER_COLOR));
+            tableScroll.getViewport().setBackground(ModernUIHelper.BG_SURFACE);
+
+            ModernUIHelper.styleCardPanel(detailCard);
+            detailHeader.setFont(new Font("Segoe UI", Font.BOLD, 15));
+            detailHeader.setForeground(ModernUIHelper.TEXT_PRIMARY);
+            detailHeader.setText("Thông Tin Chi Tiết Hồ Sơ Sinh Viên");
+            detailHeader.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(0, 0, 1, 0, ModernUIHelper.BORDER_COLOR),
+                    BorderFactory.createEmptyBorder(0, 0, 10, 0)
             ));
+            gridDetails.setOpaque(false);
+
+            ModernUIHelper.styleLabel(lblId, "Mã ID sinh viên:");
+            ModernUIHelper.styleLabel(lblCode, "Mã sinh viên:");
+            ModernUIHelper.styleLabel(lblName, "Họ và tên:");
+            ModernUIHelper.styleLabel(lblClass, "Lớp / Khóa:");
+            ModernUIHelper.styleLabel(lblPhone, "Số điện thoại:");
+            ModernUIHelper.styleLabel(lblEmail, "Email liên hệ:");
+            ModernUIHelper.styleLabel(lblBorrow, "Sách đang mượn:");
+            ModernUIHelper.styleLabel(lblStatus, "Trạng thái:");
+
+            ModernUIHelper.styleValueLabel(detailIdVal, "Chưa chọn");
+            ModernUIHelper.styleValueLabel(detailCodeVal, "Chưa chọn");
+            ModernUIHelper.styleValueLabel(detailNameVal, "Chưa chọn");
+            ModernUIHelper.styleValueLabel(detailClassVal, "Chưa chọn");
+            ModernUIHelper.styleValueLabel(detailPhoneVal, "Chưa chọn");
+            ModernUIHelper.styleValueLabel(detailEmailVal, "Chưa chọn");
+            ModernUIHelper.styleValueLabel(detailBorrowVal, "Chưa chọn");
+            ModernUIHelper.styleValueLabel(detailStatusVal, "Chưa chọn");
+
+            bottomBar.setOpaque(false);
             bottomBar.setBorder(BorderFactory.createEmptyBorder(6, 4, 4, 4));
+            statusLabel.setFont(ModernUIHelper.FONT_SMALL);
+            statusLabel.setForeground(ModernUIHelper.TEXT_MUTED);
 
             boolean isAdmin = ClientSession.getInstance().isAdmin();
             if (!isAdmin) {
@@ -95,8 +171,7 @@ public class StudentManagementPanel extends JPanel {
 
             studentTable.setModel(tableModel);
             studentTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-            studentTable.setRowHeight(24);
-            studentTable.getTableHeader().setFont(studentTable.getTableHeader().getFont().deriveFont(Font.BOLD));
+            ModernUIHelper.styleTable(studentTable);
             studentTable.setAutoCreateRowSorter(true);
 
             studentTable.getSelectionModel().addListSelectionListener(e -> {
@@ -105,12 +180,31 @@ public class StudentManagementPanel extends JPanel {
                 }
             });
         } else {
+            studentProfilePanel.setBackground(ModernUIHelper.BG_APP);
             studentProfilePanel.setBorder(BorderFactory.createEmptyBorder(25, 30, 25, 30));
-            profileCard.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(new Color(225, 230, 238), 1),
-                    BorderFactory.createEmptyBorder(20, 25, 20, 25)
-            ));
+            ModernUIHelper.styleCardPanel(profileCard);
+            profileTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
+            profileTitle.setForeground(ModernUIHelper.TEXT_PRIMARY);
+            profileSubtitle.setFont(ModernUIHelper.FONT_SUBTITLE);
+            profileSubtitle.setForeground(ModernUIHelper.TEXT_MUTED);
+
+            ModernUIHelper.styleLabel(lblProfCode, "Mã số sinh viên:");
+            ModernUIHelper.styleLabel(lblProfName, "Họ và tên:");
+            ModernUIHelper.styleLabel(lblProfClass, "Lớp / Khóa học:");
+            ModernUIHelper.styleLabel(lblProfPhone, "Số điện thoại:");
+            ModernUIHelper.styleLabel(lblProfEmail, "Địa chỉ Email:");
+            ModernUIHelper.styleLabel(lblProfBorrow, "Tình trạng mượn sách:");
+            ModernUIHelper.styleLabel(lblProfStatus, "Trạng thái tài khoản:");
+
+            ModernUIHelper.styleValueLabel(profCodeVal, "-");
+            ModernUIHelper.styleValueLabel(profNameVal, "-");
+            ModernUIHelper.styleValueLabel(profClassVal, "-");
+            ModernUIHelper.styleValueLabel(profPhoneVal, "-");
+            ModernUIHelper.styleValueLabel(profEmailVal, "-");
+            ModernUIHelper.styleValueLabel(profBorrowVal, "-");
+            ModernUIHelper.styleValueLabel(profStatusVal, "-");
         }
+        ModernUIHelper.styleComponentTree(this);
     }
 
     /**
@@ -1066,19 +1160,28 @@ public class StudentManagementPanel extends JPanel {
 
     public void loadStudentProfile() {
         profCodeVal.setText("Đang tải...");
+        profCodeVal.setForeground(ModernUIHelper.TEXT_MUTED);
         profNameVal.setText("Đang tải...");
+        profNameVal.setForeground(ModernUIHelper.TEXT_MUTED);
 
         AsyncWorker.run(
                 studentController::getMyProfile,
                 (StudentDTO s) -> {
                     profCodeVal.setText(s.getStudentCode());
+                    profCodeVal.setForeground(ModernUIHelper.TEXT_TITLE);
                     profNameVal.setText(s.getFullName());
+                    profNameVal.setForeground(ModernUIHelper.TEXT_TITLE);
                     profClassVal.setText(s.getClassName() != null ? s.getClassName() : "Không rõ");
+                    profClassVal.setForeground(ModernUIHelper.TEXT_TITLE);
                     profPhoneVal.setText(s.getPhone() != null && !s.getPhone().isEmpty() ? s.getPhone() : "Chưa có");
+                    profPhoneVal.setForeground(ModernUIHelper.TEXT_TITLE);
                     profEmailVal.setText(s.getEmail() != null && !s.getEmail().isEmpty() ? s.getEmail() : "Chưa có");
+                    profEmailVal.setForeground(ModernUIHelper.TEXT_TITLE);
                     profBorrowVal.setText(String.format("%d cuốn sách đang mượn (Hạn mức tối đa: %d)",
                             s.getCurrentBorrowCount(), s.getMaxBorrowLimit()));
+                    profBorrowVal.setForeground(ModernUIHelper.TEXT_TITLE);
                     profStatusVal.setText(mapStudentStatus(s.getStatus()));
+                    profStatusVal.setForeground(ModernUIHelper.SUCCESS_EMERALD);
                 },
                 this::handleError
         );

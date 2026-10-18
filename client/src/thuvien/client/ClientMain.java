@@ -9,6 +9,7 @@ import javax.swing.UIManager;
 import thuvien.client.network.NetworkClient;
 import thuvien.client.network.RMIClient;
 import thuvien.client.view.LoginForm;
+import thuvien.client.view.common.ModernUIHelper;
 
 /**
  * Bootstrap entry point for the Remote School Library Swing Client using Java RMI.
@@ -69,6 +70,7 @@ public class ClientMain {
             try {
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
             } catch (Exception ignored) {}
+            ModernUIHelper.applyGlobalTheme();
 
             LoginForm loginForm = new LoginForm(networkClient);
             loginForm.setVisible(true);

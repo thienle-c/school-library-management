@@ -29,6 +29,7 @@ import thuvien.client.network.NetworkClient;
 import thuvien.client.session.ClientSession;
 import thuvien.client.view.common.AsyncWorker;
 import thuvien.common.dto.BookDTO;
+import thuvien.client.view.common.ModernUIHelper;
 import thuvien.common.dto.BorrowRecordDTO;
 import thuvien.common.dto.BorrowRequestDTO;
 import thuvien.common.dto.StudentDTO;
@@ -71,47 +72,86 @@ public class BorrowDialog extends JDialog {
     }
 
     private void initCustom(Long defaultStudentId, Long defaultBookId) {
-        ((javax.swing.JComponent) getContentPane()).setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+
+        ((javax.swing.JComponent) getContentPane()).setBorder(
+                javax.swing.BorderFactory.createEmptyBorder(15, 20, 15, 20));
         setSize(680, 520);
         setMinimumSize(new Dimension(640, 480));
         setLocationRelativeTo(getOwner());
         getRootPane().setDefaultButton(submitButton);
 
-        lblStudentId.setText("Sinh viên (Mã SV / ID):*");
-        lblBookId.setText("Sách (ISBN / ID / Tên):*");
+        // Giao diện mới từ main
+        ModernUIHelper.styleDialog(this);
+        formPanel.setBackground(ModernUIHelper.BG_SURFACE);
+        formPanel.setBorder(ModernUIHelper.createRoundedBorder(
+                ModernUIHelper.BORDER_COLOR, 10, 14, 16, 14, 16));
+        bottomPanel.setOpaque(false);
+        buttonPanel.setOpaque(false);
 
-        studentIdField.setToolTipText("Nhập Mã SV (ví dụ: STU001) hoặc Mã ID rồi bấm Tra cứu");
-        bookIdField.setToolTipText("Nhập Mã ISBN, Tên sách hoặc Mã ID rồi bấm Tra cứu");
+        ModernUIHelper.styleTextField(studentIdField);
+        ModernUIHelper.styleTextField(bookIdField);
+        ModernUIHelper.styleSpinner(durationSpinner);
+        ModernUIHelper.styleTextField(notesField);
+
+        ModernUIHelper.styleLabel(lblStudentId, "Sinh viên (Mã SV / ID):*");
+        ModernUIHelper.styleLabel(lblBookId, "Sách (ISBN / ID / Tên):*");
+        ModernUIHelper.styleLabel(lblDuration, "Thời hạn mượn (ngày):*");
+        ModernUIHelper.styleLabel(lblNotes, "Ghi chú phiếu mượn:");
+
+        statusLabel.setForeground(ModernUIHelper.TEXT_MUTED);
+
+        ModernUIHelper.stylePrimaryButton(submitButton, "Xác Nhận Mượn");
+        submitButton.setIcon(ModernUIHelper.getVectorIcon(
+                "CHECK", 13, java.awt.Color.WHITE));
+        submitButton.setIconTextGap(6);
+
+        ModernUIHelper.styleSecondaryButton(cancelButton, "Đóng");
+
+        // Hướng dẫn nhập liệu
+        studentIdField.setToolTipText(
+                "Nhập Mã SV hoặc ID rồi bấm Tra cứu");
+        bookIdField.setToolTipText(
+                "Nhập ISBN, tên sách hoặc ID rồi bấm Tra cứu");
 
         // Action panel for Student
-        JPanel studentActionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        JPanel studentActionPanel = new JPanel(
+                new FlowLayout(FlowLayout.LEFT, 4, 0));
         studentActionPanel.setOpaque(false);
+
         lookupStudentBtn = new JButton("Tra cứu");
-        lookupStudentBtn.setToolTipText("Tra cứu thông tin sinh viên theo mã hoặc ID");
+        lookupStudentBtn.setToolTipText(
+                "Tra cứu thông tin sinh viên theo mã hoặc ID");
         browseStudentBtn = new JButton("Danh sách...");
-        browseStudentBtn.setToolTipText("Chọn sinh viên từ danh sách toàn thư viện");
+        browseStudentBtn.setToolTipText(
+                "Chọn sinh viên từ danh sách thư viện");
+
         studentActionPanel.add(lookupStudentBtn);
         studentActionPanel.add(browseStudentBtn);
 
-        // Student Info Label
-        studentInfoLabel = new JLabel("<html><font color='gray'>Nhập Mã SV (VD: STU001) rồi bấm Tra cứu hoặc chọn từ danh sách.</font></html>");
+        studentInfoLabel = new JLabel(
+                "<html><font color='gray'>Nhập Mã SV rồi bấm Tra cứu hoặc chọn từ danh sách.</font></html>");
         studentInfoLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
 
         // Action panel for Book
-        JPanel bookActionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        JPanel bookActionPanel = new JPanel(
+                new FlowLayout(FlowLayout.LEFT, 4, 0));
         bookActionPanel.setOpaque(false);
+
         lookupBookBtn = new JButton("Tra cứu");
-        lookupBookBtn.setToolTipText("Tra cứu thông tin sách theo ISBN, tiêu đề hoặc ID");
+        lookupBookBtn.setToolTipText(
+                "Tra cứu thông tin sách theo ISBN, tiêu đề hoặc ID");
         browseBookBtn = new JButton("Danh sách...");
-        browseBookBtn.setToolTipText("Chọn sách từ danh mục thư viện");
+        browseBookBtn.setToolTipText(
+                "Chọn sách từ danh mục thư viện");
+
         bookActionPanel.add(lookupBookBtn);
         bookActionPanel.add(browseBookBtn);
 
-        // Book Info Label
-        bookInfoLabel = new JLabel("<html><font color='gray'>Nhập ISBN hoặc Tiêu đề rồi bấm Tra cứu hoặc chọn từ danh sách.</font></html>");
+        bookInfoLabel = new JLabel(
+                "<html><font color='gray'>Nhập ISBN hoặc tiêu đề rồi bấm Tra cứu hoặc chọn từ danh sách.</font></html>");
         bookInfoLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
 
-        // Due date preview label
+        // Ngày trả dự kiến
         dueDatePreviewLabel = new JLabel();
         dueDatePreviewLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
         dueDatePreviewLabel.setForeground(new Color(0, 70, 150));
@@ -119,23 +159,23 @@ public class BorrowDialog extends JDialog {
 
         durationSpinner.addChangeListener(e -> updateDueDatePreview());
 
-        // Check condition button
+        // Nút kiểm tra điều kiện mượn
         checkConditionBtn = new JButton("Kiểm Tra Điều Kiện");
         checkConditionBtn.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        checkConditionBtn.setToolTipText("Kiểm tra tính hợp lệ của sinh viên và tình trạng khả dụng của sách trước khi mượn");
+        checkConditionBtn.setToolTipText(
+                "Kiểm tra sinh viên và tình trạng sách trước khi mượn");
+        ModernUIHelper.styleSecondaryButton(checkConditionBtn, "Kiểm Tra Điều Kiện");
         buttonPanel.add(checkConditionBtn, 0);
 
-        // Layout enhancements on formPanel
+        // Sắp xếp lại form
         GridBagConstraints gbc = new GridBagConstraints();
 
-        // Student row actions
         gbc.gridx = 2;
         gbc.gridy = 0;
         gbc.fill = GridBagConstraints.NONE;
         gbc.insets = new Insets(6, 4, 6, 6);
         formPanel.add(studentActionPanel, gbc);
 
-        // Student info row
         gbc.gridx = 1;
         gbc.gridy = 1;
         gbc.gridwidth = 2;
@@ -143,13 +183,18 @@ public class BorrowDialog extends JDialog {
         gbc.insets = new Insets(0, 6, 8, 6);
         formPanel.add(studentInfoLabel, gbc);
 
-        // Adjust book row position (now row 2)
-        ((GridBagLayout) formPanel.getLayout()).setConstraints(lblBookId,
-                new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(6, 6, 6, 6), 0, 0));
-        ((GridBagLayout) formPanel.getLayout()).setConstraints(bookIdField,
-                new GridBagConstraints(1, 2, 1, 1, 1.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(6, 6, 6, 6), 0, 0));
+        ((GridBagLayout) formPanel.getLayout()).setConstraints(
+                lblBookId,
+                new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0,
+                        GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
+                        new Insets(6, 6, 6, 6), 0, 0));
 
-        // Book row actions
+        ((GridBagLayout) formPanel.getLayout()).setConstraints(
+                bookIdField,
+                new GridBagConstraints(1, 2, 1, 1, 1.0, 0.0,
+                        GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
+                        new Insets(6, 6, 6, 6), 0, 0));
+
         gbc.gridx = 2;
         gbc.gridy = 2;
         gbc.gridwidth = 1;
@@ -157,7 +202,6 @@ public class BorrowDialog extends JDialog {
         gbc.insets = new Insets(6, 4, 6, 6);
         formPanel.add(bookActionPanel, gbc);
 
-        // Book info row
         gbc.gridx = 1;
         gbc.gridy = 3;
         gbc.gridwidth = 2;
@@ -165,13 +209,18 @@ public class BorrowDialog extends JDialog {
         gbc.insets = new Insets(0, 6, 8, 6);
         formPanel.add(bookInfoLabel, gbc);
 
-        // Duration row adjustments (now row 4)
-        ((GridBagLayout) formPanel.getLayout()).setConstraints(lblDuration,
-                new GridBagConstraints(0, 4, 1, 1, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(6, 6, 6, 6), 0, 0));
-        ((GridBagLayout) formPanel.getLayout()).setConstraints(durationSpinner,
-                new GridBagConstraints(1, 4, 1, 1, 1.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(6, 6, 6, 6), 0, 0));
+        ((GridBagLayout) formPanel.getLayout()).setConstraints(
+                lblDuration,
+                new GridBagConstraints(0, 4, 1, 1, 0.0, 0.0,
+                        GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
+                        new Insets(6, 6, 6, 6), 0, 0));
 
-        // Due date preview placed next to spinner
+        ((GridBagLayout) formPanel.getLayout()).setConstraints(
+                durationSpinner,
+                new GridBagConstraints(1, 4, 1, 1, 1.0, 0.0,
+                        GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
+                        new Insets(6, 6, 6, 6), 0, 0));
+
         gbc.gridx = 2;
         gbc.gridy = 4;
         gbc.gridwidth = 1;
@@ -179,13 +228,19 @@ public class BorrowDialog extends JDialog {
         gbc.insets = new Insets(6, 8, 6, 6);
         formPanel.add(dueDatePreviewLabel, gbc);
 
-        // Notes row adjustments (now row 5)
-        ((GridBagLayout) formPanel.getLayout()).setConstraints(lblNotes,
-                new GridBagConstraints(0, 5, 1, 1, 0.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(6, 6, 6, 6), 0, 0));
-        ((GridBagLayout) formPanel.getLayout()).setConstraints(notesField,
-                new GridBagConstraints(1, 5, 2, 1, 1.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(6, 6, 6, 6), 0, 0));
+        ((GridBagLayout) formPanel.getLayout()).setConstraints(
+                lblNotes,
+                new GridBagConstraints(0, 5, 1, 1, 0.0, 0.0,
+                        GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
+                        new Insets(6, 6, 6, 6), 0, 0));
 
-        // Event Listeners
+        ((GridBagLayout) formPanel.getLayout()).setConstraints(
+                notesField,
+                new GridBagConstraints(1, 5, 2, 1, 1.0, 0.0,
+                        GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
+                        new Insets(6, 6, 6, 6), 0, 0));
+
+        // Event Listeners cho các chức năng tra cứu và kiểm tra
         lookupStudentBtn.addActionListener(e -> lookupStudent());
         studentIdField.addActionListener(e -> lookupStudent());
         browseStudentBtn.addActionListener(e -> browseStudents());
@@ -195,6 +250,7 @@ public class BorrowDialog extends JDialog {
         browseBookBtn.addActionListener(e -> browseBooks());
 
         checkConditionBtn.addActionListener(e -> checkConditions(true));
+
 
         if (defaultStudentId != null) {
             studentIdField.setText(defaultStudentId.toString());
