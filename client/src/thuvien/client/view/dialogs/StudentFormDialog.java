@@ -8,6 +8,7 @@ import thuvien.client.network.NetworkClient;
 import thuvien.client.view.common.AsyncWorker;
 import thuvien.common.dto.StudentDTO;
 import thuvien.common.enums.StudentStatus;
+import thuvien.client.view.common.ModernUIHelper;
 
 /**
  * Modal dialog for creating and editing Student records.
@@ -28,9 +29,33 @@ public class StudentFormDialog extends JDialog {
     private void initCustom() {
         setTitle(studentToEdit == null ? "Thêm Sinh Viên Mới" : "Chỉnh Sửa Sinh Viên (" + studentToEdit.getStudentCode() + ")");
         ((javax.swing.JComponent) getContentPane()).setBorder(javax.swing.BorderFactory.createEmptyBorder(15, 20, 15, 20));
-        setSize(480, 430);
+        setSize(500, 470);
         setLocationRelativeTo(getOwner());
         getRootPane().setDefaultButton(saveButton);
+
+        ModernUIHelper.styleDialog(this);
+        formPanel.setBackground(ModernUIHelper.BG_SURFACE);
+        formPanel.setBorder(ModernUIHelper.createRoundedBorder(ModernUIHelper.BORDER_COLOR, 10, 14, 16, 14, 16));
+        bottomPanel.setOpaque(false);
+        buttonPanel.setOpaque(false);
+
+        ModernUIHelper.styleTextField(codeField);
+        ModernUIHelper.styleTextField(nameField);
+        ModernUIHelper.styleTextField(classField);
+        ModernUIHelper.styleTextField(phoneField);
+        ModernUIHelper.styleTextField(emailField);
+        ModernUIHelper.styleSpinner(limitSpinner);
+        ModernUIHelper.styleComboBox(statusCombo);
+
+        ModernUIHelper.styleLabel(lblCode, "Mã sinh viên (*):");
+        ModernUIHelper.styleLabel(lblName, "Họ và tên (*):");
+        ModernUIHelper.styleLabel(lblClass, "Lớp / Khóa:");
+        ModernUIHelper.styleLabel(lblPhone, "Số điện thoại:");
+        ModernUIHelper.styleLabel(lblEmail, "Email:");
+        ModernUIHelper.styleLabel(lblLimit, "Giới hạn mượn (sách):");
+        ModernUIHelper.styleLabel(lblStatus, "Trạng thái:");
+
+        statusLabel.setForeground(ModernUIHelper.TEXT_MUTED);
 
         if (studentToEdit != null) {
             codeField.setText(studentToEdit.getStudentCode());
@@ -43,11 +68,15 @@ public class StudentFormDialog extends JDialog {
             if (studentToEdit.getStatus() != null) {
                 statusCombo.setSelectedItem(studentToEdit.getStatus());
             }
-            saveButton.setText("Lưu Thay Đổi");
+            ModernUIHelper.stylePrimaryButton(saveButton, "Lưu Thay Đổi");
         } else {
             statusCombo.setSelectedItem(StudentStatus.ACTIVE);
-            saveButton.setText("Tạo Sinh Viên");
+            ModernUIHelper.stylePrimaryButton(saveButton, "Tạo Sinh Viên");
         }
+        saveButton.setIcon(ModernUIHelper.getVectorIcon("CHECK", 13, java.awt.Color.WHITE));
+        saveButton.setIconTextGap(6);
+
+        ModernUIHelper.styleSecondaryButton(cancelButton, "Đóng");
     }
 
     /**

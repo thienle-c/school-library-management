@@ -7,6 +7,8 @@ import thuvien.client.controller.ClientAuthController;
 import thuvien.client.network.NetworkClient;
 import thuvien.client.view.common.AsyncWorker;
 
+import thuvien.client.view.common.ModernUIHelper;
+
 /**
  * Dialog for authenticated users to change their password securely.
  */
@@ -21,9 +23,36 @@ public class ChangePasswordDialog extends JDialog {
     }
 
     private void initCustom() {
-        ((javax.swing.JComponent) getContentPane()).setBorder(javax.swing.BorderFactory.createEmptyBorder(15, 20, 15, 20));
-        setSize(400, 260);
+        getContentPane().setBackground(ModernUIHelper.BG_CARD);
+        ((javax.swing.JComponent) getContentPane()).setBorder(javax.swing.BorderFactory.createEmptyBorder(18, 22, 18, 22));
+        setSize(420, 275);
         setLocationRelativeTo(getParent());
+
+        formPanel.setOpaque(false);
+        bottomPanel.setOpaque(false);
+        btnPanel.setOpaque(false);
+
+        lblCurrentPassword.setFont(ModernUIHelper.FONT_LABEL);
+        lblCurrentPassword.setForeground(ModernUIHelper.LABEL_DETAIL);
+        lblNewPassword.setFont(ModernUIHelper.FONT_LABEL);
+        lblNewPassword.setForeground(ModernUIHelper.LABEL_DETAIL);
+        lblConfirmPassword.setFont(ModernUIHelper.FONT_LABEL);
+        lblConfirmPassword.setForeground(ModernUIHelper.LABEL_DETAIL);
+
+        ModernUIHelper.styleTextField(currentPasswordField);
+        ModernUIHelper.styleTextField(newPasswordField);
+        ModernUIHelper.styleTextField(confirmPasswordField);
+
+        statusLabel.setFont(ModernUIHelper.FONT_SMALL);
+        statusLabel.setForeground(ModernUIHelper.TEXT_MUTED);
+
+        ModernUIHelper.styleDialog(this);
+        ModernUIHelper.stylePrimaryButton(saveButton, "Lưu Thay Đổi");
+        saveButton.setIcon(ModernUIHelper.getVectorIcon("CHECK", 13, java.awt.Color.WHITE));
+        saveButton.setIconTextGap(6);
+
+        ModernUIHelper.styleSecondaryButton(cancelButton, "Hủy Bỏ");
+
         getRootPane().setDefaultButton(saveButton);
     }
 

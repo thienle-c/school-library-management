@@ -1,10 +1,13 @@
 package thuvien.client.view;
 
+import java.awt.AlphaComposite;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
@@ -20,6 +23,9 @@ import thuvien.client.network.NetworkClient;
 import thuvien.client.network.RMIClient;
 import thuvien.client.session.ClientSession;
 import thuvien.client.view.common.AsyncWorker;
+import thuvien.client.view.common.CyberCardPanel;
+import thuvien.client.view.common.CyberHeaderPanel;
+import thuvien.client.view.common.ModernUIHelper;
 import thuvien.client.view.panels.AuditLogManagementPanel;
 import thuvien.client.view.panels.BookManagementPanel;
 import thuvien.client.view.panels.BorrowManagementPanel;
@@ -61,48 +67,101 @@ public class MainDashboardForm extends JFrame {
         return dummy;
     }
 
+    private float contentAlpha = 1.0f;
+    private javax.swing.Timer fadeTimer;
+
     private void initCustom() {
         setTitle(String.format("Quản Lý Thư Viện - %s (%s)", session.getFullName(), getRoleDisplayName(session.getRole())));
-        setSize(1020, 700);
-        setMinimumSize(new Dimension(880, 560));
+        setSize(1140, 740);
+        setMinimumSize(new Dimension(960, 620));
         setLocationRelativeTo(null);
+        getContentPane().setBackground(ModernUIHelper.BG_APP);
 
-        topBar.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(215, 220, 228)),
-                BorderFactory.createEmptyBorder(12, 20, 12, 20)
-        ));
+        // Replace topBar with CyberHeaderPanel (animated neon cyan laser scanner beam)
+        CyberHeaderPanel cyberHeader = new CyberHeaderPanel();
+        cyberHeader.setLayout(new BorderLayout());
+        cyberHeader.setBorder(BorderFactory.createEmptyBorder(12, 24, 12, 24));
+        cyberHeader.add(titlePanel, BorderLayout.WEST);
+        cyberHeader.add(userPanel, BorderLayout.EAST);
+        getContentPane().remove(topBar);
+        getContentPane().add(cyberHeader, BorderLayout.NORTH);
 
+        appTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        appTitle.setForeground(ModernUIHelper.PRIMARY_BLUE);
+        appTitle.setIcon(ModernUIHelper.getVectorIcon("BOOKS", 24, ModernUIHelper.PRIMARY_BLUE));
+        appTitle.setIconTextGap(10);
+        appTitle.setText("THƯ VIỆN HỌC THUẬT");
+
+        subTitle.setFont(ModernUIHelper.FONT_SUBTITLE);
+        subTitle.setForeground(ModernUIHelper.TEXT_MUTED);
+        subTitle.setText("Hệ thống quản lý & tra cứu ấn phẩm số • Kiến trúc phân tán");
+
+        sidebar.setBackground(ModernUIHelper.BG_SIDEBAR);
         sidebar.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(215, 220, 228)),
-                BorderFactory.createEmptyBorder(15, 10, 15, 10)
+                BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(0x1E, 0x29, 0x3B)),
+                BorderFactory.createEmptyBorder(15, 12, 15, 12)
         ));
 
-        String roleBadge = String.format("<html><b>%s</b> &nbsp;|&nbsp; Vai trò: <span style='color:#0055aa;'>%s</span></html>",
-                session.getFullName(), getRoleDisplayName(session.getRole()));
+        String badgeBg = session.getRole() == UserRole.ADMIN ? "#EFF6FF" : (session.getRole() == UserRole.LIBRARIAN ? "#F0FDF4" : "#FEF3C7");
+        String badgeFg = session.getRole() == UserRole.ADMIN ? "#1D4ED8" : (session.getRole() == UserRole.LIBRARIAN ? "#15803D" : "#B45309");
+        String badgeBorder = session.getRole() == UserRole.ADMIN ? "#BFDBFE" : (session.getRole() == UserRole.LIBRARIAN ? "#BBF7D0" : "#FDE68A");
+        String roleBadge = String.format("<html><span style='font-size:13px; font-weight:600; color:#0F172A;'>%s</span> &nbsp;<span style='background:%s; border:1px solid %s; color:%s; padding:3px 10px; border-radius:10px; font-size:11px;'><b>%s</b></span></html>",
+                session.getFullName(), badgeBg, badgeBorder, badgeFg, getRoleDisplayName(session.getRole()));
         userLabel.setText(roleBadge);
+        userLabel.setFont(ModernUIHelper.FONT_LABEL);
+
+        ModernUIHelper.styleChangePasswordButton(changePwdBtn, "Đổi mật khẩu");
+        changePwdBtn.setIcon(ModernUIHelper.getVectorIcon("KEY", 14, ModernUIHelper.TEXT_PRIMARY));
+        changePwdBtn.setIconTextGap(6);
+        changePwdBtn.setPreferredSize(new Dimension(135, 32));
+
+        ModernUIHelper.styleDangerButton(logoutBtn, "Đăng xuất");
+        logoutBtn.setIcon(ModernUIHelper.getVectorIcon("LOGOUT", 14, new Color(0xFC, 0xA5, 0xA5)));
+        logoutBtn.setIconTextGap(6);
+        logoutBtn.setPreferredSize(new Dimension(110, 32));
 
         UserRole role = session.getRole();
         if (role == UserRole.STUDENT) {
-            homeBtn.setText("Trang chủ sinh viên");
+            ModernUIHelper.styleSidebarButton(homeBtn, "Trang chủ sinh viên", ModernUIHelper.getVectorIcon("HOME", 16));
+            ModernUIHelper.styleSidebarButton(booksBtn, "Tra cứu sách", ModernUIHelper.getVectorIcon("BOOKS", 16));
+            ModernUIHelper.styleSidebarButton(studentsBtn, "Hồ sơ cá nhân", ModernUIHelper.getVectorIcon("STUDENTS", 16));
+            ModernUIHelper.styleSidebarButton(borrowBtn, "Sách đang mượn", ModernUIHelper.getVectorIcon("BORROW", 16));
+            ModernUIHelper.styleSidebarButton(finesBtn, "Khoản phạt của tôi", ModernUIHelper.getVectorIcon("FINES", 16));
+            ModernUIHelper.styleSidebarButton(reservationsBtn, "Sách đã đặt trước", ModernUIHelper.getVectorIcon("RESERVATIONS", 16));
             overviewBtn.setVisible(false);
             auditBtn.setVisible(false);
-            booksBtn.setText("Tra cứu sách");
-            studentsBtn.setText("Hồ sơ cá nhân");
-            borrowBtn.setText("Sách đang mượn");
-            finesBtn.setText("Khoản phạt của tôi");
-            reservationsBtn.setText("Sách đã đặt trước");
         } else {
-            homeBtn.setText("Trang chủ / Phiên");
+            ModernUIHelper.styleSidebarButton(homeBtn, "Thông tin phiên RMI", ModernUIHelper.getVectorIcon("SESSION", 16));
+            ModernUIHelper.styleSidebarButton(overviewBtn, "Tổng quan & Chỉ số", ModernUIHelper.getVectorIcon("OVERVIEW", 16));
+            ModernUIHelper.styleSidebarButton(booksBtn, "Quản lý đầu sách", ModernUIHelper.getVectorIcon("BOOKS", 16));
+            ModernUIHelper.styleSidebarButton(studentsBtn, "Hồ sơ sinh viên", ModernUIHelper.getVectorIcon("STUDENTS", 16));
+            ModernUIHelper.styleSidebarButton(borrowBtn, "Mượn & trả sách", ModernUIHelper.getVectorIcon("BORROW", 16));
+            ModernUIHelper.styleSidebarButton(finesBtn, "Quản lý tiền phạt", ModernUIHelper.getVectorIcon("FINES", 16));
+            ModernUIHelper.styleSidebarButton(reservationsBtn, "Đặt trước sách", ModernUIHelper.getVectorIcon("RESERVATIONS", 16));
+            ModernUIHelper.styleSidebarButton(auditBtn, "Nhật ký kiểm toán", ModernUIHelper.getVectorIcon("AUDIT", 16));
             overviewBtn.setVisible(true);
-            booksBtn.setText("Quản lý sách");
-            studentsBtn.setText("Hồ sơ sinh viên");
-            borrowBtn.setText("Mượn & Trả sách");
-            finesBtn.setText("Quản lý tiền phạt");
-            reservationsBtn.setText("Đặt trước sách");
             auditBtn.setVisible(role == UserRole.ADMIN);
         }
 
-        cardLayout = (CardLayout) contentCards.getLayout();
+        // Replace contentCards with alpha-fade capable container
+        getContentPane().remove(contentCards);
+        contentCards = new JPanel() {
+            @Override
+            public void paint(Graphics g) {
+                if (contentAlpha < 0.98f) {
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, Math.max(0f, Math.min(1f, contentAlpha))));
+                    super.paint(g2);
+                    g2.dispose();
+                } else {
+                    super.paint(g);
+                }
+            }
+        };
+        contentCards.setBackground(ModernUIHelper.BG_APP);
+        cardLayout = new CardLayout();
+        contentCards.setLayout(cardLayout);
+        getContentPane().add(contentCards, BorderLayout.CENTER);
 
         if (role == UserRole.STUDENT) {
             contentCards.add(new StudentDashboardPanel(networkClient), "HOME");
@@ -111,9 +170,10 @@ public class MainDashboardForm extends JFrame {
             contentCards.add(new ReservationManagementPanel(networkClient), "RESERVATIONS");
             contentCards.add(new FineManagementPanel(networkClient), "FINES");
             contentCards.add(new StudentManagementPanel(networkClient), "STUDENTS");
+            showCardWithFade("HOME", homeBtn);
         } else {
-            contentCards.add(createHomeSessionPanel(), "HOME");
             contentCards.add(new DashboardOverviewPanel(networkClient), "OVERVIEW");
+            contentCards.add(createHomeSessionPanel(), "HOME");
             contentCards.add(new BookManagementPanel(networkClient), "BOOKS");
             contentCards.add(new StudentManagementPanel(networkClient), "STUDENTS");
             contentCards.add(new BorrowManagementPanel(networkClient), "CIRCULATION");
@@ -122,9 +182,9 @@ public class MainDashboardForm extends JFrame {
             if (role == UserRole.ADMIN) {
                 contentCards.add(new AuditLogManagementPanel(networkClient), "AUDIT_LOGS");
             }
+            showCardWithFade("OVERVIEW", overviewBtn);
         }
-
-        cardLayout.show(contentCards, "HOME");
+        ModernUIHelper.styleComponentTree(getContentPane());
     }
 
     /**
@@ -326,36 +386,70 @@ public class MainDashboardForm extends JFrame {
         logout();
     }//GEN-LAST:event_logoutBtnActionPerformed
 
+    private javax.swing.JButton currentActiveBtn;
+
+    private void showCardWithFade(String cardName, javax.swing.JButton activeBtn) {
+        if (activeBtn != null) {
+            setActiveSidebarButton(activeBtn);
+        }
+        if (cardLayout != null && contentCards != null) {
+            cardLayout.show(contentCards, cardName);
+        }
+        if (fadeTimer != null && fadeTimer.isRunning()) {
+            fadeTimer.stop();
+        }
+        contentAlpha = 0.20f;
+        contentCards.repaint();
+        fadeTimer = new javax.swing.Timer(30, e -> {
+            contentAlpha += 0.16f;
+            if (contentAlpha >= 1.0f) {
+                contentAlpha = 1.0f;
+                fadeTimer.stop();
+            }
+            contentCards.repaint();
+        });
+        fadeTimer.start();
+    }
+
+    private void setActiveSidebarButton(javax.swing.JButton activeBtn) {
+        this.currentActiveBtn = activeBtn;
+        javax.swing.JButton[] allButtons = {homeBtn, overviewBtn, booksBtn, studentsBtn, borrowBtn, finesBtn, reservationsBtn, auditBtn};
+        for (javax.swing.JButton b : allButtons) {
+            if (b == null) continue;
+            ModernUIHelper.setSidebarButtonActive(b, b == activeBtn);
+        }
+    }
+
     private void homeBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_homeBtnActionPerformed
-        cardLayout.show(contentCards, "HOME");
+        showCardWithFade("HOME", homeBtn);
     }//GEN-LAST:event_homeBtnActionPerformed
 
     private void overviewBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_overviewBtnActionPerformed
-        cardLayout.show(contentCards, "OVERVIEW");
+        showCardWithFade("OVERVIEW", overviewBtn);
     }//GEN-LAST:event_overviewBtnActionPerformed
 
     private void booksBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_booksBtnActionPerformed
-        cardLayout.show(contentCards, "BOOKS");
+        showCardWithFade("BOOKS", booksBtn);
     }//GEN-LAST:event_booksBtnActionPerformed
 
     private void studentsBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_studentsBtnActionPerformed
-        cardLayout.show(contentCards, "STUDENTS");
+        showCardWithFade("STUDENTS", studentsBtn);
     }//GEN-LAST:event_studentsBtnActionPerformed
 
     private void borrowBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_borrowBtnActionPerformed
-        cardLayout.show(contentCards, "CIRCULATION");
+        showCardWithFade("CIRCULATION", borrowBtn);
     }//GEN-LAST:event_borrowBtnActionPerformed
 
     private void finesBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_finesBtnActionPerformed
-        cardLayout.show(contentCards, "FINES");
+        showCardWithFade("FINES", finesBtn);
     }//GEN-LAST:event_finesBtnActionPerformed
 
     private void reservationsBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_reservationsBtnActionPerformed
-        cardLayout.show(contentCards, "RESERVATIONS");
+        showCardWithFade("RESERVATIONS", reservationsBtn);
     }//GEN-LAST:event_reservationsBtnActionPerformed
 
     private void auditBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_auditBtnActionPerformed
-        cardLayout.show(contentCards, "AUDIT_LOGS");
+        showCardWithFade("AUDIT_LOGS", auditBtn);
     }//GEN-LAST:event_auditBtnActionPerformed
 
     private String getRoleDisplayName(UserRole role) {
@@ -368,54 +462,58 @@ public class MainDashboardForm extends JFrame {
         }
     }
 
+    private void styleSidebarButton(final javax.swing.JButton btn) {
+        // Handled via ModernUIHelper.styleSidebarButton in initCustom
+    }
+
     private JPanel createHomeSessionPanel() {
         JPanel panel = new JPanel(new BorderLayout(15, 15));
-        panel.setBackground(Color.WHITE);
+        panel.setBackground(ModernUIHelper.BG_MAIN);
         panel.setBorder(BorderFactory.createEmptyBorder(25, 30, 25, 30));
 
         // Welcome Header
-        JPanel headerPanel = new JPanel(new GridLayout(2, 1, 0, 5));
+        JPanel headerPanel = new JPanel(new GridLayout(2, 1, 0, 4));
         headerPanel.setOpaque(false);
         JLabel welcomeTitle = new JLabel("Xin chào, " + session.getFullName() + "!");
-        welcomeTitle.setFont(welcomeTitle.getFont().deriveFont(Font.BOLD, 22.0f));
-        JLabel welcomeSub = new JLabel("Ứng Dụng Quản Lý Thư Viện Trường Học (Giao thức mạng Java RMI)");
-        welcomeSub.setFont(welcomeSub.getFont().deriveFont(Font.PLAIN, 13.0f));
-        welcomeSub.setForeground(Color.GRAY);
+        welcomeTitle.setFont(ModernUIHelper.FONT_TITLE);
+        welcomeTitle.setForeground(ModernUIHelper.TEXT_ACCENT);
+
+        JLabel welcomeSub = new JLabel(
+        "Hệ thống Quản lý Thư Viện Trường Học (Giao thức mạng Java RMI)"
+        );
+        welcomeSub.setFont(ModernUIHelper.FONT_SUBTITLE);
+        welcomeSub.setForeground(ModernUIHelper.TEXT_MUTED);
         headerPanel.add(welcomeTitle);
         headerPanel.add(welcomeSub);
         panel.add(headerPanel, BorderLayout.NORTH);
 
         // Session Information Card
-        JPanel cardPanel = new JPanel(new GridBagLayout());
-        cardPanel.setBackground(new Color(248, 250, 252));
-        cardPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(225, 230, 238), 1),
-                BorderFactory.createEmptyBorder(20, 25, 20, 25)
-        ));
+        CyberCardPanel cardPanel = new CyberCardPanel();
+        cardPanel.setLayout(new GridBagLayout());
 
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(8, 8, 8, 8);
+        gbc.insets = new Insets(10, 14, 10, 14);
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
         int row = 0;
-        addInfoRow(cardPanel, gbc, row++, "Tài khoản đăng nhập:", session.getUsername() + " (Mã người dùng: " + session.getUserId() + ")");
-        addInfoRow(cardPanel, gbc, row++, "Vai trò hệ thống:", getRoleDisplayName(session.getRole()));
-        addInfoRow(cardPanel, gbc, row++, "Họ và tên:", session.getFullName());
+        addInfoRow(cardPanel, gbc, row++, "Tài khoản đăng nhập:", session.getUsername() + " (Mã: " + session.getUserId() + ")");
+        addInfoRow(cardPanel, gbc, row++, "Vai trò phân quyền:", getRoleDisplayName(session.getRole()));
+        addInfoRow(cardPanel, gbc, row++, "Họ và tên người dùng:", session.getFullName());
 
         String maskedToken = (session.getToken() != null && session.getToken().length() > 8)
                 ? session.getToken().substring(0, 8) + "..."
                 : (session.getToken() != null ? session.getToken() : "N/A");
         addInfoRow(cardPanel, gbc, row++, "Mã phiên làm việc (Token):", maskedToken);
-        addInfoRow(cardPanel, gbc, row++, "Giao thức truyền tải mạng:", "Java RMI over TCP (Registry 1099, Service 1100)");
+        addInfoRow(cardPanel, gbc, row++, "Giao thức truyền tải mạng:", "Java RMI over TCP (Registry Port 1099, Service 1100)");
         addInfoRow(cardPanel, gbc, row++, "Trạng thái ứng dụng:", "Đang kết nối & Sẵn sàng hoạt động");
 
         panel.add(cardPanel, BorderLayout.CENTER);
 
         // Bottom status notice
         JLabel notice = new JLabel("Vui lòng chọn chức năng ở thanh menu bên trái để quản lý sách, sinh viên, mượn trả, đặt trước và tiền phạt.");
-        notice.setFont(notice.getFont().deriveFont(Font.ITALIC, 12.0f));
-        notice.setForeground(new Color(120, 120, 120));
+        notice.setFont(ModernUIHelper.FONT_SMALL);
+        notice.setForeground(ModernUIHelper.TEXT_MUTED);
         panel.add(notice, BorderLayout.SOUTH);
 
         return panel;
@@ -426,13 +524,15 @@ public class MainDashboardForm extends JFrame {
         gbc.gridy = row;
         gbc.weightx = 0.3;
         JLabel lbl = new JLabel(label);
-        lbl.setFont(lbl.getFont().deriveFont(Font.BOLD, 13.0f));
+        lbl.setFont(ModernUIHelper.FONT_LABEL);
+        lbl.setForeground(ModernUIHelper.LABEL_DETAIL);
         panel.add(lbl, gbc);
 
         gbc.gridx = 1;
         gbc.weightx = 0.7;
         JLabel val = new JLabel(value);
-        val.setFont(val.getFont().deriveFont(Font.PLAIN, 13.0f));
+        val.setFont(ModernUIHelper.FONT_INPUT);
+        val.setForeground(ModernUIHelper.TEXT_PRIMARY);
         panel.add(val, gbc);
     }
 
