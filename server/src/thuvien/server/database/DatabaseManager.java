@@ -73,5 +73,13 @@ public class DatabaseManager {
             LOGGER.info("Closing HikariCP connection pool...");
             dataSource.close();
         }
+        dataSource = null;
+    }
+
+    public static synchronized void resetInstance() {
+        if (instance != null) {
+            instance.shutdown();
+            instance = null;
+        }
     }
 }

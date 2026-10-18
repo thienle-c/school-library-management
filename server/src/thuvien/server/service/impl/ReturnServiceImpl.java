@@ -126,7 +126,7 @@ public class ReturnServiceImpl implements ReturnService {
             // Step 4: Update Borrowing Record (returned_at, status=RETURNED) on the SAME Connection
             boolean recordUpdated = borrowRepository.updateStatus(activeBorrow.getId(), BorrowStatus.RETURNED, returnDate, conn);
             if (!recordUpdated) {
-                throw new LibraryException("Failed to update borrowing record status to RETURNED.");
+                throw new LibraryException("Failed to update borrowing record status to RETURNED. The record may have already been returned or is not ACTIVE.");
             }
 
             // Step 5: Atomically increment book available copies on the SAME Connection

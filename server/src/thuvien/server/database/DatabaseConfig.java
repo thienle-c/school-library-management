@@ -48,6 +48,65 @@ public class DatabaseConfig {
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Failed to load db.properties", e);
         }
+
+        // 1. Check for uncommitted test configuration file: test.local.properties (ignored by git via *.local.properties)
+        // or custom file specified via System property -Ddb.config.file=...
+        String customConfigFile = System.getProperty("db.config.file");
+        java.io.File testConfigFile = customConfigFile != null
+                ? new java.io.File(customConfigFile)
+                : new java.io.File("test.local.properties");
+        if (testConfigFile.exists() && testConfigFile.isFile()) {
+            try (InputStream testIn = new java.io.FileInputStream(testConfigFile)) {
+                Properties testProps = new Properties();
+                testProps.load(testIn);
+                if (testProps.getProperty("db.driver") != null) {
+                    this.driver = testProps.getProperty("db.driver");
+                }
+                if (testProps.getProperty("db.url") != null) {
+                    this.url = testProps.getProperty("db.url");
+                }
+                if (testProps.getProperty("db.username") != null) {
+                    this.username = testProps.getProperty("db.username");
+                }
+                if (testProps.getProperty("db.password") != null) {
+                    this.password = testProps.getProperty("db.password");
+                }
+                if (testProps.getProperty("db.pool.maxSize") != null) {
+                    this.maxPoolSize = Integer.parseInt(testProps.getProperty("db.pool.maxSize"));
+                }
+                LOGGER.info("Loaded configuration override from: " + testConfigFile.getAbsolutePath());
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Failed to load " + testConfigFile.getName(), e);
+            }
+        }
+
+        // 2. Check for environment variable overrides
+        String envUrl = System.getenv("DB_URL");
+        if (envUrl != null && !envUrl.trim().isEmpty()) {
+            this.url = envUrl.trim();
+        }
+        String envUser = System.getenv("DB_USERNAME");
+        if (envUser != null && !envUser.trim().isEmpty()) {
+            this.username = envUser.trim();
+        }
+        String envPass = System.getenv("DB_PASSWORD");
+        if (envPass != null) {
+            this.password = envPass;
+        }
+
+        // 3. Check for System property overrides (-Ddb.url=... or mapped from -Dtest-sys-prop.db.url=...)
+        String sysUrl = System.getProperty("db.url");
+        if (sysUrl != null && !sysUrl.trim().isEmpty()) {
+            this.url = sysUrl.trim();
+        }
+        String sysUser = System.getProperty("db.username");
+        if (sysUser != null && !sysUser.trim().isEmpty()) {
+            this.username = sysUser.trim();
+        }
+        String sysPass = System.getProperty("db.password");
+        if (sysPass != null) {
+            this.password = sysPass;
+        }
     }
 
     public String getDriver() { return driver; }

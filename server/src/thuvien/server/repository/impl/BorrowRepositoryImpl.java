@@ -152,7 +152,7 @@ public class BorrowRepositoryImpl implements BorrowRepository {
 
     @Override
     public boolean updateStatus(Long recordId, BorrowStatus status, Date returnDate, Connection conn) throws SQLException {
-        String sql = "UPDATE borrow_records SET status = ?, return_date = ? WHERE id = ?";
+        String sql = "UPDATE borrow_records SET status = ?, return_date = ? WHERE id = ? AND status = 'ACTIVE'";
         boolean localConn = (conn == null);
         Connection activeConn = localConn ? databaseManager.getConnection() : conn;
         try (PreparedStatement stmt = activeConn.prepareStatement(sql)) {

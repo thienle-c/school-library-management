@@ -8,6 +8,7 @@ import thuvien.common.dto.UserDTO;
 import thuvien.common.enums.UserRole;
 import thuvien.common.exception.EntityNotFoundException;
 import thuvien.common.exception.LibraryException;
+import thuvien.common.exception.ValidationException;
 import thuvien.server.repository.UserRepository;
 import thuvien.server.repository.impl.UserRepositoryImpl;
 import thuvien.server.security.PasswordHasher;
@@ -73,13 +74,16 @@ public class UserServiceImpl implements UserService {
     @Override
     public Long createUser(UserDTO user, String plainPassword) throws LibraryException {
         if (user == null || user.getUsername() == null || user.getUsername().trim().isEmpty()) {
-            throw new LibraryException("Username is required.");
+            throw new ValidationException("Username is required.");
         }
         if (user.getRole() == null) {
             user.setRole(UserRole.STUDENT);
         }
-        if (plainPassword == null || plainPassword.isEmpty()) {
-            plainPassword = "password123";
+        if (plainPassword == null || plainPassword.trim().isEmpty()) {
+            throw new ValidationException("Initial password cannot be empty.");
+        }
+        if (plainPassword.length() < 6) {
+            throw new ValidationException("Initial password must be at least 6 characters long.");
         }
         String passwordHash = PasswordHasher.hash(plainPassword);
 

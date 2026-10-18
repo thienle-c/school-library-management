@@ -56,20 +56,39 @@ public class SecurityAndFeatureHardeningTest {
     private FineService fineService;
     private RequestRouter router;
 
+    private boolean isIsolatedTestDb = false;
+
+    private void requireIsolatedTestDb() {
+        org.junit.Assume.assumeTrue("[SAFETY — DATA-01] Test disabled on non-test database.", isIsolatedTestDb);
+    }
+
     @Before
     public void setUp() {
         DatabaseManager db = DatabaseManager.getInstance();
         sessionManager = SessionManager.getInstance();
         sessionManager.clearAllSessions();
 
+        try (java.sql.Connection conn = db.getConnection()) {
+            if (conn != null && !conn.isClosed()) {
+                isIsolatedTestDb = thuvien.server.TestDatabaseSafetyGuard.isSafeTestDatabase(conn);
+            }
+        } catch (Exception e) {
+            isIsolatedTestDb = false;
+        }
+
         auditLogService = new AuditLogServiceImpl(new AuditLogRepositoryImpl(db));
         authService = new AuthServiceImpl(new UserRepositoryImpl(db), sessionManager, auditLogService);
-        authService.unlockAccount("student1");
-        authService.unlockAccount("admin");
-        authService.unlockAccount("librarian1");
-        authService.unlockAccount(1L);
-        authService.unlockAccount(2L);
-        authService.unlockAccount(4L);
+
+        if (isIsolatedTestDb) {
+            authService.unlockAccount("student1");
+            authService.unlockAccount("admin");
+            authService.unlockAccount("librarian1");
+            authService.unlockAccount(1L);
+            authService.unlockAccount(2L);
+            authService.unlockAccount(4L);
+        } else {
+            System.err.println("[SAFETY — DATA-01] SecurityAndFeatureHardeningTest database unlock skipped: Not connected to an isolated test database.");
+        }
 
         suggestionService = new SearchSuggestionServiceImpl(db, new StudentRepositoryImpl(db));
         studentService = new StudentServiceImpl(new StudentRepositoryImpl(db), new UserRepositoryImpl(db), auditLogService);
@@ -96,7 +115,7 @@ public class SecurityAndFeatureHardeningTest {
 
     @After
     public void tearDown() {
-        if (authService != null) {
+        if (isIsolatedTestDb && authService != null) {
             authService.unlockAccount("student1");
             authService.unlockAccount("admin");
             authService.unlockAccount("librarian1");

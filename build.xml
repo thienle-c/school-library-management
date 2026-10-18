@@ -66,6 +66,19 @@
         </copy>
     </target>
 
+    <!-- Ensure test classes are never loaded from production build/classes -->
+    <target name="-pre-compile-test">
+        <delete failonerror="false">
+            <fileset dir="${build.classes.dir}" includes="**/*Test*.class"/>
+        </delete>
+    </target>
+
+    <target name="-pre-compile-test-single">
+        <delete failonerror="false">
+            <fileset dir="${build.classes.dir}" includes="**/*Test*.class"/>
+        </delete>
+    </target>
+
     <!-- Target to run the Library RMI Server -->
     <target name="run-rmi-server" depends="compile" description="Runs the Library Java RMI Server">
         <java classname="thuvien.server.rmi.LibraryRMIServer" fork="true">

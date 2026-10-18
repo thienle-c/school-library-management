@@ -9,7 +9,7 @@ import thuvien.common.protocol.Request;
 import thuvien.common.protocol.Response;
 
 /**
- * Client controller for fetching search autocomplete suggestions over TCP.
+ * Client controller for fetching search autocomplete suggestions over Java RMI.
  */
 public class ClientSearchSuggestionController {
     private final NetworkClient networkClient;
