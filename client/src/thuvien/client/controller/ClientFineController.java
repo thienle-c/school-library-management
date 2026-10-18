@@ -18,7 +18,7 @@ import thuvien.common.protocol.Response;
 import thuvien.common.protocol.StatusCode;
 
 /**
- * Client controller for overdue fines and fee payment operations over TCP.
+ * Client controller for overdue fines and fee payment operations over Java RMI.
  */
 public class ClientFineController {
     private final NetworkClient networkClient;

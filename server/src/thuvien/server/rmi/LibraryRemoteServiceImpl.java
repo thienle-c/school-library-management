@@ -12,6 +12,7 @@ import thuvien.common.dto.BorrowRecordDTO;
 import thuvien.common.dto.BorrowRequestDTO;
 import thuvien.common.dto.CategoryDTO;
 import thuvien.common.dto.ChangePasswordRequestDTO;
+import thuvien.common.dto.CreateUserRequestDTO;
 import thuvien.common.dto.DashboardMetricsDTO;
 import thuvien.common.dto.DeleteStudentRequestDTO;
 import thuvien.common.dto.FineDTO;
@@ -45,6 +46,10 @@ import thuvien.server.router.RequestRouter;
  */
 public class LibraryRemoteServiceImpl extends UnicastRemoteObject implements LibraryRemoteService {
     private static final long serialVersionUID = 1L;
+
+    static {
+        LibraryRMIServer.configureSerializationFilter();
+    }
 
     public static final int DEFAULT_SERVICE_PORT = 1100;
 
@@ -490,8 +495,8 @@ public class LibraryRemoteServiceImpl extends UnicastRemoteObject implements Lib
 
     @Override
     public Long createUser(String token, UserDTO user, String initialPassword) throws RemoteException, AuthorizationException, ValidationException, LibraryException {
-        // Build composite payload if needed or route via UserDTO
-        Request req = new Request(Action.CREATE_USER, user);
+        CreateUserRequestDTO payload = new CreateUserRequestDTO(user, initialPassword);
+        Request req = new Request(Action.CREATE_USER, payload);
         req.setToken(token);
         Response resp = router.route(req);
         unwrapOrThrow(resp);

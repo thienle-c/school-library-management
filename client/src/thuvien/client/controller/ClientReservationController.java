@@ -17,7 +17,7 @@ import thuvien.common.protocol.Response;
 import thuvien.common.protocol.StatusCode;
 
 /**
- * Client controller for book reservation operations over TCP.
+ * Client controller for book reservation operations over Java RMI.
  */
 public class ClientReservationController {
     private final NetworkClient networkClient;

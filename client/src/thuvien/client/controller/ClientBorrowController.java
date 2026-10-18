@@ -19,7 +19,7 @@ import thuvien.common.protocol.Response;
 import thuvien.common.protocol.StatusCode;
 
 /**
- * Client controller for Borrow and Return operations over TCP.
+ * Client controller for Borrow and Return operations over Java RMI.
  */
 public class ClientBorrowController {
     private final NetworkClient networkClient;

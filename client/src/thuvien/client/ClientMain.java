@@ -31,7 +31,7 @@ public class ClientMain {
                 if (h != null) host = h.trim();
                 String p = props.getProperty("rmi.registry.port", props.getProperty("server.port", "1099"));
                 if (p != null) port = Integer.parseInt(p.trim());
-                String s = props.getProperty("rmi.service.name", "LibraryRemoteService");
+                String s = props.getProperty("rmi.service.name", props.getProperty("server.service", "LibraryRemoteService"));
                 if (s != null) serviceName = s.trim();
             }
         } catch (Exception e) {
@@ -49,7 +49,7 @@ public class ClientMain {
                 port = Integer.parseInt(sysPort.trim());
             } catch (NumberFormatException ignored) {}
         }
-        String sysService = System.getProperty("rmi.service.name");
+        String sysService = System.getProperty("rmi.service.name", System.getProperty("server.service"));
         if (sysService != null && !sysService.trim().isEmpty()) {
             serviceName = sysService.trim();
         }

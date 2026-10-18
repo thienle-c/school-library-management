@@ -478,7 +478,9 @@ public class MainDashboardForm extends JFrame {
         welcomeTitle.setFont(ModernUIHelper.FONT_TITLE);
         welcomeTitle.setForeground(ModernUIHelper.TEXT_ACCENT);
 
-        JLabel welcomeSub = new JLabel("Hệ thống quản lý tài nguyên học thuật số trực tuyến — Kiến trúc phân tán Java RMI");
+        JLabel welcomeSub = new JLabel(
+        "Hệ thống Quản lý Thư Viện Trường Học (Giao thức mạng Java RMI)"
+        );
         welcomeSub.setFont(ModernUIHelper.FONT_SUBTITLE);
         welcomeSub.setForeground(ModernUIHelper.TEXT_MUTED);
         headerPanel.add(welcomeTitle);

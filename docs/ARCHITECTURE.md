@@ -2,7 +2,7 @@
 
 ## 1. System Goals
 The **Remote School Library Management System** is a distributed, 3-tier desktop network application designed for university network programming education. The primary engineering goals are:
-* **True Network Decoupling**: Eliminate direct client-to-database connections by placing a TCP application server between the desktop UI and MySQL.
+* **True Network Decoupling**: Eliminate direct client-to-database connections by placing a Java RMI application server between the desktop UI and MySQL.
 * **ACID Transaction Integrity**: Ensure atomic guarantees for multi-table operations (borrowing, returns, fine generation) under concurrent client access.
 * **Role-Based Access Control**: Provide distinct privileges for Administrators, Librarians, and Students.
 * **Swing GUI Responsiveness**: Guarantee that network I/O and server latency never block or freeze the client Event Dispatch Thread (EDT).
@@ -12,8 +12,8 @@ The **Remote School Library Management System** is a distributed, 3-tier desktop
 
 ## 2. Client/Server Architecture
 The system operates on a dedicated client-server network topology:
-* **Client Tier**: A standalone desktop Java Swing application. Handles UI rendering, input capture, session storage, and socket communication via `TCPNetworkClient`.
-* **Application Server Tier**: A standalone Java daemon listening on TCP port `8888`. Houses connection pooling (`ExecutorService`), request routing, security verification, business rules, and JDBC persistence.
+* **Client Tier**: A standalone desktop Java Swing application. Handles UI rendering, input capture, session storage, and remote method invocation via `RMIClient` (implementing `NetworkClient`).
+* **Application Server Tier**: A standalone Java daemon listening on Java RMI Registry port `1099` and Remote Object port `1100`. Houses RMI bootstrap (`LibraryRMIServer`), Remote Service implementation (`LibraryRemoteServiceImpl`), request routing, security verification, business rules, and JDBC persistence.
 * **Database Tier**: MySQL server hosting the normalized InnoDB relational schema. Accessible strictly by the application server tier.
 
 ---
@@ -35,20 +35,20 @@ The system operates on a dedicated client-server network topology:
 |   +--------------------------+--------------------------+   |
 |                              | (Request Assembly)           |
 |   +--------------------------v--------------------------+   |
-|   |         NetworkClient (TCP Socket Client)           |   |
-|   |     Socket connection, Session Token Injection      |   |
+|   |         RMIClient (NetworkClient Adapter)           |   |
+|   |     Registry Lookup (:1099), Remote Object (:1100)  |   |
 |   +--------------------------+--------------------------+   |
 +------------------------------|------------------------------+
                                |
-                               | TCP Socket Stream (Port 8888)
-                               | [ Request / Response Protocol ]
+                               | Java RMI Remote Method Invocation
+                               | [ Request / Response Protocol via LibraryRemoteService ]
                                |
 +------------------------------v------------------------------+
 |                    JAVA LIBRARY SERVER                      |
 |                                                             |
 |   +-----------------------------------------------------+   |
-|   |      Network Listener (ServerSocket + ThreadPool)   |   |
-|   |          LibraryServer, ClientHandler Worker        |   |
+|   |    RMI Server (LibraryRMIServer + RemoteServiceImpl) |   |
+|   |    Registry :1099, Fixed Export Port :1100          |   |
 |   +--------------------------+--------------------------+   |
 |                              | (Raw Request Envelope)       |
 |   +--------------------------v--------------------------+   |
@@ -89,20 +89,21 @@ The system operates on a dedicated client-server network topology:
 
 ```
 thuvien
-├── common                           // Shared protocol & data models
+├── common                           // Shared protocol, RMI interface & data models
 │   ├── protocol                     // Request, Response, Action, StatusCode
 │   ├── dto                          // Serializable Transfer Objects
 │   ├── enums                        // UserRole, BookStatus, BorrowStatus, etc.
-│   └── exception                    // LibraryException, NetworkException, etc.
-├── server                           // Central Library TCP Server
-│   ├── network                      // LibraryServer, ClientHandler
+│   ├── exception                    // LibraryException, NetworkException, etc.
+│   └── rmi                          // LibraryRemoteService
+├── server                           // Central Library RMI Server
+│   ├── rmi                          // LibraryRMIServer, LibraryRemoteServiceImpl
 │   ├── router                       // RequestRouter
 │   ├── security                     // SessionManager, PasswordHasher
 │   ├── database                     // DatabaseManager (HikariCP), DatabaseConfig
 │   ├── repository                   // Repositories & SQL mappers
 │   └── service                      // Business logic & atomic transactions
 └── client                           // Desktop Java Swing Client
-    ├── network                      // NetworkClient, TCPNetworkClient
+    ├── network                      // NetworkClient, RMIClient
     ├── session                      // ClientSession
     ├── controller                   // UI Action Controllers
     └── view                         // Forms, Dialogs, Panels, AsyncWorker
@@ -114,9 +115,9 @@ thuvien
 
 | Module | Core Responsibilities | Strict Prohibitions |
 | :--- | :--- | :--- |
-| **`common`** | Protocol definitions (`Request`, `Response`), action identifiers, DTO contracts, enums, shared exceptions. | Zero Swing components; zero database/JDBC dependencies. |
-| **`server`** | TCP `ServerSocket`, thread pool concurrency, session token tracking, role-based authorization, transaction management, SQL execution via HikariCP. | Zero Swing UI components. |
-| **`client`** | User interaction, Swing views, input validation, non-blocking network calls via `AsyncWorker`, session token retention. | Zero JDBC, zero SQL, zero database driver dependencies. |
+| **`common`** | Protocol definitions (`Request`, `Response`), action identifiers, DTO contracts, enums, shared exceptions, RMI interface (`LibraryRemoteService`). | Zero Swing components; zero database/JDBC dependencies. |
+| **`server`** | Java RMI Server (`LibraryRMIServer`, `LibraryRemoteServiceImpl`), RMI Registry (1099), Remote Object (1100), serialization filter, session token tracking, role-based authorization, transaction management, SQL execution via HikariCP. | Zero Swing UI components. |
+| **`client`** | User interaction, Swing views, input validation, non-blocking network calls via `AsyncWorker` and `RMIClient`, session token retention. | Zero JDBC, zero SQL, zero database driver dependencies. |
 | **`database`** | Relational data persistence, foreign key cascading, row locking, integrity constraints. | Zero direct client network access. |
 
 ---
@@ -128,9 +129,9 @@ thuvien
             ↓
 [Controller validates format & dispatches via AsyncWorker]
             ↓
-[NetworkClient attaches session token and serializes Request]
-            ↓ (TCP Socket)
-[ClientHandler receives bytes, deserializes Request]
+[RMIClient attaches session token and invokes remote method / execute]
+            ↓ (Java RMI over TCP 1099/1100)
+[LibraryRemoteServiceImpl receives invocation, checked by JEP 290 filter]
             ↓
 [RequestRouter verifies session token & checks role permission]
             ↓
@@ -145,8 +146,8 @@ thuvien
 [Repository maps ResultSet to DTO; Service commits transaction]
             ↓
 [Server Controller wraps result into Response.ok(...)]
-            ↓ (TCP Socket)
-[NetworkClient receives Response and returns to AsyncWorker]
+            ↓ (Java RMI Return)
+[RMIClient receives Response and returns to AsyncWorker]
             ↓ (SwingUtilities.invokeLater)
 [View updates UI components safely on the EDT]
 ```
@@ -208,7 +209,7 @@ thuvien
 
 ## 10. Error Flow
 
-* **Client Connection Failure**: If the server is unreachable, `TCPNetworkClient` catches `IOException` and throws `NetworkException`. The UI displays a friendly connection error dialog without crashing.
+* **Client Connection Failure**: If the server is unreachable, `RMIClient` catches `RemoteException` or `NotBoundException` and throws `NetworkException`. The UI displays a friendly connection error dialog without crashing.
 * **Authentication / Authorization Failure**: If a token is missing, expired, or the user lacks role permissions, `RequestRouter` halts processing immediately and returns `401 UNAUTHORIZED` or `403 FORBIDDEN`.
 * **Business Rule Violations**: When business constraints fail (e.g. `BorrowLimitExceededException`), Services throw domain exceptions. The router translates them to `Response.error(reqId, StatusCode.BAD_REQUEST, e.getMessage())`.
 * **Database / Server Failures**: Uncaught database exceptions rollback active transactions and return `500 SERVER_ERROR`. Detailed technical stack traces are logged on the server and shielded from clients.
@@ -237,13 +238,19 @@ thuvien
   * Requires Java 8 JRE and accessible MySQL instance.
   * Executed via:
     ```bash
-    java -cp "dist/thuvien.jar;dist/lib/*" thuvien.server.ServerMain
+    # Via Ant target:
+    ant run-server
+    # Or via packaged distribution:
+    dist/server-dist/run-server.bat
     ```
 * **Client Deployment**:
   * Deployed on librarian or student workstations.
-  * Configured via `client.properties` pointing to server IP and port.
+  * Configured via `client.properties` pointing to server IP and RMI Registry port 1099.
   * Executed via:
     ```bash
-    java -cp "dist/thuvien.jar;dist/lib/*" thuvien.client.ClientMain
+    # Via Ant target:
+    ant run-client
+    # Or via packaged distribution:
+    dist/client-dist/run-client.bat [SERVER_IP] [1099]
     ```
   * Requires zero database drivers or direct MySQL network access.

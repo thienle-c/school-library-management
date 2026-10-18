@@ -22,7 +22,7 @@ import thuvien.common.protocol.StatusCode;
 
 /**
  * Client controller for Book Management operations.
- * Communicates with LibraryServer over TCP via Request/Response protocol.
+ * Communicates with LibraryServer over Java RMI via Request/Response protocol.
  */
 public class ClientBookController {
     private final NetworkClient networkClient;

@@ -14,7 +14,7 @@ import thuvien.common.protocol.Response;
 import thuvien.common.protocol.StatusCode;
 
 /**
- * Client controller for system audit log retrieval over TCP.
+ * Client controller for system audit log retrieval over Java RMI.
  * Restricted to administrators by server-side policy.
  */
 public class ClientAuditLogController {
