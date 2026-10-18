@@ -320,7 +320,7 @@ public class LibraryRMIServer {
         if (sysService != null && !sysService.trim().isEmpty()) {
             serviceName = sysService.trim();
         }
-        String sysHost = System.getProperty("rmi.server.host");
+        String sysHost = System.getProperty("rmi.server.host", System.getProperty("server.host"));
         if (sysHost != null && !sysHost.trim().isEmpty()) {
             host = sysHost.trim();
         }

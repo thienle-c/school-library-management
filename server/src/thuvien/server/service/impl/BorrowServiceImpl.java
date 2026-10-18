@@ -116,6 +116,18 @@ public class BorrowServiceImpl implements BorrowService {
                 );
             }
 
+            // Step 3.5: Prevent duplicate active borrow of the same book by the same student
+            if (borrowRepository != null) {
+                BorrowRecordDTO activeBorrow = borrowRepository.findActiveBorrow(request.getStudentId(), request.getBookId());
+                if (activeBorrow != null) {
+                    throw new LibraryException(String.format(
+                            "Sinh viên %s hiện đang mượn cuốn sách này (Mã phiếu #%d, hạn trả: %s). Không thể tạo phiếu mượn trùng lặp.",
+                            student.getStudentCode(), activeBorrow.getId(),
+                            activeBorrow.getDueDate() != null ? activeBorrow.getDueDate().toString() : "N/A"
+                    ));
+                }
+            }
+
             // Step 4: Atomic Inventory Decrement
             // Direct atomic conditional UPDATE: WHERE id = ? AND available_copies > 0
             boolean decremented = bookRepository.decrementAvailableCopies(request.getBookId(), conn);

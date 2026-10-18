@@ -62,7 +62,10 @@ public class BorrowManagementPanel extends JPanel {
     public BorrowManagementPanel(NetworkClient networkClient) {
         this.networkClient = networkClient;
         this.borrowController = new ClientBorrowController(networkClient);
-        this.isStaff = ClientSession.getInstance().isAdmin() || ClientSession.getInstance().isLibrarian();
+        ClientSession cs = (networkClient != null && networkClient.getSession() != null)
+                ? networkClient.getSession()
+                : ClientSession.getInstance();
+        this.isStaff = cs.isAdmin() || cs.isLibrarian();
 
         initComponents();
         initCustom();
