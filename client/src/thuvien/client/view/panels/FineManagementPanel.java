@@ -21,6 +21,7 @@ import thuvien.client.network.NetworkClient;
 import thuvien.client.session.ClientSession;
 import thuvien.client.view.LoginForm;
 import thuvien.client.view.common.AsyncWorker;
+import thuvien.client.view.common.ModernUIHelper;
 import thuvien.client.view.common.SearchAutoCompleteHelper;
 import thuvien.common.dto.FineDTO;
 import thuvien.common.exception.AuthenticationException;
@@ -57,11 +58,49 @@ public class FineManagementPanel extends JPanel {
 
     private void initCustom() {
         setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
-        filterBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(230, 235, 240)));
-        tableScroll.setBorder(BorderFactory.createLineBorder(new Color(220, 225, 230)));
-        bottomBar.setBorder(BorderFactory.createEmptyBorder(6, 4, 4, 4));
+        setBackground(ModernUIHelper.BG_APP);
 
-        titleLabel.setText(isStaff ? "Quản lý Tiền phạt & Phí quá hạn" : "Tiền phạt quá hạn của tôi");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        titleLabel.setForeground(ModernUIHelper.TEXT_PRIMARY);
+        titleLabel.setText(isStaff ? "Quản Lý Tiền Phạt & Phí Quá Hạn" : "Tiền Phạt Quá Hạn Của Tôi");
+
+        filterBar.setOpaque(false);
+        filterBar.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+
+        ModernUIHelper.styleLabel(lblSearch, "Tìm kiếm:");
+        ModernUIHelper.styleTextField(searchField);
+        searchField.addActionListener(e -> applyFilter());
+
+        ModernUIHelper.styleLabel(lblStatus, "Trạng thái:");
+        ModernUIHelper.styleComboBox(statusFilterCombo);
+
+        ModernUIHelper.styleLabel(lblCalcDays, "Số ngày dự kiến:");
+        ModernUIHelper.styleSpinner(calcDaysSpinner);
+
+        ModernUIHelper.stylePrimaryButton(searchBtn, "Tìm kiếm");
+        searchBtn.setIcon(ModernUIHelper.getVectorIcon("SEARCH", 13, ModernUIHelper.CYAN_TEXT));
+        searchBtn.setIconTextGap(6);
+
+        ModernUIHelper.styleSecondaryButton(clearFilterBtn, "Đặt lại");
+        clearFilterBtn.setIcon(ModernUIHelper.getVectorIcon("RESET", 13, ModernUIHelper.TEXT_PRIMARY));
+        clearFilterBtn.setIconTextGap(6);
+
+        ModernUIHelper.styleSecondaryButton(refreshBtn, "Làm mới");
+        refreshBtn.setIcon(ModernUIHelper.getVectorIcon("REFRESH", 13, ModernUIHelper.TEXT_PRIMARY));
+        refreshBtn.setIconTextGap(6);
+
+        ModernUIHelper.styleSecondaryButton(calcBtn, "Tính phạt dự kiến");
+        calcBtn.setIcon(ModernUIHelper.getVectorIcon("FINES", 13, ModernUIHelper.TEXT_PRIMARY));
+        calcBtn.setIconTextGap(6);
+
+        ModernUIHelper.styleSuccessButton(payFineBtn, "Đóng tiền phạt");
+        payFineBtn.setIcon(ModernUIHelper.getVectorIcon("CHECK", 13, Color.WHITE));
+        payFineBtn.setIconTextGap(6);
+
+        tableScroll.setBorder(BorderFactory.createLineBorder(ModernUIHelper.BORDER_COLOR));
+        tableScroll.getViewport().setBackground(ModernUIHelper.BG_SURFACE);
+        bottomBar.setOpaque(false);
+        bottomBar.setBorder(BorderFactory.createEmptyBorder(6, 4, 4, 4));
 
         if (!isStaff) {
             lblCalcDays.setVisible(false);
@@ -85,8 +124,7 @@ public class FineManagementPanel extends JPanel {
 
         fineTable.setModel(tableModel);
         fineTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        fineTable.setRowHeight(25);
-        fineTable.getTableHeader().setFont(fineTable.getTableHeader().getFont().deriveFont(Font.BOLD));
+        ModernUIHelper.styleTable(fineTable);
         fineTable.setAutoCreateRowSorter(true);
 
         fineTable.getSelectionModel().addListSelectionListener(e -> {
@@ -95,6 +133,7 @@ public class FineManagementPanel extends JPanel {
                 payFineBtn.setEnabled(selected != null && !selected.isPaid());
             }
         });
+        ModernUIHelper.styleComponentTree(this);
     }
 
     /**

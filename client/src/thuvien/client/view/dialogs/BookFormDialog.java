@@ -7,6 +7,7 @@ import javax.swing.JOptionPane;
 import thuvien.client.controller.ClientBookController;
 import thuvien.client.network.NetworkClient;
 import thuvien.client.view.common.AsyncWorker;
+import thuvien.client.view.common.ModernUIHelper;
 import thuvien.common.dto.BookDTO;
 import thuvien.common.dto.CategoryDTO;
 import thuvien.common.enums.BookStatus;
@@ -32,9 +33,42 @@ public class BookFormDialog extends JDialog {
     private void initCustom() {
         setTitle(bookToEdit == null ? "Thêm Sách Mới" : "Chỉnh Sửa Sách (ID: " + bookToEdit.getId() + ")");
         ((javax.swing.JComponent) getContentPane()).setBorder(javax.swing.BorderFactory.createEmptyBorder(15, 20, 15, 20));
-        setSize(560, 540);
+        setSize(580, 560);
         setLocationRelativeTo(getOwner());
         getRootPane().setDefaultButton(saveButton);
+
+        ModernUIHelper.styleDialog(this);
+        formPanel.setBackground(ModernUIHelper.BG_SURFACE);
+        formPanel.setBorder(ModernUIHelper.createRoundedBorder(ModernUIHelper.BORDER_COLOR, 10, 14, 16, 14, 16));
+        catPanel.setOpaque(false);
+        bottomPanel.setOpaque(false);
+        buttonPanel.setOpaque(false);
+
+        ModernUIHelper.styleTextField(titleField);
+        ModernUIHelper.styleTextField(isbnField);
+        ModernUIHelper.styleComboBox(categoryCombo);
+        ModernUIHelper.styleSecondaryButton(retryCategoryBtn, "Làm mới");
+        retryCategoryBtn.setIcon(ModernUIHelper.getVectorIcon("REFRESH", 12, ModernUIHelper.TEXT_PRIMARY));
+        ModernUIHelper.styleTextField(publisherField);
+        ModernUIHelper.styleSpinner(yearSpinner);
+        ModernUIHelper.styleTextField(editionField);
+        ModernUIHelper.styleSpinner(totalCopiesSpinner);
+        ModernUIHelper.styleSpinner(availableCopiesSpinner);
+        ModernUIHelper.styleTextField(shelfLocationField);
+        ModernUIHelper.styleComboBox(statusCombo);
+
+        ModernUIHelper.styleLabel(lblTitle, "Tên sách (*):");
+        ModernUIHelper.styleLabel(lblIsbn, "Mã ISBN (*):");
+        ModernUIHelper.styleLabel(lblCategory, "Thể loại (*):");
+        ModernUIHelper.styleLabel(lblPublisher, "Nhà xuất bản:");
+        ModernUIHelper.styleLabel(lblYear, "Năm xuất bản:");
+        ModernUIHelper.styleLabel(lblEdition, "Phiên bản / Tái bản:");
+        ModernUIHelper.styleLabel(lblTotalCopies, "Tổng số bản (*):");
+        ModernUIHelper.styleLabel(lblAvailableCopies, "Số bản có sẵn (*):");
+        ModernUIHelper.styleLabel(lblShelfLocation, "Vị trí kệ sách:");
+        ModernUIHelper.styleLabel(lblStatus, "Trạng thái:");
+
+        statusLabel.setForeground(ModernUIHelper.TEXT_MUTED);
 
         if (bookToEdit != null) {
             titleField.setText(bookToEdit.getTitle());
@@ -50,11 +84,15 @@ public class BookFormDialog extends JDialog {
             if (bookToEdit.getStatus() != null) {
                 statusCombo.setSelectedItem(bookToEdit.getStatus());
             }
-            saveButton.setText("Lưu Thay Đổi");
+            ModernUIHelper.stylePrimaryButton(saveButton, "Lưu Thay Đổi");
         } else {
             statusCombo.setSelectedItem(BookStatus.AVAILABLE);
-            saveButton.setText("Tạo Sách Mới");
+            ModernUIHelper.stylePrimaryButton(saveButton, "Tạo Sách Mới");
         }
+        saveButton.setIcon(ModernUIHelper.getVectorIcon("CHECK", 13, java.awt.Color.WHITE));
+        saveButton.setIconTextGap(6);
+
+        ModernUIHelper.styleSecondaryButton(cancelButton, "Đóng");
     }
 
     /**

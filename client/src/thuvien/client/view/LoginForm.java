@@ -1,6 +1,7 @@
 package thuvien.client.view;
 
 import java.awt.Color;
+import java.awt.Dimension;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BorderFactory;
@@ -11,6 +12,7 @@ import thuvien.client.controller.ClientAuthController;
 import thuvien.client.network.NetworkClient;
 import thuvien.client.network.RMIClient;
 import thuvien.client.view.common.AsyncWorker;
+import thuvien.client.view.common.ModernUIHelper;
 import thuvien.common.dto.UserSessionDTO;
 import thuvien.common.exception.AuthenticationException;
 import thuvien.common.exception.NetworkException;
@@ -37,9 +39,11 @@ public class LoginForm extends JFrame {
     }
 
     private void initCustom() {
-        setSize(480, 440);
+        // Window sizing & positioning
+        setSize(920, 580);
+        setResizable(false);
         setLocationRelativeTo(null);
-        getRootPane().setBorder(BorderFactory.createEmptyBorder(18, 25, 18, 25));
+        setTitle("Hệ Thống Quản Lý Thư Viện - Đăng Nhập");
 
         if (networkClient != null) {
             serverHostField.setText(networkClient.getHost());
@@ -47,6 +51,322 @@ public class LoginForm extends JFrame {
         }
 
         getRootPane().setDefaultButton(loginButton);
+
+        // Clear default generated content pane layout to build modern split layout
+        getContentPane().removeAll();
+        getContentPane().setLayout(new java.awt.BorderLayout());
+
+        // =================================================================
+        // 1. LEFT HERO PANEL (AI Grid background with moving nodes & scanline)
+        // =================================================================
+        thuvien.client.view.common.AIGridPanel heroPanel = new thuvien.client.view.common.AIGridPanel();
+        heroPanel.setPreferredSize(new Dimension(380, 580));
+        heroPanel.setLayout(new java.awt.BorderLayout(0, 16));
+        heroPanel.setBorder(BorderFactory.createEmptyBorder(28, 28, 24, 28));
+
+        // Hero Top Branding
+        javax.swing.JPanel heroTopPanel = new javax.swing.JPanel();
+        heroTopPanel.setOpaque(false);
+        heroTopPanel.setLayout(new javax.swing.BoxLayout(heroTopPanel, javax.swing.BoxLayout.Y_AXIS));
+
+        javax.swing.JLabel brandBadge = new javax.swing.JLabel("  🏛️ NHÀ SÁCH & THƯ VIỆN HỌC THUẬT  ");
+        brandBadge.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 10));
+        brandBadge.setForeground(ModernUIHelper.PRIMARY_BLUE);
+        brandBadge.setOpaque(true);
+        brandBadge.setBackground(new Color(0xEF, 0xF6, 0xFF));
+        brandBadge.setBorder(ModernUIHelper.createRoundedBorder(new Color(0xBF, 0xDB, 0xFE), 10, 3, 6, 3, 6));
+
+        javax.swing.JLabel brandTitle = new javax.swing.JLabel("Thư Viện Tri Thức");
+        brandTitle.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 24));
+        brandTitle.setForeground(ModernUIHelper.TEXT_TITLE);
+
+        javax.swing.JLabel brandDesc = new javax.swing.JLabel("Không gian học thuật & tra cứu ấn phẩm số thông minh");
+        brandDesc.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
+        brandDesc.setForeground(ModernUIHelper.TEXT_MUTED);
+
+        heroTopPanel.add(brandBadge);
+        heroTopPanel.add(javax.swing.Box.createVerticalStrut(6));
+        heroTopPanel.add(brandTitle);
+        heroTopPanel.add(javax.swing.Box.createVerticalStrut(2));
+        heroTopPanel.add(brandDesc);
+
+        heroPanel.add(heroTopPanel, java.awt.BorderLayout.NORTH);
+
+        // Hero Center Image
+        javax.swing.JPanel imageContainer = new javax.swing.JPanel(new java.awt.BorderLayout());
+        imageContainer.setOpaque(false);
+        javax.swing.ImageIcon heroIcon = ModernUIHelper.loadResourceIcon("/images/library_hero.jpg", 324, 248);
+        if (heroIcon != null) {
+            javax.swing.JLabel imageLabel = new javax.swing.JLabel(heroIcon);
+            imageLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+            imageLabel.setBorder(BorderFactory.createCompoundBorder(
+                    ModernUIHelper.createRoundedBorder(ModernUIHelper.BORDER_INPUT, 10, 0, 0, 0, 0),
+                    BorderFactory.createEmptyBorder(4, 4, 4, 4)
+            ));
+            imageContainer.add(imageLabel, java.awt.BorderLayout.CENTER);
+        }
+        heroPanel.add(imageContainer, java.awt.BorderLayout.CENTER);
+
+        // Hero Bottom Features
+        javax.swing.JPanel heroBottomPanel = new javax.swing.JPanel();
+        heroBottomPanel.setOpaque(false);
+        heroBottomPanel.setLayout(new javax.swing.BoxLayout(heroBottomPanel, javax.swing.BoxLayout.Y_AXIS));
+
+        String[] features = {
+            "📚 Tra cứu hơn 10.000+ đầu sách & tài liệu học thuật",
+            "⚡ Mượn trả & gia hạn tức thì qua mạng phân tán",
+            "🛡️ Xác thực bảo mật đa tầng & phân quyền độc giả"
+        };
+        for (String feat : features) {
+            javax.swing.JLabel featLabel = new javax.swing.JLabel(feat);
+            featLabel.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
+            featLabel.setForeground(ModernUIHelper.TEXT_BODY);
+            heroBottomPanel.add(featLabel);
+            heroBottomPanel.add(javax.swing.Box.createVerticalStrut(6));
+        }
+
+        javax.swing.JLabel verLabel = new javax.swing.JLabel("Phiên bản Học thuật v2.0 • Coursework Network Programming");
+        verLabel.setFont(new java.awt.Font("Segoe UI", java.awt.Font.ITALIC, 10));
+        verLabel.setForeground(ModernUIHelper.TEXT_MUTED);
+        heroBottomPanel.add(javax.swing.Box.createVerticalStrut(4));
+        heroBottomPanel.add(verLabel);
+
+        heroPanel.add(heroBottomPanel, java.awt.BorderLayout.SOUTH);
+
+        // =================================================================
+        // 2. RIGHT AUTH PANEL (Cyber Card with glowing controls)
+        // =================================================================
+        javax.swing.JPanel authPanel = new javax.swing.JPanel();
+        authPanel.setBackground(ModernUIHelper.BG_CARD);
+        authPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 1, 0, 0, ModernUIHelper.BORDER_SUBTLE),
+                BorderFactory.createEmptyBorder(28, 36, 24, 36)
+        ));
+        authPanel.setLayout(new javax.swing.BoxLayout(authPanel, javax.swing.BoxLayout.Y_AXIS));
+
+        // Welcome Header
+        javax.swing.JLabel welcomeTitle = new javax.swing.JLabel("Đăng Nhập 👋");
+        welcomeTitle.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 22));
+        welcomeTitle.setForeground(ModernUIHelper.TEXT_TITLE);
+        welcomeTitle.setAlignmentX(0.0f);
+
+        javax.swing.JLabel welcomeSub = new javax.swing.JLabel("Vui lòng nhập tài khoản để truy cập hệ thống thư viện.");
+        welcomeSub.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
+        welcomeSub.setForeground(ModernUIHelper.TEXT_MUTED);
+        welcomeSub.setAlignmentX(0.0f);
+
+        authPanel.add(welcomeTitle);
+        authPanel.add(javax.swing.Box.createVerticalStrut(4));
+        authPanel.add(welcomeSub);
+        authPanel.add(javax.swing.Box.createVerticalStrut(14));
+
+        // Server Connection Status Pill & Collapsible Config (Bright Soft Green Pill)
+        javax.swing.JPanel serverPill = new javax.swing.JPanel(new java.awt.BorderLayout(8, 0));
+        serverPill.setBackground(new Color(0xF0, 0xFD, 0xF4)); // Soft emerald tint
+        serverPill.setBorder(BorderFactory.createCompoundBorder(
+                ModernUIHelper.createRoundedBorder(new Color(0xBB, 0xF7, 0xD0), 8, 0, 0, 0, 0),
+                BorderFactory.createEmptyBorder(6, 12, 6, 12)
+        ));
+        serverPill.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        serverPill.setAlignmentX(0.0f);
+
+        final javax.swing.JLabel serverStatusText = new javax.swing.JLabel(
+                "🟢 Máy chủ trực tuyến: " + serverHostField.getText().trim() + ":" + serverPortField.getText().trim()
+        );
+        serverStatusText.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        serverStatusText.setForeground(new Color(0x16, 0x65, 0x34)); // Dark emerald text for contrast
+
+        final javax.swing.JButton toggleConfigBtn = new javax.swing.JButton("⚙️ Cấu hình");
+        toggleConfigBtn.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        toggleConfigBtn.setForeground(ModernUIHelper.PRIMARY_BLUE);
+        toggleConfigBtn.setBorderPainted(false);
+        toggleConfigBtn.setContentAreaFilled(false);
+        toggleConfigBtn.setFocusPainted(false);
+        toggleConfigBtn.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+
+        serverPill.add(serverStatusText, java.awt.BorderLayout.CENTER);
+        serverPill.add(toggleConfigBtn, java.awt.BorderLayout.EAST);
+
+        authPanel.add(serverPill);
+        authPanel.add(javax.swing.Box.createVerticalStrut(8));
+
+        // Collapsible Server Config Box (Initially hidden)
+        final javax.swing.JPanel serverConfigBox = new javax.swing.JPanel(new java.awt.GridBagLayout());
+        serverConfigBox.setBackground(ModernUIHelper.BG_APP);
+        serverConfigBox.setBorder(BorderFactory.createCompoundBorder(
+                ModernUIHelper.createRoundedBorder(ModernUIHelper.BORDER_INPUT, 6, 0, 0, 0, 0),
+                BorderFactory.createEmptyBorder(8, 10, 8, 10)
+        ));
+        serverConfigBox.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+        serverConfigBox.setAlignmentX(0.0f);
+        serverConfigBox.setVisible(false);
+
+        toggleConfigBtn.addActionListener(e -> {
+            boolean isVisible = serverConfigBox.isVisible();
+            serverConfigBox.setVisible(!isVisible);
+            toggleConfigBtn.setText(isVisible ? "⚙️ Cấu hình máy chủ" : "▲ Thu gọn");
+            authPanel.revalidate();
+            authPanel.repaint();
+        });
+
+        java.awt.GridBagConstraints sGbc = new java.awt.GridBagConstraints();
+        sGbc.insets = new java.awt.Insets(0, 4, 0, 4);
+        sGbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+
+        sGbc.gridx = 0; sGbc.weightx = 0.0;
+        ModernUIHelper.styleLabel(hostLabel, "IP:");
+        serverConfigBox.add(hostLabel, sGbc);
+
+        sGbc.gridx = 1; sGbc.weightx = 0.45;
+        ModernUIHelper.styleInputField(serverHostField);
+        serverConfigBox.add(serverHostField, sGbc);
+
+        sGbc.gridx = 2; sGbc.weightx = 0.0;
+        ModernUIHelper.styleLabel(portLabel, "Port:");
+        serverConfigBox.add(portLabel, sGbc);
+
+        sGbc.gridx = 3; sGbc.weightx = 0.25;
+        ModernUIHelper.styleInputField(serverPortField);
+        serverConfigBox.add(serverPortField, sGbc);
+
+        sGbc.gridx = 4; sGbc.weightx = 0.3;
+        ModernUIHelper.styleSecondaryButton(testConnectionButton, "Kiểm tra");
+        testConnectionButton.setPreferredSize(new Dimension(85, 28));
+        serverConfigBox.add(testConnectionButton, sGbc);
+
+        authPanel.add(serverConfigBox);
+        authPanel.add(javax.swing.Box.createVerticalStrut(12));
+
+        // Form Fields (Username & Password)
+        ModernUIHelper.styleLabel(userLabel, "Tên đăng nhập:");
+        userLabel.setAlignmentX(0.0f);
+        authPanel.add(userLabel);
+        authPanel.add(javax.swing.Box.createVerticalStrut(4));
+
+        ModernUIHelper.styleInputField(usernameField);
+        usernameField.setPreferredSize(new Dimension(Integer.MAX_VALUE, 38));
+        usernameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+        usernameField.setAlignmentX(0.0f);
+        authPanel.add(usernameField);
+        authPanel.add(javax.swing.Box.createVerticalStrut(10));
+
+        ModernUIHelper.styleLabel(passLabel, "Mật khẩu:");
+        passLabel.setAlignmentX(0.0f);
+        authPanel.add(passLabel);
+        authPanel.add(javax.swing.Box.createVerticalStrut(4));
+
+        // Password container with eye toggle
+        javax.swing.JPanel passContainer = new javax.swing.JPanel(new java.awt.BorderLayout(4, 0));
+        passContainer.setOpaque(false);
+        passContainer.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+        passContainer.setAlignmentX(0.0f);
+
+        ModernUIHelper.styleInputField(passwordField);
+        passwordField.setPreferredSize(new Dimension(Integer.MAX_VALUE, 38));
+
+        final javax.swing.JButton togglePassBtn = new javax.swing.JButton("👁️");
+        togglePassBtn.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 13));
+        togglePassBtn.setToolTipText("Hiện/Ẩn mật khẩu");
+        togglePassBtn.setFocusPainted(false);
+        togglePassBtn.setBorderPainted(false);
+        togglePassBtn.setContentAreaFilled(false);
+        togglePassBtn.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+        final char defaultEcho = passwordField.getEchoChar();
+        togglePassBtn.addActionListener(e -> {
+            if (passwordField.getEchoChar() == defaultEcho) {
+                passwordField.setEchoChar((char) 0);
+                togglePassBtn.setText("🔒");
+            } else {
+                passwordField.setEchoChar(defaultEcho);
+                togglePassBtn.setText("👁️");
+            }
+        });
+
+        passContainer.add(passwordField, java.awt.BorderLayout.CENTER);
+        passContainer.add(togglePassBtn, java.awt.BorderLayout.EAST);
+        authPanel.add(passContainer);
+        authPanel.add(javax.swing.Box.createVerticalStrut(8));
+
+        // Status Label / Alert Banner
+        statusLabel.setFont(ModernUIHelper.FONT_SMALL);
+        statusLabel.setForeground(ModernUIHelper.TEXT_MUTED);
+        statusLabel.setText("Sẵn sàng kết nối tới máy chủ.");
+        statusLabel.setAlignmentX(0.0f);
+        authPanel.add(statusLabel);
+        authPanel.add(javax.swing.Box.createVerticalStrut(12));
+
+        // Login Button
+        ModernUIHelper.stylePrimaryButton(loginButton, "ĐĂNG NHẬP");
+        loginButton.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 13));
+        loginButton.setPreferredSize(new Dimension(Integer.MAX_VALUE, 40));
+        loginButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        loginButton.setAlignmentX(0.0f);
+        authPanel.add(loginButton);
+        authPanel.add(javax.swing.Box.createVerticalStrut(8));
+
+        // Register Button Link
+        registerButton.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
+        registerButton.setForeground(ModernUIHelper.PRIMARY_BLUE);
+        registerButton.setText("Chưa có tài khoản sinh viên? Đăng ký tại đây");
+        registerButton.setBorderPainted(false);
+        registerButton.setContentAreaFilled(false);
+        registerButton.setFocusPainted(false);
+        registerButton.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+        registerButton.setAlignmentX(0.0f);
+        authPanel.add(registerButton);
+        authPanel.add(javax.swing.Box.createVerticalStrut(14));
+
+        // Demo Quick-Fill Bar
+        javax.swing.JPanel demoPanel = new javax.swing.JPanel();
+        demoPanel.setOpaque(false);
+        demoPanel.setLayout(new javax.swing.BoxLayout(demoPanel, javax.swing.BoxLayout.Y_AXIS));
+        demoPanel.setAlignmentX(0.0f);
+
+        javax.swing.JLabel demoLabel = new javax.swing.JLabel("⚡ Tài khoản mẫu thử nghiệm:");
+        demoLabel.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
+        demoLabel.setForeground(ModernUIHelper.LABEL_DETAIL);
+        demoPanel.add(demoLabel);
+        demoPanel.add(javax.swing.Box.createVerticalStrut(6));
+
+        javax.swing.JPanel chipsRow = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 6, 0));
+        chipsRow.setOpaque(false);
+
+        Color chipBg = new Color(0xF1, 0xF5, 0xF9);
+        javax.swing.JButton adminChip = new javax.swing.JButton();
+        ModernUIHelper.styleChipButton(adminChip, "👑 Admin", chipBg, ModernUIHelper.TEXT_PRIMARY);
+        adminChip.addActionListener(e -> {
+            usernameField.setText("admin");
+            passwordField.setText("admin123");
+            statusLabel.setText("Đã điền tài khoản mẫu Admin.");
+        });
+
+        javax.swing.JButton libChip = new javax.swing.JButton();
+        ModernUIHelper.styleChipButton(libChip, "📖 Thủ thư", chipBg, ModernUIHelper.TEXT_PRIMARY);
+        libChip.addActionListener(e -> {
+            usernameField.setText("librarian1");
+            passwordField.setText("lib123");
+            statusLabel.setText("Đã điền tài khoản mẫu Thủ thư.");
+        });
+
+        javax.swing.JButton studentChip = new javax.swing.JButton();
+        ModernUIHelper.styleChipButton(studentChip, "🎓 Sinh viên", chipBg, ModernUIHelper.TEXT_PRIMARY);
+        studentChip.addActionListener(e -> {
+            usernameField.setText("student1");
+            passwordField.setText("student123");
+            statusLabel.setText("Đã điền tài khoản mẫu Sinh viên.");
+        });
+
+        chipsRow.add(adminChip);
+        chipsRow.add(libChip);
+        chipsRow.add(studentChip);
+        demoPanel.add(chipsRow);
+
+        authPanel.add(demoPanel);
+
+        // Add both panels to content pane
+        getContentPane().add(heroPanel, java.awt.BorderLayout.WEST);
+        getContentPane().add(authPanel, java.awt.BorderLayout.CENTER);
+        ModernUIHelper.styleComponentTree(getContentPane());
     }
 
     /**

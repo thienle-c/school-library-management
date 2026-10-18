@@ -20,6 +20,7 @@ import thuvien.client.network.NetworkClient;
 import thuvien.client.session.ClientSession;
 import thuvien.client.view.LoginForm;
 import thuvien.client.view.common.AsyncWorker;
+import thuvien.client.view.common.ModernUIHelper;
 import thuvien.client.view.common.SearchAutoCompleteHelper;
 import thuvien.client.view.dialogs.ReservationDialog;
 import thuvien.common.dto.ReservationDTO;
@@ -58,11 +59,46 @@ public class ReservationManagementPanel extends JPanel {
 
     private void initCustom() {
         setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
-        filterBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(230, 235, 240)));
-        tableScroll.setBorder(BorderFactory.createLineBorder(new Color(220, 225, 230)));
-        bottomBar.setBorder(BorderFactory.createEmptyBorder(6, 4, 4, 4));
+        setBackground(ModernUIHelper.BG_APP);
 
-        titleLabel.setText(isStaff ? "Quản lý Đặt trước sách" : "Sách tôi đã đặt trước");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        titleLabel.setForeground(ModernUIHelper.TEXT_PRIMARY);
+        titleLabel.setText(isStaff ? "Quản Lý Đặt Trước Sách" : "Sách Tôi Đã Đặt Trước");
+
+        filterBar.setOpaque(false);
+        filterBar.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+
+        ModernUIHelper.styleLabel(lblSearch, "Tìm kiếm:");
+        ModernUIHelper.styleTextField(searchField);
+        searchField.addActionListener(e -> applyFilter());
+
+        ModernUIHelper.styleLabel(lblStatus, "Trạng thái:");
+        ModernUIHelper.styleComboBox(statusFilterCombo);
+
+        ModernUIHelper.stylePrimaryButton(searchBtn, "Tìm kiếm");
+        searchBtn.setIcon(ModernUIHelper.getVectorIcon("SEARCH", 13, ModernUIHelper.CYAN_TEXT));
+        searchBtn.setIconTextGap(6);
+
+        ModernUIHelper.styleSecondaryButton(clearFilterBtn, "Đặt lại");
+        clearFilterBtn.setIcon(ModernUIHelper.getVectorIcon("RESET", 13, ModernUIHelper.TEXT_PRIMARY));
+        clearFilterBtn.setIconTextGap(6);
+
+        ModernUIHelper.styleSecondaryButton(refreshBtn, "Làm mới");
+        refreshBtn.setIcon(ModernUIHelper.getVectorIcon("REFRESH", 13, ModernUIHelper.TEXT_PRIMARY));
+        refreshBtn.setIconTextGap(6);
+
+        ModernUIHelper.styleSuccessButton(newResBtn, "Đặt trước mới");
+        newResBtn.setIcon(ModernUIHelper.getVectorIcon("ADD", 13, Color.WHITE));
+        newResBtn.setIconTextGap(6);
+
+        ModernUIHelper.styleDangerButton(cancelResBtn, "Hủy đặt trước");
+        cancelResBtn.setIcon(ModernUIHelper.getVectorIcon("DELETE", 13, Color.WHITE));
+        cancelResBtn.setIconTextGap(6);
+
+        tableScroll.setBorder(BorderFactory.createLineBorder(ModernUIHelper.BORDER_COLOR));
+        tableScroll.getViewport().setBackground(ModernUIHelper.BG_SURFACE);
+        bottomBar.setOpaque(false);
+        bottomBar.setBorder(BorderFactory.createEmptyBorder(6, 4, 4, 4));
 
         SearchAutoCompleteHelper.attach(searchField, "RESERVATION", new ClientSearchSuggestionController(networkClient), this::applyFilter);
 
@@ -79,8 +115,7 @@ public class ReservationManagementPanel extends JPanel {
 
         reservationTable.setModel(tableModel);
         reservationTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        reservationTable.setRowHeight(25);
-        reservationTable.getTableHeader().setFont(reservationTable.getTableHeader().getFont().deriveFont(Font.BOLD));
+        ModernUIHelper.styleTable(reservationTable);
         reservationTable.setAutoCreateRowSorter(true);
 
         reservationTable.getSelectionModel().addListSelectionListener(e -> {
@@ -89,6 +124,7 @@ public class ReservationManagementPanel extends JPanel {
                 cancelResBtn.setEnabled(selected != null && selected.getStatus() == ReservationStatus.PENDING);
             }
         });
+        ModernUIHelper.styleComponentTree(this);
     }
 
     /**

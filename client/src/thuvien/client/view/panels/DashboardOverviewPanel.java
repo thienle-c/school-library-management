@@ -9,6 +9,7 @@ import thuvien.client.controller.ClientDashboardController;
 import thuvien.client.network.NetworkClient;
 import thuvien.client.view.LoginForm;
 import thuvien.client.view.common.AsyncWorker;
+import thuvien.client.view.common.ModernUIHelper;
 import thuvien.common.dto.DashboardMetricsDTO;
 import thuvien.common.exception.AuthenticationException;
 
@@ -35,7 +36,172 @@ public class DashboardOverviewPanel extends JPanel {
     }
 
     private void initCustom() {
-        setBorder(javax.swing.BorderFactory.createEmptyBorder(15, 20, 15, 20));
+        setBackground(ModernUIHelper.BG_MAIN);
+        setBorder(javax.swing.BorderFactory.createEmptyBorder(22, 28, 20, 28));
+
+        // Header Styling
+        title.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 22));
+        title.setForeground(ModernUIHelper.TEXT_PRIMARY);
+        title.setText("Tổng Quan Hệ Thống & Chỉ Số Hoạt Động");
+
+        subtitle.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 12));
+        subtitle.setForeground(ModernUIHelper.TEXT_MUTED);
+        subtitle.setText("Dữ liệu thống kê thời gian thực từ máy chủ phân tán Java RMI");
+
+        headerPanel.setOpaque(false);
+        headerPanel.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+                javax.swing.BorderFactory.createMatteBorder(0, 0, 1, 0, ModernUIHelper.BORDER_COLOR),
+                javax.swing.BorderFactory.createEmptyBorder(0, 0, 16, 0)
+        ));
+
+        ModernUIHelper.stylePrimaryButton(refreshBtn, "Làm mới chỉ số");
+        refreshBtn.setIcon(ModernUIHelper.getVectorIcon("REFRESH", 14, ModernUIHelper.CYAN_TEXT));
+        refreshBtn.setIconTextGap(8);
+        refreshBtn.setPreferredSize(new java.awt.Dimension(160, 36));
+
+        // Grid Panel Layout
+        gridPanel.setOpaque(false);
+        gridPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(18, 0, 18, 0));
+
+        // Style 6 Metric Cards with 6 accurate WCAG compliant accents
+        styleMetricCard(cardTotalBooks, lblCard1, totalBooksVal, "Tổng số đầu sách", "BOOKS", ModernUIHelper.KPI_BLUE);
+        styleMetricCard(cardAvailable, lblCard2, availableBooksVal, "Sách có sẵn", "CHECK", ModernUIHelper.KPI_GREEN);
+        styleMetricCard(cardBorrowed, lblCard3, borrowedBooksVal, "Sách đang được mượn", "RESERVATIONS", ModernUIHelper.KPI_AMBER);
+        styleMetricCard(cardActiveBorrows, lblCard4, activeBorrowsVal, "Lượt mượn hiện hành", "CIRCULATION", ModernUIHelper.KPI_PURPLE);
+        styleMetricCard(cardOverdue, lblCard5, overdueBorrowsVal, "Lượt mượn quá hạn", "AUDIT", ModernUIHelper.KPI_RED);
+        styleMetricCard(cardUnpaidFines, lblCard6, unpaidFinesVal, "Tiền phạt chưa nộp", "FINES", ModernUIHelper.KPI_ORANGE);
+
+        // Status Label Styling
+        statusLabel.setFont(new java.awt.Font("Segoe UI", java.awt.Font.ITALIC, 11));
+        statusLabel.setForeground(ModernUIHelper.TEXT_MUTED);
+        statusLabel.setText("Đang khởi tạo kết nối chỉ số...");
+        statusLabel.setBorder(javax.swing.BorderFactory.createEmptyBorder(8, 0, 4, 0));
+        ModernUIHelper.styleComponentTree(this);
+    }
+
+    private void styleMetricCard(final javax.swing.JPanel card, javax.swing.JLabel lblTitle, javax.swing.JLabel lblVal,
+                                 String titleText, final String iconType, final java.awt.Color accentColor) {
+        card.setOpaque(false);
+        card.setLayout(new java.awt.BorderLayout(8, 10));
+
+        // 60 FPS Micro-Animation for smooth card hover transition
+        final float[] hoverProgress = {0f};
+        final javax.swing.Timer[] animTimer = new javax.swing.Timer[1];
+
+        // Custom background and border painting for 60fps lerp
+        card.setBorder(new javax.swing.border.Border() {
+            @Override
+            public void paintBorder(java.awt.Component c, java.awt.Graphics g, int x, int y, int width, int height) {
+                java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
+                g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+
+                // 1. Interpolated Background (#131F33 to #1A2942)
+                java.awt.Color bg = ModernUIHelper.lerp(ModernUIHelper.BG_SURFACE, ModernUIHelper.BG_CARD_HOVER, hoverProgress[0]);
+                g2.setColor(bg);
+                g2.fillRoundRect(x, y, width - 1, height - 1, 10, 10);
+
+                // 2. Interpolated Border (#1E293B to glowing accent color)
+                java.awt.Color borderCol = ModernUIHelper.lerp(ModernUIHelper.BORDER_COLOR, accentColor, hoverProgress[0]);
+                g2.setColor(borderCol);
+                g2.setStroke(new java.awt.BasicStroke(1.0f));
+                g2.drawRoundRect(x, y, width - 1, height - 1, 10, 10);
+
+                // 3. 4px Left vertical accent stripe
+                g2.setColor(accentColor);
+                g2.fillRoundRect(x, y + 4, 4, height - 8, 3, 3);
+                g2.dispose();
+            }
+
+            @Override
+            public java.awt.Insets getBorderInsets(java.awt.Component c) {
+                return new java.awt.Insets(14, 18, 14, 16);
+            }
+
+            @Override
+            public boolean isBorderOpaque() {
+                return false;
+            }
+        });
+
+        // Mouse hover listener with 60fps interpolation timer (15ms step)
+        card.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent e) {
+                if (animTimer[0] != null && animTimer[0].isRunning()) animTimer[0].stop();
+                animTimer[0] = new javax.swing.Timer(15, evt -> {
+                    hoverProgress[0] += 0.12f;
+                    if (hoverProgress[0] >= 1.0f) {
+                        hoverProgress[0] = 1.0f;
+                        animTimer[0].stop();
+                    }
+                    card.repaint();
+                });
+                animTimer[0].start();
+            }
+
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent e) {
+                if (animTimer[0] != null && animTimer[0].isRunning()) animTimer[0].stop();
+                animTimer[0] = new javax.swing.Timer(15, evt -> {
+                    hoverProgress[0] -= 0.12f;
+                    if (hoverProgress[0] <= 0.0f) {
+                        hoverProgress[0] = 0.0f;
+                        animTimer[0].stop();
+                    }
+                    card.repaint();
+                });
+                animTimer[0].start();
+            }
+        });
+
+        javax.swing.JPanel topRow = new javax.swing.JPanel(new java.awt.BorderLayout(6, 0));
+        topRow.setOpaque(false);
+
+        lblTitle.setText(titleText);
+        lblTitle.setFont(ModernUIHelper.FONT_LABEL);
+        lblTitle.setForeground(ModernUIHelper.LABEL_DETAIL);
+        lblTitle.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        topRow.add(lblTitle, java.awt.BorderLayout.CENTER);
+
+        // 36x36px Rounded square with 15% opacity accent background and crisp vector icon
+        javax.swing.JComponent iconBadge = new javax.swing.JComponent() {
+            @Override
+            public java.awt.Dimension getPreferredSize() {
+                return new java.awt.Dimension(36, 36);
+            }
+
+            @Override
+            protected void paintComponent(java.awt.Graphics g) {
+                super.paintComponent(g);
+                java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
+                g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+
+                // 15% opacity accent background (alpha = 38)
+                java.awt.Color bgAlpha = new java.awt.Color(accentColor.getRed(), accentColor.getGreen(), accentColor.getBlue(), 38);
+                g2.setColor(bgAlpha);
+                g2.fillRoundRect(0, 0, 36, 36, 8, 8);
+
+                // 1px subtle accent outline
+                g2.setColor(new java.awt.Color(accentColor.getRed(), accentColor.getGreen(), accentColor.getBlue(), 80));
+                g2.drawRoundRect(0, 0, 35, 35, 8, 8);
+
+                // Center vector icon in exact accent color
+                javax.swing.Icon vIcon = ModernUIHelper.getVectorIcon(iconType, 18, accentColor);
+                if (vIcon != null) {
+                    vIcon.paintIcon(this, g2, 9, 9);
+                }
+                g2.dispose();
+            }
+        };
+        topRow.add(iconBadge, java.awt.BorderLayout.EAST);
+
+        lblVal.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 26));
+        lblVal.setForeground(accentColor);
+        lblVal.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+
+        card.removeAll();
+        card.add(topRow, java.awt.BorderLayout.NORTH);
+        card.add(lblVal, java.awt.BorderLayout.CENTER);
     }
 
     private void initAutoRefresh() {

@@ -7,6 +7,7 @@ import thuvien.client.controller.ClientBorrowController;
 import thuvien.client.network.NetworkClient;
 import thuvien.client.session.ClientSession;
 import thuvien.client.view.common.AsyncWorker;
+import thuvien.client.view.common.ModernUIHelper;
 import thuvien.common.dto.BorrowRecordDTO;
 import thuvien.common.dto.BorrowRequestDTO;
 
@@ -26,9 +27,33 @@ public class BorrowDialog extends JDialog {
 
     private void initCustom(Long defaultStudentId, Long defaultBookId) {
         ((javax.swing.JComponent) getContentPane()).setBorder(javax.swing.BorderFactory.createEmptyBorder(15, 20, 15, 20));
-        setSize(460, 330);
+        setSize(480, 360);
         setLocationRelativeTo(getOwner());
         getRootPane().setDefaultButton(submitButton);
+
+        ModernUIHelper.styleDialog(this);
+        formPanel.setBackground(ModernUIHelper.BG_SURFACE);
+        formPanel.setBorder(ModernUIHelper.createRoundedBorder(ModernUIHelper.BORDER_COLOR, 10, 14, 16, 14, 16));
+        bottomPanel.setOpaque(false);
+        buttonPanel.setOpaque(false);
+
+        ModernUIHelper.styleTextField(studentIdField);
+        ModernUIHelper.styleTextField(bookIdField);
+        ModernUIHelper.styleSpinner(durationSpinner);
+        ModernUIHelper.styleTextField(notesField);
+
+        ModernUIHelper.styleLabel(lblStudentId, "Mã ID sinh viên (*):");
+        ModernUIHelper.styleLabel(lblBookId, "Mã ID sách (*):");
+        ModernUIHelper.styleLabel(lblDuration, "Thời hạn mượn (ngày):*");
+        ModernUIHelper.styleLabel(lblNotes, "Ghi chú phiếu mượn:");
+
+        statusLabel.setForeground(ModernUIHelper.TEXT_MUTED);
+
+        ModernUIHelper.stylePrimaryButton(submitButton, "Xác Nhận Mượn");
+        submitButton.setIcon(ModernUIHelper.getVectorIcon("CHECK", 13, java.awt.Color.WHITE));
+        submitButton.setIconTextGap(6);
+
+        ModernUIHelper.styleSecondaryButton(cancelButton, "Đóng");
 
         if (defaultStudentId != null) {
             studentIdField.setText(defaultStudentId.toString());

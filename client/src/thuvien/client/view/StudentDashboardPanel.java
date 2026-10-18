@@ -10,6 +10,7 @@ import javax.swing.table.DefaultTableModel;
 import thuvien.client.controller.ClientDashboardController;
 import thuvien.client.network.NetworkClient;
 import thuvien.client.view.common.AsyncWorker;
+import thuvien.client.view.common.ModernUIHelper;
 import thuvien.common.dto.BorrowRecordDTO;
 import thuvien.common.dto.ReservationDTO;
 import thuvien.common.dto.StudentDashboardDTO;
@@ -38,6 +39,53 @@ public class StudentDashboardPanel extends JPanel {
 
     private void initCustom() {
         setBorder(javax.swing.BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        setBackground(ModernUIHelper.BG_APP);
+
+        headerPanel.setOpaque(false);
+        welcomeLabel.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 22));
+        welcomeLabel.setForeground(ModernUIHelper.TEXT_PRIMARY);
+        ModernUIHelper.stylePrimaryButton(refreshButton, "Làm mới dữ liệu");
+        refreshButton.setIcon(ModernUIHelper.getVectorIcon("REFRESH", 14, ModernUIHelper.CYAN_TEXT));
+        refreshButton.setIconTextGap(8);
+
+        centerPanel.setOpaque(false);
+        cardsPanel.setOpaque(false);
+
+        // Quick Stat cards
+        ModernUIHelper.styleCardPanel(cardBorrows);
+        lblCard1Title.setFont(ModernUIHelper.FONT_LABEL);
+        lblCard1Title.setForeground(ModernUIHelper.LABEL_DETAIL);
+        activeBorrowsVal.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 26));
+        activeBorrowsVal.setForeground(ModernUIHelper.KPI_BLUE);
+
+        ModernUIHelper.styleCardPanel(cardOverdue);
+        lblCard2Title.setFont(ModernUIHelper.FONT_LABEL);
+        lblCard2Title.setForeground(ModernUIHelper.LABEL_DETAIL);
+        overdueBorrowsVal.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 26));
+        overdueBorrowsVal.setForeground(ModernUIHelper.KPI_RED);
+
+        ModernUIHelper.styleCardPanel(cardFines);
+        lblCard3Title.setFont(ModernUIHelper.FONT_LABEL);
+        lblCard3Title.setForeground(ModernUIHelper.LABEL_DETAIL);
+        unpaidFinesVal.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 26));
+        unpaidFinesVal.setForeground(ModernUIHelper.KPI_AMBER);
+
+        ModernUIHelper.styleCardPanel(cardReservations);
+        lblCard4Title.setFont(ModernUIHelper.FONT_LABEL);
+        lblCard4Title.setForeground(ModernUIHelper.LABEL_DETAIL);
+        pendingReservationsVal.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 26));
+        pendingReservationsVal.setForeground(ModernUIHelper.KPI_GREEN);
+
+        splitPane.setOpaque(false);
+        splitPane.setBackground(ModernUIHelper.BG_APP);
+
+        borrowSection.setOpaque(false);
+        borrowLbl.setFont(ModernUIHelper.FONT_HEADER);
+        borrowLbl.setForeground(ModernUIHelper.TEXT_TITLE);
+
+        resSection.setOpaque(false);
+        resLbl.setFont(ModernUIHelper.FONT_HEADER);
+        resLbl.setForeground(ModernUIHelper.TEXT_TITLE);
 
         borrowTableModel = new DefaultTableModel(new String[]{"Mã mượn", "Tên sách", "Ngày mượn", "Hạn trả", "Ngày trả", "Trạng thái"}, 0) {
             @Override
@@ -46,6 +94,7 @@ public class StudentDashboardPanel extends JPanel {
             }
         };
         borrowTable.setModel(borrowTableModel);
+        ModernUIHelper.styleTable(borrowTable);
 
         reservationTableModel = new DefaultTableModel(new String[]{"Mã ĐT", "Tên sách", "Ngày đặt", "Hạn nhận", "Trạng thái"}, 0) {
             @Override
@@ -54,6 +103,8 @@ public class StudentDashboardPanel extends JPanel {
             }
         };
         reservationTable.setModel(reservationTableModel);
+        ModernUIHelper.styleTable(reservationTable);
+        ModernUIHelper.styleComponentTree(this);
     }
 
     /**

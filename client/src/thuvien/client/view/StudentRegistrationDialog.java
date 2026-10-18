@@ -1,11 +1,14 @@
 package thuvien.client.view;
 
+import java.awt.Dimension;
 import java.awt.Frame;
+import javax.swing.BorderFactory;
 import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 import thuvien.client.controller.ClientAuthController;
 import thuvien.client.network.NetworkClient;
 import thuvien.client.view.common.AsyncWorker;
+import thuvien.client.view.common.ModernUIHelper;
 import thuvien.common.dto.RegisterStudentRequestDTO;
 
 /**
@@ -22,10 +25,67 @@ public class StudentRegistrationDialog extends JDialog {
     }
 
     private void initCustom() {
-        ((javax.swing.JComponent) getContentPane()).setBorder(javax.swing.BorderFactory.createEmptyBorder(15, 20, 15, 20));
-        setSize(480, 480);
+        // Window container styling
+        getContentPane().setBackground(ModernUIHelper.BG_APP);
+        ((javax.swing.JComponent) getContentPane()).setBorder(BorderFactory.createEmptyBorder(20, 24, 20, 24));
+        setSize(520, 520);
         setLocationRelativeTo(getParent());
         getRootPane().setDefaultButton(registerButton);
+        ModernUIHelper.styleDialog(this);
+
+        // Header Panel Styling
+        headerPanel.setOpaque(false);
+        headerPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, ModernUIHelper.BORDER_SUBTLE),
+                BorderFactory.createEmptyBorder(0, 0, 12, 0)
+        ));
+
+        titleLabel.setFont(ModernUIHelper.FONT_TITLE);
+        titleLabel.setForeground(ModernUIHelper.TEXT_TITLE);
+        titleLabel.setText("Đăng Ký Tài Khoản Sinh Viên");
+
+        subLabel.setFont(ModernUIHelper.FONT_SUBTITLE);
+        subLabel.setForeground(ModernUIHelper.TEXT_MUTED);
+        subLabel.setText("Nhập mã kích hoạt từ nhà trường để tạo tài khoản thư viện trực tuyến");
+
+        // Form Card Styling
+        formPanel.setBackground(ModernUIHelper.BG_SURFACE);
+        formPanel.setBorder(ModernUIHelper.createRoundedBorder(ModernUIHelper.BORDER_COLOR, 10, 14, 16, 14, 16));
+
+        // Labels
+        ModernUIHelper.styleLabel(lblStudentCode, "Mã sinh viên (*):");
+        ModernUIHelper.styleLabel(lblFullName, "Họ và tên (*):");
+        ModernUIHelper.styleLabel(lblEmail, "Email liên hệ:");
+        ModernUIHelper.styleLabel(lblUsername, "Tên đăng nhập (*):");
+        ModernUIHelper.styleLabel(lblPassword, "Mật khẩu (*):");
+        ModernUIHelper.styleLabel(lblConfirmPassword, "Xác nhận mật khẩu (*):");
+        ModernUIHelper.styleLabel(lblActivationCode, "Mã kích hoạt (*):");
+
+        // Input Fields
+        ModernUIHelper.styleInputField(studentCodeField);
+        ModernUIHelper.styleInputField(fullNameField);
+        ModernUIHelper.styleInputField(emailField);
+        ModernUIHelper.styleInputField(usernameField);
+        ModernUIHelper.styleInputField(passwordField);
+        ModernUIHelper.styleInputField(confirmPasswordField);
+        ModernUIHelper.styleInputField(activationCodeField);
+
+        // Bottom Panel
+        bottomPanel.setOpaque(false);
+        btnPanel.setOpaque(false);
+
+        statusLabel.setFont(ModernUIHelper.FONT_SMALL);
+        statusLabel.setForeground(ModernUIHelper.TEXT_MUTED);
+        statusLabel.setText("(*) Các trường thông tin có dấu sao là bắt buộc.");
+
+        // Buttons
+        ModernUIHelper.stylePrimaryButton(registerButton, "Kích hoạt tài khoản");
+        registerButton.setIcon(ModernUIHelper.getVectorIcon("CHECK", 13, java.awt.Color.WHITE));
+        registerButton.setIconTextGap(6);
+        registerButton.setPreferredSize(new Dimension(175, 36));
+
+        ModernUIHelper.styleSecondaryButton(cancelButton, "Hủy bỏ");
+        cancelButton.setPreferredSize(new Dimension(95, 36));
     }
 
     /**
@@ -292,7 +352,8 @@ public class StudentRegistrationDialog extends JDialog {
 
         registerButton.setEnabled(false);
         cancelButton.setEnabled(false);
-        statusLabel.setText("Đang xử lý đăng ký với máy chủ...");
+        statusLabel.setForeground(ModernUIHelper.PRIMARY_BLUE);
+        statusLabel.setText("Đang gửi yêu cầu đăng ký tới máy chủ...");
 
         AsyncWorker.run(
                 () -> authController.registerStudent(request),
@@ -308,7 +369,8 @@ public class StudentRegistrationDialog extends JDialog {
                 (Exception ex) -> {
                     registerButton.setEnabled(true);
                     cancelButton.setEnabled(true);
-                    statusLabel.setText("Đăng ký thất bại.");
+                    statusLabel.setForeground(ModernUIHelper.DANGER_ROSE);
+                    statusLabel.setText("Đăng ký không thành công.");
                     String msg = ex.getMessage() != null && !ex.getMessage().isEmpty()
                             ? ex.getMessage()
                             : "Đã xảy ra lỗi trong quá trình đăng ký.";

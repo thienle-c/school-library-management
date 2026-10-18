@@ -19,6 +19,7 @@ import thuvien.client.network.NetworkClient;
 import thuvien.client.session.ClientSession;
 import thuvien.client.view.LoginForm;
 import thuvien.client.view.common.AsyncWorker;
+import thuvien.client.view.common.ModernUIHelper;
 import thuvien.common.dto.AuditLogDTO;
 import thuvien.common.exception.AuthenticationException;
 import thuvien.common.exception.AuthorizationException;
@@ -51,7 +52,36 @@ public class AuditLogManagementPanel extends JPanel {
 
     private void initCustom() {
         setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+        setBackground(ModernUIHelper.BG_APP);
+
+        topToolbar.setOpaque(false);
         topToolbar.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+        leftPanel.setOpaque(false);
+        rightPanel.setOpaque(false);
+
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        titleLabel.setForeground(ModernUIHelper.TEXT_PRIMARY);
+
+        lblLimit.setFont(ModernUIHelper.FONT_LABEL);
+        lblLimit.setForeground(ModernUIHelper.LABEL_DETAIL);
+        ModernUIHelper.styleComboBox(limitCombo);
+
+        lblSearch.setFont(ModernUIHelper.FONT_LABEL);
+        lblSearch.setForeground(ModernUIHelper.TEXT_TITLE);
+        ModernUIHelper.styleTextField(filterField);
+        filterField.addActionListener(e -> applyFilter());
+
+        ModernUIHelper.stylePrimaryButton(filterBtn, "Lọc nhật ký");
+        filterBtn.setIcon(ModernUIHelper.getVectorIcon("FILTER", 13, ModernUIHelper.CYAN_TEXT));
+        filterBtn.setIconTextGap(6);
+
+        ModernUIHelper.styleSecondaryButton(resetBtn, "Đặt lại");
+        resetBtn.setIcon(ModernUIHelper.getVectorIcon("RESET", 13, ModernUIHelper.TEXT_PRIMARY));
+        resetBtn.setIconTextGap(6);
+
+        ModernUIHelper.styleSecondaryButton(refreshBtn, "Làm mới");
+        refreshBtn.setIcon(ModernUIHelper.getVectorIcon("REFRESH", 13, ModernUIHelper.TEXT_PRIMARY));
+        refreshBtn.setIconTextGap(6);
 
         String[] columnNames = {"Mã", "Thời gian", "Người thực hiện", "Hành động", "Đối tượng", "Mã ĐT", "Chi tiết thao tác"};
         tableModel = new DefaultTableModel(columnNames, 0) {
@@ -63,9 +93,7 @@ public class AuditLogManagementPanel extends JPanel {
 
         logTable.setModel(tableModel);
         logTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        logTable.setRowHeight(25);
-        logTable.getTableHeader().setFont(logTable.getTableHeader().getFont().deriveFont(Font.BOLD));
-        logTable.getTableHeader().setReorderingAllowed(false);
+        ModernUIHelper.styleTable(logTable);
         logTable.getColumnModel().getColumn(0).setPreferredWidth(50);
         logTable.getColumnModel().getColumn(1).setPreferredWidth(140);
         logTable.getColumnModel().getColumn(2).setPreferredWidth(100);
@@ -80,14 +108,40 @@ public class AuditLogManagementPanel extends JPanel {
             }
         });
 
-        tableScroll.getViewport().setBackground(Color.WHITE);
+        tableScroll.setBorder(BorderFactory.createLineBorder(ModernUIHelper.BORDER_COLOR));
+        tableScroll.getViewport().setBackground(ModernUIHelper.BG_SURFACE);
 
-        detailCard.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 225, 235)),
-                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+        ModernUIHelper.styleCardPanel(detailCard);
+        detailTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        detailTitle.setForeground(ModernUIHelper.TEXT_PRIMARY);
+        detailTitle.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, ModernUIHelper.BORDER_COLOR),
+                BorderFactory.createEmptyBorder(0, 0, 10, 0)
         ));
+        detailGrid.setOpaque(false);
+
+        ModernUIHelper.styleLabel(lblDetailId, "Mã nhật ký:");
+        ModernUIHelper.styleLabel(lblDetailTime, "Thời gian thực hiện:");
+        ModernUIHelper.styleLabel(lblDetailUser, "Người thực hiện:");
+        ModernUIHelper.styleLabel(lblDetailAction, "Hành động:");
+        ModernUIHelper.styleLabel(lblDetailEntity, "Đối tượng:");
+        ModernUIHelper.styleLabel(lblDetailEntityId, "Mã đối tượng:");
+        ModernUIHelper.styleLabel(lblDetailNotes, "Chi tiết nhật ký:");
+
+        ModernUIHelper.styleValueLabel(detailIdVal, "-");
+        ModernUIHelper.styleValueLabel(detailTimeVal, "-");
+        ModernUIHelper.styleValueLabel(detailUserVal, "-");
+        ModernUIHelper.styleValueLabel(detailActionVal, "-");
+        ModernUIHelper.styleValueLabel(detailEntityVal, "-");
+        ModernUIHelper.styleValueLabel(detailEntityIdVal, "-");
+        ModernUIHelper.styleValueLabel(detailNotesVal, "-");
+
         splitPane.setBorder(null);
+        splitPane.setOpaque(false);
+        splitPane.setBackground(ModernUIHelper.BG_APP);
+        statusLabel.setForeground(ModernUIHelper.TEXT_MUTED);
         statusLabel.setBorder(BorderFactory.createEmptyBorder(6, 4, 2, 4));
+        ModernUIHelper.styleComponentTree(this);
     }
 
     /**

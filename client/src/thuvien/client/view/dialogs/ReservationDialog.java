@@ -7,6 +7,7 @@ import thuvien.client.controller.ClientReservationController;
 import thuvien.client.network.NetworkClient;
 import thuvien.client.session.ClientSession;
 import thuvien.client.view.common.AsyncWorker;
+import thuvien.client.view.common.ModernUIHelper;
 import thuvien.common.dto.ReservationDTO;
 
 /**
@@ -25,9 +26,29 @@ public class ReservationDialog extends JDialog {
 
     private void initCustom(Long defaultBookId, Long defaultStudentId) {
         ((javax.swing.JComponent) getContentPane()).setBorder(javax.swing.BorderFactory.createEmptyBorder(15, 20, 15, 20));
-        setSize(440, 270);
+        setSize(460, 300);
         setLocationRelativeTo(getOwner());
         getRootPane().setDefaultButton(submitButton);
+
+        ModernUIHelper.styleDialog(this);
+        formPanel.setBackground(ModernUIHelper.BG_SURFACE);
+        formPanel.setBorder(ModernUIHelper.createRoundedBorder(ModernUIHelper.BORDER_COLOR, 10, 14, 16, 14, 16));
+        bottomPanel.setOpaque(false);
+        buttonPanel.setOpaque(false);
+
+        ModernUIHelper.styleTextField(bookIdField);
+        ModernUIHelper.styleTextField(studentIdField);
+
+        ModernUIHelper.styleLabel(lblBookId, "Mã ID sách (*):");
+        ModernUIHelper.styleLabel(lblStudentId, "Mã ID sinh viên (*):");
+
+        statusLabel.setForeground(ModernUIHelper.TEXT_MUTED);
+
+        ModernUIHelper.stylePrimaryButton(submitButton, "Đặt Trước Sách");
+        submitButton.setIcon(ModernUIHelper.getVectorIcon("CHECK", 13, java.awt.Color.WHITE));
+        submitButton.setIconTextGap(6);
+
+        ModernUIHelper.styleSecondaryButton(cancelButton, "Đóng");
 
         if (defaultBookId != null) {
             bookIdField.setText(defaultBookId.toString());
