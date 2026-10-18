@@ -10,7 +10,11 @@ public class ClientSession {
     private static ClientSession instance;
     private UserSessionDTO currentUser;
 
-    private ClientSession() {}
+    public ClientSession() {}
+
+    public static ClientSession createIsolatedSession() {
+        return new ClientSession();
+    }
 
     public static synchronized ClientSession getInstance() {
         if (instance == null) {

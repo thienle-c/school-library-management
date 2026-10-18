@@ -17,9 +17,21 @@ import thuvien.common.protocol.StatusCode;
 
 public class ClientAuthController {
     private final NetworkClient networkClient;
+    private final ClientSession clientSession;
 
     public ClientAuthController(NetworkClient networkClient) {
+        this(networkClient, (networkClient != null && networkClient.getSession() != null)
+                ? networkClient.getSession()
+                : ClientSession.getInstance());
+    }
+
+    public ClientAuthController(NetworkClient networkClient, ClientSession clientSession) {
         this.networkClient = networkClient;
+        this.clientSession = clientSession != null ? clientSession : ClientSession.getInstance();
+    }
+
+    public ClientSession getSession() {
+        return clientSession;
     }
 
     public UserSessionDTO login(String username, String password) throws AuthenticationException, NetworkException {
@@ -36,7 +48,10 @@ public class ClientAuthController {
         Response response = networkClient.send(request);
         if (response.isSuccess() && response.getData() instanceof UserSessionDTO) {
             UserSessionDTO session = (UserSessionDTO) response.getData();
-            ClientSession.getInstance().setSession(session);
+            clientSession.setSession(session);
+            if (networkClient != null) {
+                networkClient.setSession(clientSession);
+            }
             return session;
         } else if (response.getStatusCode() == StatusCode.UNAUTHORIZED) {
             throw new AuthenticationException(response.getMessage() != null ? response.getMessage() : "Tên đăng nhập hoặc mật khẩu không chính xác.");
@@ -82,11 +97,20 @@ public class ClientAuthController {
 
     public void logout() {
         try {
+            String token = clientSession != null ? clientSession.getToken() : null;
             Request request = new Request(Action.LOGOUT, null);
+            if (token != null) {
+                request.setToken(token);
+            }
             networkClient.send(request);
         } catch (Exception ignored) {
         } finally {
-            ClientSession.getInstance().clear();
+            if (clientSession != null) {
+                clientSession.clear();
+            }
+            if (ClientSession.getInstance() == clientSession) {
+                ClientSession.getInstance().clear();
+            }
             networkClient.disconnect();
         }
     }

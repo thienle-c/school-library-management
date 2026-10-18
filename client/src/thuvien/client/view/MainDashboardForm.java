@@ -47,6 +47,11 @@ public class MainDashboardForm extends JFrame {
     public MainDashboardForm(NetworkClient networkClient, UserSessionDTO session) {
         this.networkClient = networkClient;
         this.session = session != null ? session : createDesignSession();
+        if (this.networkClient != null && this.session != null) {
+            ClientSession cs = new ClientSession();
+            cs.setSession(this.session);
+            this.networkClient.setSession(cs);
+        }
         initComponents();
         initCustom();
     }

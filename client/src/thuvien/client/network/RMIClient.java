@@ -36,6 +36,7 @@ public class RMIClient implements NetworkClient {
     private int port;
     private String serviceName;
     private LibraryRemoteService remoteService;
+    private thuvien.client.session.ClientSession clientSession;
 
     public RMIClient() {
         this("127.0.0.1", DEFAULT_REGISTRY_PORT, DEFAULT_SERVICE_NAME);
@@ -167,6 +168,16 @@ public class RMIClient implements NetworkClient {
     }
 
     @Override
+    public synchronized void setSession(thuvien.client.session.ClientSession session) {
+        this.clientSession = session;
+    }
+
+    @Override
+    public synchronized thuvien.client.session.ClientSession getSession() {
+        return this.clientSession != null ? this.clientSession : thuvien.client.session.ClientSession.getInstance();
+    }
+
+    @Override
     public Response send(Request request) throws NetworkException {
         if (request == null) {
             throw new NetworkException("Request cannot be null.");
@@ -176,7 +187,10 @@ public class RMIClient implements NetworkClient {
             LibraryRemoteService service = getRemoteService();
             // Automatically inject active session token from ClientSession if missing
             if (request.getToken() == null || request.getToken().trim().isEmpty()) {
-                String sessionToken = thuvien.client.session.ClientSession.getInstance().getToken();
+                thuvien.client.session.ClientSession cs = (this.clientSession != null)
+                        ? this.clientSession
+                        : thuvien.client.session.ClientSession.getInstance();
+                String sessionToken = cs.getToken();
                 if (sessionToken != null && !sessionToken.trim().isEmpty()) {
                     request.setToken(sessionToken);
                 }

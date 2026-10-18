@@ -27,4 +27,23 @@ public interface NetworkClient {
     void disconnect();
     boolean isConnected();
     Response send(Request request) throws NetworkException;
+    default void setSession(thuvien.client.session.ClientSession session) {}
+    default thuvien.client.session.ClientSession getSession() {
+        return thuvien.client.session.ClientSession.getInstance();
+    }
+    default void setSessionToken(String token) {
+        if (token != null) {
+            thuvien.client.session.ClientSession cs = getSession();
+            if (cs == null || cs == thuvien.client.session.ClientSession.getInstance()) {
+                cs = new thuvien.client.session.ClientSession();
+                setSession(cs);
+            }
+            thuvien.common.dto.UserSessionDTO user = cs.getCurrentUser();
+            if (user == null) {
+                user = new thuvien.common.dto.UserSessionDTO();
+                cs.setSession(user);
+            }
+            user.setToken(token);
+        }
+    }
 }
