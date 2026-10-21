@@ -72,10 +72,16 @@ public class StudentManagementPanel extends JPanel {
         if (isStaff) {
             staffPanel.setBackground(ModernUIHelper.BG_APP);
             staffPanel.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+            topToolbar.removeAll();
             topToolbar.setOpaque(false);
             topToolbar.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+            topToolbar.setLayout(new java.awt.GridLayout(2, 1, 0, 8));
             leftPanel.setOpaque(false);
+            leftPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
             rightPanel.setOpaque(false);
+            rightPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
+            topToolbar.add(leftPanel);
+            topToolbar.add(rightPanel);
 
             lblSearch.setFont(ModernUIHelper.FONT_LABEL);
             lblSearch.setForeground(ModernUIHelper.TEXT_TITLE);
