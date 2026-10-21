@@ -89,6 +89,15 @@ public class SessionManager {
         invalidateUserSessions(userId);
     }
 
+    public void revokeOtherSessionsForUser(Long userId, String exceptToken) {
+        if (userId == null) return;
+        activeSessions.entrySet().removeIf(entry ->
+                entry.getValue().session.getUserId() != null &&
+                entry.getValue().session.getUserId().equals(userId) &&
+                (exceptToken == null || !entry.getKey().equals(exceptToken))
+        );
+    }
+
     public void revokeAllSessionsForUsername(String username) {
         if (username == null) return;
         String cleanUser = username.trim();

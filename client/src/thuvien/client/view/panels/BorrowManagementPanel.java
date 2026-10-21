@@ -904,6 +904,10 @@ public class BorrowManagementPanel extends JPanel {
     private void handleError(Exception ex) {
         refreshBtn.setEnabled(true);
         if (newBorrowBtn != null) newBorrowBtn.setEnabled(true);
+        if (returnBtn != null && isStaff) {
+            BorrowRecordDTO cur = getSelectedRecord();
+            returnBtn.setEnabled(cur != null && (cur.getStatus() == BorrowStatus.ACTIVE || cur.getStatus() == BorrowStatus.OVERDUE));
+        }
         statusLabel.setText("Lỗi: " + ex.getMessage());
         LOGGER.log(Level.WARNING, "Borrow/Return error", ex);
 

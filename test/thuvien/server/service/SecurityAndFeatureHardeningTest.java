@@ -726,4 +726,67 @@ public class SecurityAndFeatureHardeningTest {
             Assert.assertTrue("Should indicate incorrect credentials", e.getMessage().contains("không chính xác"));
         }
     }
+
+    @Test
+    public void test24_ChangePasswordRevokesOtherSessionsForSameUser() throws Exception {
+        requireIsolatedTestDb();
+
+        // 1. Establish two active sessions for student1 (Client A and Client B)
+        UserSessionDTO sessionClientA = authService.login(new LoginRequestDTO("student1", "student123"));
+        UserSessionDTO sessionClientB = authService.login(new LoginRequestDTO("student1", "student123"));
+        Assert.assertNotNull(sessionClientA.getToken());
+        Assert.assertNotNull(sessionClientB.getToken());
+        Assert.assertNotEquals("Sessions must have unique tokens", sessionClientA.getToken(), sessionClientB.getToken());
+
+        // 2. Establish active session for another user (admin)
+        UserSessionDTO sessionAdmin = authService.login(new LoginRequestDTO("admin", "admin123"));
+        Assert.assertNotNull(sessionAdmin.getToken());
+
+        // 3. Negative test: Failed password change (wrong current password) must NOT revoke any session
+        ChangePasswordRequestDTO failedChangeReq = new ChangePasswordRequestDTO("wrong_current_password", "newPass123456", "newPass123456");
+        Request reqFail = new Request(Action.CHANGE_PASSWORD, failedChangeReq);
+        reqFail.setToken(sessionClientA.getToken());
+        Response respFail = router.route(reqFail);
+        Assert.assertNotEquals("Failed password change must return error", StatusCode.OK, respFail.getStatusCode());
+
+        Assert.assertTrue("Client A session must remain valid after failed attempt", sessionManager.isValid(sessionClientA.getToken()));
+        Assert.assertTrue("Client B session must remain valid after failed attempt", sessionManager.isValid(sessionClientB.getToken()));
+        Assert.assertTrue("Admin session must remain valid after failed attempt", sessionManager.isValid(sessionAdmin.getToken()));
+
+        // 4. Positive test: Successful password change by Client A
+        ChangePasswordRequestDTO successChangeReq = new ChangePasswordRequestDTO("student123", "newPass123456", "newPass123456");
+        Request reqSuccess = new Request(Action.CHANGE_PASSWORD, successChangeReq);
+        reqSuccess.setToken(sessionClientA.getToken());
+        Response respSuccess = router.route(reqSuccess);
+        Assert.assertEquals("Successful change must return 200 OK", StatusCode.OK, respSuccess.getStatusCode());
+
+        // 5. SEC-01 Policy Assertions:
+        // - Client A (initiator) remains valid
+        Assert.assertTrue("Client A (current session) must remain active", sessionManager.isValid(sessionClientA.getToken()));
+        Request checkSelf = new Request(Action.GET_CURRENT_USER, null);
+        checkSelf.setToken(sessionClientA.getToken());
+        Response respCheckSelf = router.route(checkSelf);
+        Assert.assertEquals("Client A can continue making authenticated requests", StatusCode.OK, respCheckSelf.getStatusCode());
+
+        // - Client B (other session of student1) is revoked immediately
+        Assert.assertFalse("Client B (other session of same user) must be revoked", sessionManager.isValid(sessionClientB.getToken()));
+        Request checkClientB = new Request(Action.GET_CURRENT_USER, null);
+        checkClientB.setToken(sessionClientB.getToken());
+        Response respClientB = router.route(checkClientB);
+        Assert.assertEquals("Client B requests must be rejected as UNAUTHORIZED", StatusCode.UNAUTHORIZED, respClientB.getStatusCode());
+
+        // - Other user (admin) session remains completely unaffected
+        Assert.assertTrue("Unrelated user (admin) session must remain active", sessionManager.isValid(sessionAdmin.getToken()));
+        Request checkAdmin = new Request(Action.GET_CURRENT_USER, null);
+        checkAdmin.setToken(sessionAdmin.getToken());
+        Response respAdmin = router.route(checkAdmin);
+        Assert.assertEquals("Admin can continue making authenticated requests", StatusCode.OK, respAdmin.getStatusCode());
+
+        // 6. Cleanup: Restore student1's original password so other tests aren't impacted
+        ChangePasswordRequestDTO restoreReq = new ChangePasswordRequestDTO("newPass123456", "student123", "student123");
+        Request reqRestore = new Request(Action.CHANGE_PASSWORD, restoreReq);
+        reqRestore.setToken(sessionClientA.getToken());
+        Response respRestore = router.route(reqRestore);
+        Assert.assertEquals("Restore password must succeed", StatusCode.OK, respRestore.getStatusCode());
+    }
 }

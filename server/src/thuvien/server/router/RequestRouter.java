@@ -918,8 +918,13 @@ public class RequestRouter {
             throw new ValidationException("Mật khẩu xác nhận không trùng khớp.");
         }
         boolean ok = userService.changePassword(session.getUserId(), dto.getCurrentPassword(), dto.getNewPassword());
-        if (auditLogService != null) {
-            auditLogService.log(session.getUserId(), "PASSWORD_CHANGED", "User", session.getUserId(), "Đổi mật khẩu thành công");
+        if (ok) {
+            // SEC-01: Invalidate all other active sessions of this user across all devices/terminals
+            sessionManager.revokeOtherSessionsForUser(session.getUserId(), request.getToken());
+            if (auditLogService != null) {
+                auditLogService.log(session.getUserId(), "PASSWORD_CHANGED", "User", session.getUserId(),
+                        "Đổi mật khẩu thành công (đã thu hồi các phiên đăng nhập khác)");
+            }
         }
         return Response.ok(reqId, "Đổi mật khẩu thành công.", ok);
     }
