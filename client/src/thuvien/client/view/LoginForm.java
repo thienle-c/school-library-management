@@ -69,12 +69,14 @@ public class LoginForm extends JFrame {
         heroTopPanel.setOpaque(false);
         heroTopPanel.setLayout(new javax.swing.BoxLayout(heroTopPanel, javax.swing.BoxLayout.Y_AXIS));
 
-        javax.swing.JLabel brandBadge = new javax.swing.JLabel("  🏛️ NHÀ SÁCH & THƯ VIỆN HỌC THUẬT  ");
+        javax.swing.JLabel brandBadge = new javax.swing.JLabel("NHÀ SÁCH & THƯ VIỆN HỌC THUẬT");
+        brandBadge.setIcon(ModernUIHelper.getVectorIcon("BOOKS", 12, ModernUIHelper.PRIMARY_BLUE));
+        brandBadge.setIconTextGap(6);
         brandBadge.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 10));
         brandBadge.setForeground(ModernUIHelper.PRIMARY_BLUE);
         brandBadge.setOpaque(true);
         brandBadge.setBackground(new Color(0xEF, 0xF6, 0xFF));
-        brandBadge.setBorder(ModernUIHelper.createRoundedBorder(new Color(0xBF, 0xDB, 0xFE), 10, 3, 6, 3, 6));
+        brandBadge.setBorder(ModernUIHelper.createRoundedBorder(new Color(0xBF, 0xDB, 0xFE), 10, 3, 8, 3, 8));
 
         javax.swing.JLabel brandTitle = new javax.swing.JLabel("Thư Viện Tri Thức");
         brandTitle.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 24));
@@ -112,20 +114,22 @@ public class LoginForm extends JFrame {
         heroBottomPanel.setOpaque(false);
         heroBottomPanel.setLayout(new javax.swing.BoxLayout(heroBottomPanel, javax.swing.BoxLayout.Y_AXIS));
 
-        String[] features = {
-            "📚 Tra cứu hơn 10.000+ đầu sách & tài liệu học thuật",
-            "⚡ Mượn trả & gia hạn tức thì qua mạng phân tán",
-            "🛡️ Xác thực bảo mật đa tầng & phân quyền độc giả"
+        String[][] features = {
+            {"BOOKS", "Tra cứu hơn 10.000+ đầu sách & tài liệu học thuật"},
+            {"CIRCULATION", "Mượn trả & gia hạn tức thì qua mạng phân tán"},
+            {"AUDIT", "Xác thực bảo mật đa tầng & phân quyền độc giả"}
         };
-        for (String feat : features) {
-            javax.swing.JLabel featLabel = new javax.swing.JLabel(feat);
+        for (String[] feat : features) {
+            javax.swing.JLabel featLabel = new javax.swing.JLabel(feat[1]);
+            featLabel.setIcon(ModernUIHelper.getVectorIcon(feat[0], 14, ModernUIHelper.PRIMARY_BLUE));
+            featLabel.setIconTextGap(8);
             featLabel.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 11));
             featLabel.setForeground(ModernUIHelper.TEXT_BODY);
             heroBottomPanel.add(featLabel);
             heroBottomPanel.add(javax.swing.Box.createVerticalStrut(6));
         }
 
-        javax.swing.JLabel verLabel = new javax.swing.JLabel("Phiên bản Học thuật v2.0 • Coursework Network Programming");
+        javax.swing.JLabel verLabel = new javax.swing.JLabel("Phiên bản Học thuật v2.0 | Coursework Network Programming");
         verLabel.setFont(new java.awt.Font("Segoe UI", java.awt.Font.ITALIC, 10));
         verLabel.setForeground(ModernUIHelper.TEXT_MUTED);
         heroBottomPanel.add(javax.swing.Box.createVerticalStrut(4));
@@ -145,7 +149,7 @@ public class LoginForm extends JFrame {
         authPanel.setLayout(new javax.swing.BoxLayout(authPanel, javax.swing.BoxLayout.Y_AXIS));
 
         // Welcome Header
-        javax.swing.JLabel welcomeTitle = new javax.swing.JLabel("Đăng Nhập 👋");
+        javax.swing.JLabel welcomeTitle = new javax.swing.JLabel("Đăng Nhập");
         welcomeTitle.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 22));
         welcomeTitle.setForeground(ModernUIHelper.TEXT_TITLE);
         welcomeTitle.setAlignmentX(0.0f);
@@ -171,12 +175,16 @@ public class LoginForm extends JFrame {
         serverPill.setAlignmentX(0.0f);
 
         final javax.swing.JLabel serverStatusText = new javax.swing.JLabel(
-                "🟢 Máy chủ trực tuyến: " + serverHostField.getText().trim() + ":" + serverPortField.getText().trim()
+                "Máy chủ trực tuyến: " + serverHostField.getText().trim() + ":" + serverPortField.getText().trim()
         );
+        serverStatusText.setIcon(ModernUIHelper.getVectorIcon("CHECK", 14, new Color(0x16, 0x65, 0x34)));
+        serverStatusText.setIconTextGap(6);
         serverStatusText.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
         serverStatusText.setForeground(new Color(0x16, 0x65, 0x34)); // Dark emerald text for contrast
 
-        final javax.swing.JButton toggleConfigBtn = new javax.swing.JButton("⚙️ Cấu hình");
+        final javax.swing.JButton toggleConfigBtn = new javax.swing.JButton("Cấu hình");
+        toggleConfigBtn.setIcon(ModernUIHelper.getVectorIcon("GEAR", 12, ModernUIHelper.PRIMARY_BLUE));
+        toggleConfigBtn.setIconTextGap(4);
         toggleConfigBtn.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
         toggleConfigBtn.setForeground(ModernUIHelper.PRIMARY_BLUE);
         toggleConfigBtn.setBorderPainted(false);
@@ -204,7 +212,8 @@ public class LoginForm extends JFrame {
         toggleConfigBtn.addActionListener(e -> {
             boolean isVisible = serverConfigBox.isVisible();
             serverConfigBox.setVisible(!isVisible);
-            toggleConfigBtn.setText(isVisible ? "⚙️ Cấu hình máy chủ" : "▲ Thu gọn");
+            toggleConfigBtn.setText(isVisible ? "Cấu hình" : "Thu gọn");
+            toggleConfigBtn.setIcon(ModernUIHelper.getVectorIcon(isVisible ? "GEAR" : "RESET", 12, ModernUIHelper.PRIMARY_BLUE));
             authPanel.revalidate();
             authPanel.repaint();
         });
@@ -264,8 +273,7 @@ public class LoginForm extends JFrame {
         ModernUIHelper.styleInputField(passwordField);
         passwordField.setPreferredSize(new Dimension(Integer.MAX_VALUE, 38));
 
-        final javax.swing.JButton togglePassBtn = new javax.swing.JButton("👁️");
-        togglePassBtn.setFont(new java.awt.Font("Segoe UI", java.awt.Font.PLAIN, 13));
+        final javax.swing.JButton togglePassBtn = new javax.swing.JButton(ModernUIHelper.getVectorIcon("EYE", 16, ModernUIHelper.LABEL_DETAIL));
         togglePassBtn.setToolTipText("Hiện/Ẩn mật khẩu");
         togglePassBtn.setFocusPainted(false);
         togglePassBtn.setBorderPainted(false);
@@ -275,10 +283,10 @@ public class LoginForm extends JFrame {
         togglePassBtn.addActionListener(e -> {
             if (passwordField.getEchoChar() == defaultEcho) {
                 passwordField.setEchoChar((char) 0);
-                togglePassBtn.setText("🔒");
+                togglePassBtn.setIcon(ModernUIHelper.getVectorIcon("EYE_OFF", 16, ModernUIHelper.PRIMARY_BLUE));
             } else {
                 passwordField.setEchoChar(defaultEcho);
-                togglePassBtn.setText("👁️");
+                togglePassBtn.setIcon(ModernUIHelper.getVectorIcon("EYE", 16, ModernUIHelper.LABEL_DETAIL));
             }
         });
 
@@ -322,7 +330,9 @@ public class LoginForm extends JFrame {
         demoPanel.setLayout(new javax.swing.BoxLayout(demoPanel, javax.swing.BoxLayout.Y_AXIS));
         demoPanel.setAlignmentX(0.0f);
 
-        javax.swing.JLabel demoLabel = new javax.swing.JLabel("⚡ Tài khoản mẫu thử nghiệm:");
+        javax.swing.JLabel demoLabel = new javax.swing.JLabel("Tài khoản mẫu thử nghiệm:");
+        demoLabel.setIcon(ModernUIHelper.getVectorIcon("SESSION", 12, ModernUIHelper.LABEL_DETAIL));
+        demoLabel.setIconTextGap(6);
         demoLabel.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
         demoLabel.setForeground(ModernUIHelper.LABEL_DETAIL);
         demoPanel.add(demoLabel);
@@ -333,7 +343,7 @@ public class LoginForm extends JFrame {
 
         Color chipBg = new Color(0xF1, 0xF5, 0xF9);
         javax.swing.JButton adminChip = new javax.swing.JButton();
-        ModernUIHelper.styleChipButton(adminChip, "👑 Admin", chipBg, ModernUIHelper.TEXT_PRIMARY);
+        ModernUIHelper.styleChipButton(adminChip, "Admin", ModernUIHelper.getVectorIcon("AUDIT", 12, ModernUIHelper.PRIMARY_BLUE), chipBg, ModernUIHelper.TEXT_PRIMARY);
         adminChip.addActionListener(e -> {
             usernameField.setText("admin");
             passwordField.setText("admin123");
@@ -341,7 +351,7 @@ public class LoginForm extends JFrame {
         });
 
         javax.swing.JButton libChip = new javax.swing.JButton();
-        ModernUIHelper.styleChipButton(libChip, "📖 Thủ thư", chipBg, ModernUIHelper.TEXT_PRIMARY);
+        ModernUIHelper.styleChipButton(libChip, "Thủ thư", ModernUIHelper.getVectorIcon("BOOKS", 12, ModernUIHelper.PRIMARY_BLUE), chipBg, ModernUIHelper.TEXT_PRIMARY);
         libChip.addActionListener(e -> {
             usernameField.setText("librarian1");
             passwordField.setText("lib123");
@@ -349,7 +359,7 @@ public class LoginForm extends JFrame {
         });
 
         javax.swing.JButton studentChip = new javax.swing.JButton();
-        ModernUIHelper.styleChipButton(studentChip, "🎓 Sinh viên", chipBg, ModernUIHelper.TEXT_PRIMARY);
+        ModernUIHelper.styleChipButton(studentChip, "Sinh viên", ModernUIHelper.getVectorIcon("STUDENTS", 12, ModernUIHelper.PRIMARY_BLUE), chipBg, ModernUIHelper.TEXT_PRIMARY);
         studentChip.addActionListener(e -> {
             usernameField.setText("student1");
             passwordField.setText("student123");
@@ -416,7 +426,7 @@ public class LoginForm extends JFrame {
         subHeaderLabel.setFont(new java.awt.Font("Segoe UI", 0, 12)); // NOI18N
         subHeaderLabel.setForeground(new java.awt.Color(100, 100, 100));
         subHeaderLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        subHeaderLabel.setText("Ũng Dụng Khách Kết Nối Java RMI");
+        subHeaderLabel.setText("Ứng Dụng Khách Kết Nối Java RMI");
         headerPanel.add(subHeaderLabel, java.awt.BorderLayout.SOUTH);
 
         getContentPane().add(headerPanel, java.awt.BorderLayout.NORTH);

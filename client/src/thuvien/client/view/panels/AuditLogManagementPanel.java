@@ -309,7 +309,7 @@ public class AuditLogManagementPanel extends JPanel {
         lblDetailId.setText("Mã nhật ký:");
         pnlDetailId.add(lblDetailId);
 
-        detailIdVal.setText("—");
+        detailIdVal.setText("-");
         pnlDetailId.add(detailIdVal);
 
         detailGrid.add(pnlDetailId);
@@ -322,7 +322,7 @@ public class AuditLogManagementPanel extends JPanel {
         lblDetailTime.setText("Thời gian ghi nhận:");
         pnlDetailTime.add(lblDetailTime);
 
-        detailTimeVal.setText("—");
+        detailTimeVal.setText("-");
         pnlDetailTime.add(detailTimeVal);
 
         detailGrid.add(pnlDetailTime);
@@ -335,7 +335,7 @@ public class AuditLogManagementPanel extends JPanel {
         lblDetailUser.setText("Tài khoản thực hiện:");
         pnlDetailUser.add(lblDetailUser);
 
-        detailUserVal.setText("—");
+        detailUserVal.setText("-");
         pnlDetailUser.add(detailUserVal);
 
         detailGrid.add(pnlDetailUser);
@@ -348,7 +348,7 @@ public class AuditLogManagementPanel extends JPanel {
         lblDetailAction.setText("Loại hành động:");
         pnlDetailAction.add(lblDetailAction);
 
-        detailActionVal.setText("—");
+        detailActionVal.setText("-");
         pnlDetailAction.add(detailActionVal);
 
         detailGrid.add(pnlDetailAction);
@@ -361,7 +361,7 @@ public class AuditLogManagementPanel extends JPanel {
         lblDetailEntity.setText("Đối tượng tác động:");
         pnlDetailEntity.add(lblDetailEntity);
 
-        detailEntityVal.setText("—");
+        detailEntityVal.setText("-");
         pnlDetailEntity.add(detailEntityVal);
 
         detailGrid.add(pnlDetailEntity);
@@ -374,7 +374,7 @@ public class AuditLogManagementPanel extends JPanel {
         lblDetailEntityId.setText("Mã đối tượng:");
         pnlDetailEntityId.add(lblDetailEntityId);
 
-        detailEntityIdVal.setText("—");
+        detailEntityIdVal.setText("-");
         pnlDetailEntityId.add(detailEntityIdVal);
 
         detailGrid.add(pnlDetailEntityId);
@@ -387,7 +387,7 @@ public class AuditLogManagementPanel extends JPanel {
         lblDetailNotes.setText("Chi tiết thao tác:");
         pnlDetailNotes.add(lblDetailNotes);
 
-        detailNotesVal.setText("—");
+        detailNotesVal.setText("-");
         pnlDetailNotes.add(detailNotesVal);
 
         detailGrid.add(pnlDetailNotes);
@@ -502,10 +502,10 @@ public class AuditLogManagementPanel extends JPanel {
                         log.getId(),
                         log.getCreatedAt() != null ? DATE_FORMAT.format(log.getCreatedAt()) : "N/A",
                         log.getUsername() != null ? log.getUsername() : (log.getUserId() != null ? "User #" + log.getUserId() : "HỆ THỐNG"),
-                        log.getAction() != null ? log.getAction() : "—",
-                        log.getEntityName() != null ? log.getEntityName() : "—",
-                        log.getEntityId() != null ? log.getEntityId() : "—",
-                        log.getDetails() != null ? log.getDetails() : "—"
+                        log.getAction() != null ? log.getAction() : "-",
+                        log.getEntityName() != null ? log.getEntityName() : "-",
+                        log.getEntityId() != null ? log.getEntityId() : "-",
+                        log.getDetails() != null ? log.getDetails() : "-"
                 });
 
                 if (prevSelectedId != null && prevSelectedId.equals(log.getId())) {
@@ -548,23 +548,23 @@ public class AuditLogManagementPanel extends JPanel {
             detailIdVal.setText(String.valueOf(selected.getId()));
             detailTimeVal.setText(selected.getCreatedAt() != null ? DATE_FORMAT.format(selected.getCreatedAt()) : "N/A");
             detailUserVal.setText(selected.getUsername() != null ? selected.getUsername() : "User #" + selected.getUserId());
-            detailActionVal.setText(selected.getAction() != null ? selected.getAction() : "—");
-            detailEntityVal.setText(selected.getEntityName() != null ? selected.getEntityName() : "—");
-            detailEntityIdVal.setText(selected.getEntityId() != null ? String.valueOf(selected.getEntityId()) : "—");
-            detailNotesVal.setText(selected.getDetails() != null ? selected.getDetails() : "—");
+            detailActionVal.setText(selected.getAction() != null ? selected.getAction() : "-");
+            detailEntityVal.setText(selected.getEntityName() != null ? selected.getEntityName() : "-");
+            detailEntityIdVal.setText(selected.getEntityId() != null ? String.valueOf(selected.getEntityId()) : "-");
+            detailNotesVal.setText(selected.getDetails() != null ? selected.getDetails() : "-");
         } else {
             clearDetail();
         }
     }
 
     private void clearDetail() {
-        detailIdVal.setText("—");
-        detailTimeVal.setText("—");
-        detailUserVal.setText("—");
-        detailActionVal.setText("—");
-        detailEntityVal.setText("—");
-        detailEntityIdVal.setText("—");
-        detailNotesVal.setText("—");
+        detailIdVal.setText("-");
+        detailTimeVal.setText("-");
+        detailUserVal.setText("-");
+        detailActionVal.setText("-");
+        detailEntityVal.setText("-");
+        detailEntityIdVal.setText("-");
+        detailNotesVal.setText("-");
     }
 
     private void setControlsEnabled(boolean enabled) {

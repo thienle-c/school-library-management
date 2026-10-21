@@ -141,6 +141,31 @@ public final class ModernUIHelper {
         try {
             UIManager.put("Label.foreground", TEXT_PRIMARY);
             UIManager.put("Label.font", FONT_LABEL);
+            UIManager.put("Button.font", FONT_BUTTON);
+            UIManager.put("ToggleButton.font", FONT_BUTTON);
+            UIManager.put("TextField.font", FONT_INPUT);
+            UIManager.put("PasswordField.font", FONT_INPUT);
+            UIManager.put("TextArea.font", FONT_INPUT);
+            UIManager.put("TextPane.font", FONT_INPUT);
+            UIManager.put("EditorPane.font", FONT_INPUT);
+            UIManager.put("ComboBox.font", FONT_INPUT);
+            UIManager.put("Spinner.font", FONT_INPUT);
+            UIManager.put("Table.font", FONT_INPUT);
+            UIManager.put("TableHeader.font", FONT_BUTTON);
+            UIManager.put("List.font", FONT_INPUT);
+            UIManager.put("Tree.font", FONT_INPUT);
+            UIManager.put("CheckBox.font", FONT_SUBTITLE);
+            UIManager.put("RadioButton.font", FONT_SUBTITLE);
+            UIManager.put("TabbedPane.font", FONT_BUTTON);
+            UIManager.put("TitledBorder.font", FONT_LABEL);
+            UIManager.put("ToolTip.font", FONT_SMALL);
+            UIManager.put("Menu.font", FONT_BUTTON);
+            UIManager.put("MenuItem.font", FONT_SUBTITLE);
+            UIManager.put("PopupMenu.font", FONT_SUBTITLE);
+            UIManager.put("CheckBoxMenuItem.font", FONT_SUBTITLE);
+            UIManager.put("RadioButtonMenuItem.font", FONT_SUBTITLE);
+            UIManager.put("OptionPane.messageFont", FONT_LABEL);
+            UIManager.put("OptionPane.buttonFont", FONT_BUTTON);
             UIManager.put("Panel.foreground", TEXT_PRIMARY);
             UIManager.put("Panel.background", BG_MAIN);
             UIManager.put("Viewport.background", BG_SURFACE);
@@ -387,7 +412,11 @@ public final class ModernUIHelper {
             Color curFg;
             Color curBorder;
 
-            if (isActive) {
+            if (!b.isEnabled()) {
+                curBg = new Color(0xF1, 0xF5, 0xF9);
+                curFg = new Color(0x94, 0xA3, 0xB8);
+                curBorder = new Color(0xCB, 0xD5, 0xE1);
+            } else if (isActive) {
                 curBg = new Color(0x1E, 0x40, 0xAF); // #1E40AF Active sidebar item
                 curFg = Color.WHITE;
                 curBorder = null;
@@ -409,7 +438,7 @@ public final class ModernUIHelper {
             }
 
             // Left vertical active indicator (4px primary blue)
-            if (hasLeftIndicator && isActive) {
+            if (hasLeftIndicator && isActive && b.isEnabled()) {
                 g2.setColor(INDICATOR_CYAN);
                 g2.fillRoundRect(0, 4, 4, h - 8, 3, 3);
             }
@@ -417,6 +446,31 @@ public final class ModernUIHelper {
             // Text & Icon
             b.setForeground(curFg);
             super.paint(g2, c);
+            g2.dispose();
+        }
+
+        @Override
+        protected void paintText(Graphics g, JComponent c, java.awt.Rectangle textRect, String text) {
+            paintButtonText(g, (javax.swing.AbstractButton) c, textRect, text);
+        }
+
+        @Override
+        protected void paintText(Graphics g, javax.swing.AbstractButton b, java.awt.Rectangle textRect, String text) {
+            paintButtonText(g, b, textRect, text);
+        }
+
+        private void paintButtonText(Graphics g, javax.swing.AbstractButton b, java.awt.Rectangle textRect, String text) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB);
+            g2.setFont(b.getFont());
+            if (b.isEnabled()) {
+                g2.setColor(b.getForeground());
+            } else {
+                g2.setColor(new Color(0x94, 0xA3, 0xB8)); // Clean flat muted text, no 3D shadow artifact
+            }
+            FontMetrics fm = g2.getFontMetrics();
+            int y = textRect.y + fm.getAscent();
+            g2.drawString(text, textRect.x, y);
             g2.dispose();
         }
     }
@@ -948,7 +1002,12 @@ public final class ModernUIHelper {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
 
-            Color color = fixedColor != null ? fixedColor : (c != null ? c.getForeground() : LABEL_DETAIL);
+            Color color;
+            if (c != null && !c.isEnabled()) {
+                color = new Color(0x94, 0xA3, 0xB8);
+            } else {
+                color = fixedColor != null ? fixedColor : (c != null ? c.getForeground() : LABEL_DETAIL);
+            }
             g2.setColor(color);
             g2.translate(x, y);
 
@@ -1084,6 +1143,35 @@ public final class ModernUIHelper {
                     g2.drawLine(14, 12, 14, 17);
                     g2.drawLine(10, 19, 14, 17);
                     break;
+                case "EYE":
+                    // Eye outline and pupil
+                    g2.drawArc(2, 6, 20, 12, 0, 180);
+                    g2.drawArc(2, 6, 20, 12, 180, 180);
+                    g2.drawOval(9, 9, 6, 6);
+                    g2.fillOval(11, 11, 2, 2);
+                    break;
+                case "EYE_OFF":
+                    // Eye with strike-through slash
+                    g2.drawArc(2, 6, 20, 12, 0, 180);
+                    g2.drawArc(2, 6, 20, 12, 180, 180);
+                    g2.drawOval(9, 9, 6, 6);
+                    g2.drawLine(4, 4, 20, 20);
+                    break;
+                case "GEAR":
+                case "SETTINGS":
+                case "CONFIG":
+                    // Precision gear wheel
+                    g2.drawOval(6, 6, 12, 12);
+                    g2.drawOval(9, 9, 6, 6);
+                    g2.drawLine(12, 2, 12, 6);
+                    g2.drawLine(12, 18, 12, 22);
+                    g2.drawLine(2, 12, 6, 12);
+                    g2.drawLine(18, 12, 22, 12);
+                    g2.drawLine(5, 5, 8, 8);
+                    g2.drawLine(16, 16, 19, 19);
+                    g2.drawLine(19, 5, 16, 8);
+                    g2.drawLine(5, 19, 8, 16);
+                    break;
                 default:
                     g2.drawOval(3, 3, 18, 18);
                     break;
@@ -1149,8 +1237,16 @@ public final class ModernUIHelper {
     }
 
     public static void styleChipButton(final JButton btn, String text, final Color bgColor, final Color textColor) {
+        styleChipButton(btn, text, null, bgColor, textColor);
+    }
+
+    public static void styleChipButton(final JButton btn, String text, Icon icon, final Color bgColor, final Color textColor) {
         if (btn == null) return;
         btn.setText(text);
+        if (icon != null) {
+            btn.setIcon(icon);
+            btn.setIconTextGap(6);
+        }
         btn.setFont(new Font("Segoe UI", Font.BOLD, 11));
         btn.setUI(new ModernButtonUI(bgColor != null ? bgColor : BG_SURFACE, BG_HOVER,
                 textColor != null ? textColor : TEXT_PRIMARY, TEXT_ACCENT, BORDER_INPUT, BORDER_FOCUS, 14, false));
