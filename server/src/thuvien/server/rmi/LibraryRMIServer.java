@@ -27,6 +27,35 @@ public class LibraryRMIServer {
     public static final int DEFAULT_SERVICE_PORT = 1100;
     public static final String DEFAULT_SERVICE_NAME = "LibraryRemoteService";
 
+    public static final String DEFAULT_SERIAL_FILTER =
+            "maxdepth=15;maxbytes=10485760;maxrefs=50000;maxarray=100000;"
+            + "thuvien.common.**;"
+            + "java.lang.**;"
+            + "java.util.**;"
+            + "java.math.**;"
+            + "java.sql.**;"
+            + "java.rmi.**;"
+            + "sun.rmi.**;"
+            + "com.sun.proxy.**;"
+            + "!*";
+
+    static {
+        configureSerializationFilter();
+    }
+
+    /**
+     * Configures process-wide JEP 290 object input filter for RMI serialization security.
+     */
+    public static void configureSerializationFilter() {
+        String filter = System.getProperty("jdk.serialFilter");
+        if (filter == null || filter.trim().isEmpty()) {
+            filter = DEFAULT_SERIAL_FILTER;
+            System.setProperty("jdk.serialFilter", filter);
+        }
+        java.security.Security.setProperty("jdk.serialFilter", filter);
+        LOGGER.info("Configured JEP 290 Serialization Filter: " + filter);
+    }
+
     private final int registryPort;
     private final int servicePort;
     private final String serviceName;
@@ -60,6 +89,9 @@ public class LibraryRMIServer {
         if (running) {
             return;
         }
+
+        // Configure serialization filter before RMI initialization
+        configureSerializationFilter();
 
         // Initialize database pool early
         try {
@@ -246,6 +278,8 @@ public class LibraryRMIServer {
     }
 
     public static void main(String[] args) {
+        configureSerializationFilter();
+
         int registryPort = DEFAULT_REGISTRY_PORT;
         int servicePort = DEFAULT_SERVICE_PORT;
         String serviceName = DEFAULT_SERVICE_NAME;
@@ -263,10 +297,10 @@ public class LibraryRMIServer {
                 String sp = props.getProperty("rmi.service.port");
                 if (sp != null) servicePort = Integer.parseInt(sp.trim());
 
-                String s = props.getProperty("rmi.service.name");
+                String s = props.getProperty("rmi.service.name", props.getProperty("server.service"));
                 if (s != null && !s.trim().isEmpty()) serviceName = s.trim();
 
-                String h = props.getProperty("rmi.server.host");
+                String h = props.getProperty("rmi.server.host", props.getProperty("server.host"));
                 if (h != null && !h.trim().isEmpty()) host = h.trim();
             }
         } catch (Exception e) {
@@ -282,7 +316,7 @@ public class LibraryRMIServer {
         if (sysSvcPort != null && !sysSvcPort.trim().isEmpty()) {
             try { servicePort = Integer.parseInt(sysSvcPort.trim()); } catch (NumberFormatException ignored) {}
         }
-        String sysService = System.getProperty("rmi.service.name");
+        String sysService = System.getProperty("rmi.service.name", System.getProperty("server.service"));
         if (sysService != null && !sysService.trim().isEmpty()) {
             serviceName = sysService.trim();
         }

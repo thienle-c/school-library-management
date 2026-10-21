@@ -67,7 +67,8 @@ public class MySQLSmokeIntegrationTest {
         Set<String> actualTables = new HashSet<>();
         try (Connection conn = databaseManager.getConnection()) {
             DatabaseMetaData meta = conn.getMetaData();
-            try (ResultSet rs = meta.getTables("school_library", null, "%", new String[]{"TABLE"})) {
+            String catalog = conn.getCatalog();
+            try (ResultSet rs = meta.getTables(catalog, null, "%", new String[]{"TABLE"})) {
                 while (rs.next()) {
                     actualTables.add(rs.getString("TABLE_NAME").toLowerCase());
                 }

@@ -115,7 +115,7 @@ graph TD
 ### Strict Architectural Boundaries:
 1. **Client ↔ Server Transport**: Communication takes place exclusively via Java RMI and Java Serialization (`Serializable` DTOs and envelopes).
 2. **Server-Only Database Access**: Only the Server connects to MySQL via HikariCP. The Client distribution contains **zero** JDBC drivers, zero database connection strings, and zero server repository classes.
-3. **Legacy Networking Code**: Older raw TCP classes (`thuvien.server.network.LibraryServer`, `thuvien.client.network.TCPNetworkClient`, `thuvien.server.network.ClientHandler`) remain in the codebase strictly as historical coursework reference material. They are **not** used by the active desktop client or server runtime.
+3. **Exclusive Java RMI Architecture**: All legacy raw TCP socket classes, handlers, and tests have been completely decommissioned and removed. Client-to-server communication is handled exclusively via Java RMI on ports 1099 (Registry) and 1100 (Remote Object).
 
 ---
 
@@ -176,12 +176,11 @@ thuvien/
 │   └── seed.sql                        # Initial seed data (demo accounts, sample catalog, students)
 ├── scripts/                            # Diagnostic helper scripts
 │   └── test-rmi-ports.ps1              # PowerShell port connectivity test for ports 1099 and 1100
-├── test/                               # Automated JUnit 4 test suites (10 test suites, 99 tests)
+├── test/                               # Automated JUnit 4 test suites (9 test suites)
 │   └── thuvien/
 │       ├── common/                     # ProtocolTest (envelope & serialization)
 │       └── server/
 │           ├── database/               # MySQLSmokeIntegrationTest
-│           ├── network/                # TCPEndToEndIntegrationTest
 │           ├── repository/             # RepositoryArchitectureTest
 │           ├── rmi/                    # RMIEndToEndIntegrationTest
 │           ├── service/                # AuthServiceTest, FineServiceTest, BorrowConcurrencyIntegrationTest, etc.
@@ -306,7 +305,12 @@ Run build commands by invoking the full path to `ant.bat` from the project root:
 1. Open NetBeans 8.0.2 (or compatible version).
 2. Go to **File -> Open Project...** and select the cloned repository root folder (the folder containing `build.xml` and `nbproject`).
 3. Right-click the project root in the **Projects** panel and select **Clean and Build**.
-4. To run custom Ant targets (such as `package-all`, `run-server`, or `run-client`), open the **Files** view, right-click `build.xml`, navigate to **Run Target -> Other Targets**, and click the desired target.
+4. **Running the RMI Server in NetBeans**:
+   - **Method 1 (Recommended — Run Project / F6)**: Simply click the green **Run Project** button on the NetBeans toolbar or press **F6**. The project is pre-configured with `main.class=thuvien.server.rmi.LibraryRMIServer`, which immediately starts the RMI Server on ports `1099` (Registry) and `1100` (Remote Object).
+   - **Method 2 (Run File / Shift+F6)**: In the **Projects** view, navigate to `server/src` -> `thuvien.server.rmi` -> [`LibraryRMIServer.java`](server/src/thuvien/server/rmi/LibraryRMIServer.java), right-click and choose **Run File** (or press **Shift+F6**).
+5. **Running the Swing Client in NetBeans**:
+   - In the **Projects** view, navigate to `client/src` -> `thuvien.client` -> [`ClientMain.java`](client/src/thuvien/client/ClientMain.java), right-click and select **Run File** (or press **Shift+F6**).
+6. **Running custom Ant targets**: Open the **Files** view, right-click `build.xml`, navigate to **Run Target -> Other Targets**, and click the desired target (`run-server`, `run-client`, `package-all`).
 
 ---
 
@@ -314,16 +318,37 @@ Run build commands by invoking the full path to `ant.bat` from the project root:
 
 The project includes an automated JUnit 4 test suite verifying protocol serialization, role-based authorization, rate limiting, and end-to-end RMI operations.
 
-### Running the Test Suite:
+### Test Categories & Data Safety:
+1. **In-Memory Unit Tests (Safe to run anytime — No database required)**:
+   - `thuvien.common.ProtocolTest`: Protocol envelope serialization.
+   - `thuvien.server.service.AuthServiceTest`: Authentication and rate limiting with mock repositories.
+   - `thuvien.server.service.FineServiceTest`: Overdue penalty calculation math.
+   - `thuvien.server.repository.RepositoryArchitectureTest`: Architectural reflection checks.
+   - `thuvien.server.RequestRouterTest`: Authorization and role-based access control.
+2. **Database Integration Tests (Requires active MySQL instance — Side effects on data)**:
+   - `thuvien.server.database.MySQLSmokeIntegrationTest`: Connection pool smoke checks.
+   - `thuvien.server.rmi.RMIEndToEndIntegrationTest`: End-to-end RMI remote call verification.
+   - `thuvien.server.service.SecurityAndFeatureHardeningTest`: Integration checks for lockout and account registration.
+   - > [!CAUTION]
+   - > **`BorrowConcurrencyIntegrationTest` Modifies Database Rows**: This test directly executes `DELETE` on test borrow records and `UPDATE` on book ID 1 and students STU001/STU002 to test race condition handling. Only run against a local test database or re-seed database afterwards.
+
+### Running the Test Suite via Ant:
 ```bat
 "<NETBEANS_ANT_PATH>\ant.bat" test
 ```
 
-> [!IMPORTANT]
-> The full test suite includes integration tests (`MySQLSmokeIntegrationTest`, `BorrowConcurrencyIntegrationTest`, `SecurityAndFeatureHardeningTest`) that require an active MySQL instance running on `127.0.0.1:3306` with the `school_library` database initialized from `database/schema.sql`, `database/indexes.sql`, and `database/seed.sql`.
+### Manual Concurrency Testing (Coursework Requirement):
+To manually verify that the server prevents two users from borrowing the last copy of the same book simultaneously:
+1. Ensure a book in the catalog has `available_copies = 1` (e.g., Book ID 1).
+2. Open two client instances on two different machines (or two windows on the same machine).
+3. Log in as Librarian on Client A and Client B.
+4. On Client A, enter Student A and Book ID 1.
+5. On Client B, enter Student B and Book ID 1.
+6. Click **"Mượn sách"** on both clients almost simultaneously.
+7. **Expected Result**: Exactly one client receives a success confirmation (`"Mượn sách thành công"`), and the second client receives an informative error (`"No copies available for book..."` / `BookUnavailableException`). Available copies remain `0` and never become negative.
 
-### Historical Verified Test Results:
-*Environment: Local development environment with MySQL 8.0, verified from build logs on October 7, 2026 (`build/test/results/`).*
+### Historical Test Log Archive:
+*(Reference build log recorded from local test run on October 7, 2026 — 99/99 passed)*:
 
 ```text
 thuvien.common.ProtocolTest:                             tests=2,  failures=0, errors=0, skipped=0
@@ -337,11 +362,11 @@ thuvien.server.service.BorrowConcurrencyIntegrationTest: tests=3,  failures=0, e
 thuvien.server.service.FineServiceTest:                  tests=3,  failures=0, errors=0, skipped=0
 thuvien.server.service.SecurityAndFeatureHardeningTest:  tests=29, failures=0, errors=0, skipped=0
 -----------------------------------------------------------------------------------------------------
-TOTAL: tests=99, failures=0, errors=0, skipped=0 | BUILD SUCCESSFUL
+TOTAL: tests=99, failures=0, errors=0, skipped=0 | BUILD SUCCESSFUL (Historical)
 ```
 
 > [!NOTE]
-> Automated tests (such as `RMIEndToEndIntegrationTest`) verify RMI functionality on `localhost`. Multi-machine network connectivity across two physical computers over Wi-Fi/LAN requires independent verification of IP configuration and firewall rules on ports 1099 and 1100.
+> Automated tests verify RMI functionality on `localhost`. Multi-machine network connectivity across two physical computers over Wi-Fi/LAN requires independent verification of IP configuration and firewall rules on ports 1099 and 1100.
 
 ---
 
@@ -349,13 +374,17 @@ TOTAL: tests=99, failures=0, errors=0, skipped=0 | BUILD SUCCESSFUL
 
 > **Prerequisite**: Ensure MySQL is started and the `school_library` database is seeded before starting the server.
 
-### Server in Development Mode
+### Option 1 — In NetBeans IDE (Development Mode)
+- **Run Project (F6)**: Simply click the green **Run Project** button or press **F6** in NetBeans. NetBeans executes `thuvien.server.rmi.LibraryRMIServer`, launching the RMI Registry on port `1099` and Remote Object on port `1100`.
+- **Run File (Shift+F6)**: Open `server/src/thuvien/server/rmi/LibraryRMIServer.java`, right-click and select **Run File**.
+
+### Option 2 — Using Ant from Command Line
 From the project root:
 ```bat
 "<NETBEANS_ANT_PATH>\ant.bat" run-server
 ```
 
-### Server in Packaged Mode
+### Option 3 — Server in Packaged Mode
 Navigate to `dist/server-dist/` and execute the launcher batch script:
 ```bat
 cd dist\server-dist
@@ -381,13 +410,18 @@ The server automatically scans network interfaces, identifies the active site-lo
 
 ## Running the Client
 
-### Client in Development Mode
+### Option 1 — In NetBeans IDE (Development Mode)
+1. In the **Projects** panel, expand `client/src` -> `thuvien.client`.
+2. Right-click [`ClientMain.java`](client/src/thuvien/client/ClientMain.java) and select **Run File** (or press **Shift+F6**).
+3. The Java Swing Login window will appear.
+
+### Option 2 — Using Ant from Command Line
 From the project root:
 ```bat
 "<NETBEANS_ANT_PATH>\ant.bat" run-client
 ```
 
-### Client in Packaged Mode
+### Option 3 — Client in Packaged Mode
 Navigate to `dist/client-dist/`:
 
 **Option A — Default (reads `resources/client.properties`):**
@@ -422,27 +456,36 @@ This setup allows a client laptop running the Swing GUI to connect wirelessly to
    ipconfig
    ```
    *(Identify the IPv4 address of your Wi-Fi or Ethernet adapter, e.g. `192.168.1.50` or `10.0.0.5`. Do NOT use `127.0.0.1` or virtual VPN adapter IPs).*
-3. Open Windows PowerShell as **Administrator** and run the following two commands to allow inbound traffic on ports `1099` and `1100` through Windows Defender Firewall:
+3. Open Windows PowerShell as **Administrator** and allow inbound traffic on ports `1099` and `1100` through Windows Defender Firewall:
    ```powershell
-   New-NetFirewallRule -DisplayName "School Library RMI Registry" -Direction Inbound -LocalPort 1099 -Protocol TCP -Action Allow
-   New-NetFirewallRule -DisplayName "School Library RMI Object" -Direction Inbound -LocalPort 1100 -Protocol TCP -Action Allow
+   New-NetFirewallRule -DisplayName "School Library RMI Registry" -Direction Inbound -LocalPort 1099 -Protocol TCP -Action Allow -Profile Private
+   New-NetFirewallRule -DisplayName "School Library RMI Object" -Direction Inbound -LocalPort 1100 -Protocol TCP -Action Allow -Profile Private
    ```
-4. Start the server via `dist\server-dist\run-server.bat`. Confirm that `RMI hostname` matches your Wi-Fi IPv4 address.
+   > [!IMPORTANT]
+   > **Do NOT open MySQL Port 3306**: In this 3-tier architecture, client machines communicate solely with the RMI Server (ports 1099 and 1100). The database is strictly accessed by the Server locally; MySQL port 3306 must **never** be opened to client machines.
+   >
+   > **Network Trust Notice**: Current Java RMI transport is unencrypted (no TLS/SSL). Always conduct multi-machine testing on a **trusted, private Wi-Fi or LAN** network. Do not expose RMI ports on public or untrusted Wi-Fi.
+
+4. Start the server (via NetBeans **Run Project (F6)**, `ant run-server`, or `dist\server-dist\run-server.bat`). Confirm that the server console displays `RMI hostname: <YOUR_LAN_IP>`.
 
 ### 2. Client Machine Setup
-1. Connect to the same Wi-Fi / LAN network.
-2. Copy the `dist/client-dist/` folder to the client machine.
-3. Test network port connectivity to the Server:
-   ```powershell
-   Test-NetConnection <SERVER_IP> -Port 1099
-   Test-NetConnection <SERVER_IP> -Port 1100
-   ```
-   *(Both tests must return `TcpTestSucceeded : True`)*.
-4. Launch the client:
+1. Connect to the same Wi-Fi / LAN network as the server.
+2. Copy the `dist/client-dist/` folder to the client machine (or clone the repository on the client machine).
+3. **Important — Server IP Address**: When running the client on a second computer, you **must** enter the Server's actual LAN IPv4 address (e.g., `192.168.1.50`). Do **NOT** use `localhost` or `127.0.0.1`, which refers only to the local client machine itself.
+4. **Test Network Connectivity**:
+   - Check raw TCP port reachability:
+     ```powershell
+     Test-NetConnection <SERVER_IP> -Port 1099
+     Test-NetConnection <SERVER_IP> -Port 1100
+     ```
+   - > [!NOTE]
+   - > **TCP Port Check vs. RMI Invocation**: A successful TCP handshake (`TcpTestSucceeded : True`) verifies that packets can traverse the network and firewall to the ports. However, a complete RMI invocation additionally requires that the RMI Registry successfully resolves the service stub and that the client can deserialize the remote interface. Always verify application-level connectivity by clicking **"Kiểm tra kết nối"** in the login window.
+5. Launch the client:
    ```bat
    run-client.bat <SERVER_IP> 1099
    ```
-5. Click **"Kiểm tra kết nối"** -> verify `"Server connected"` -> log in.
+   *(Or in NetBeans on the client machine: run [`ClientMain.java`](client/src/thuvien/client/ClientMain.java) and type `<SERVER_IP>` into the Server IP field)*.
+6. Click **"Kiểm tra kết nối"** -> verify `"Server connected"` in green -> log in.
 
 ---
 
