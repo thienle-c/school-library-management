@@ -94,7 +94,7 @@ public class MainDashboardForm extends JFrame {
 
         subTitle.setFont(ModernUIHelper.FONT_SUBTITLE);
         subTitle.setForeground(ModernUIHelper.TEXT_MUTED);
-        subTitle.setText("Hệ thống quản lý & tra cứu ấn phẩm số • Kiến trúc phân tán");
+        subTitle.setText("Hệ thống quản lý & tra cứu ấn phẩm số | Kiến trúc phân tán");
 
         sidebar.setBackground(ModernUIHelper.BG_SIDEBAR);
         sidebar.setBorder(BorderFactory.createCompoundBorder(
@@ -231,7 +231,7 @@ public class MainDashboardForm extends JFrame {
 
         subTitle.setFont(new java.awt.Font("Segoe UI", 0, 11)); // NOI18N
         subTitle.setForeground(new java.awt.Color(110, 115, 125));
-        subTitle.setText("Ứng Dụng Khách Kết Nối Java RMI — Kiến Trúc Phân Tán 3 Lớp");
+        subTitle.setText("Ứng Dụng Khách Kết Nối Java RMI - Kiến Trúc Phân Tán 3 Lớp");
         titlePanel.add(subTitle);
 
         topBar.add(titlePanel, java.awt.BorderLayout.WEST);
@@ -478,7 +478,7 @@ public class MainDashboardForm extends JFrame {
         welcomeTitle.setFont(ModernUIHelper.FONT_TITLE);
         welcomeTitle.setForeground(ModernUIHelper.TEXT_ACCENT);
 
-        JLabel welcomeSub = new JLabel("Hệ thống quản lý tài nguyên học thuật số trực tuyến — Kiến trúc phân tán Java RMI");
+        JLabel welcomeSub = new JLabel("Hệ thống quản lý tài nguyên học thuật số trực tuyến - Kiến trúc phân tán Java RMI");
         welcomeSub.setFont(ModernUIHelper.FONT_SUBTITLE);
         welcomeSub.setForeground(ModernUIHelper.TEXT_MUTED);
         headerPanel.add(welcomeTitle);

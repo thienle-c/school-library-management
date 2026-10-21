@@ -206,8 +206,8 @@ if errorlevel 1 (
     exit /b 1
 )
 
-set "JVM_ARGS="
-if not "%~1"=="" set "JVM_ARGS=-Drmi.server.host=%~1 -Dserver.host=%~1"
+set "JVM_ARGS=-Dfile.encoding=UTF-8"
+if not "%~1"=="" set "JVM_ARGS=%JVM_ARGS% -Drmi.server.host=%~1 -Dserver.host=%~1"
 if not "%~2"=="" set "JVM_ARGS=%JVM_ARGS% -Drmi.registry.port=%~2 -Dserver.port=%~2"
 
 echo Starting Remote School Library Java RMI Swing Client...
