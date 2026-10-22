@@ -310,7 +310,7 @@ public class LoginForm extends JFrame {
         loginButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
         loginButton.setAlignmentX(0.0f);
         authPanel.add(loginButton);
-        authPanel.add(javax.swing.Box.createVerticalStrut(8));
+        authPanel.add(javax.swing.Box.createVerticalStrut(10));
 
         // Register Button Link
         registerButton.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
@@ -322,56 +322,7 @@ public class LoginForm extends JFrame {
         registerButton.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
         registerButton.setAlignmentX(0.0f);
         authPanel.add(registerButton);
-        authPanel.add(javax.swing.Box.createVerticalStrut(14));
-
-        // Demo Quick-Fill Bar
-        javax.swing.JPanel demoPanel = new javax.swing.JPanel();
-        demoPanel.setOpaque(false);
-        demoPanel.setLayout(new javax.swing.BoxLayout(demoPanel, javax.swing.BoxLayout.Y_AXIS));
-        demoPanel.setAlignmentX(0.0f);
-
-        javax.swing.JLabel demoLabel = new javax.swing.JLabel("Tài khoản mẫu thử nghiệm:");
-        demoLabel.setIcon(ModernUIHelper.getVectorIcon("SESSION", 12, ModernUIHelper.LABEL_DETAIL));
-        demoLabel.setIconTextGap(6);
-        demoLabel.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 11));
-        demoLabel.setForeground(ModernUIHelper.LABEL_DETAIL);
-        demoPanel.add(demoLabel);
-        demoPanel.add(javax.swing.Box.createVerticalStrut(6));
-
-        javax.swing.JPanel chipsRow = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 6, 0));
-        chipsRow.setOpaque(false);
-
-        Color chipBg = new Color(0xF1, 0xF5, 0xF9);
-        javax.swing.JButton adminChip = new javax.swing.JButton();
-        ModernUIHelper.styleChipButton(adminChip, "Admin", ModernUIHelper.getVectorIcon("AUDIT", 12, ModernUIHelper.PRIMARY_BLUE), chipBg, ModernUIHelper.TEXT_PRIMARY);
-        adminChip.addActionListener(e -> {
-            usernameField.setText("admin");
-            passwordField.setText("admin123");
-            statusLabel.setText("Đã điền tài khoản mẫu Admin.");
-        });
-
-        javax.swing.JButton libChip = new javax.swing.JButton();
-        ModernUIHelper.styleChipButton(libChip, "Thủ thư", ModernUIHelper.getVectorIcon("BOOKS", 12, ModernUIHelper.PRIMARY_BLUE), chipBg, ModernUIHelper.TEXT_PRIMARY);
-        libChip.addActionListener(e -> {
-            usernameField.setText("librarian1");
-            passwordField.setText("lib123");
-            statusLabel.setText("Đã điền tài khoản mẫu Thủ thư.");
-        });
-
-        javax.swing.JButton studentChip = new javax.swing.JButton();
-        ModernUIHelper.styleChipButton(studentChip, "Sinh viên", ModernUIHelper.getVectorIcon("STUDENTS", 12, ModernUIHelper.PRIMARY_BLUE), chipBg, ModernUIHelper.TEXT_PRIMARY);
-        studentChip.addActionListener(e -> {
-            usernameField.setText("student1");
-            passwordField.setText("student123");
-            statusLabel.setText("Đã điền tài khoản mẫu Sinh viên.");
-        });
-
-        chipsRow.add(adminChip);
-        chipsRow.add(libChip);
-        chipsRow.add(studentChip);
-        demoPanel.add(chipsRow);
-
-        authPanel.add(demoPanel);
+        authPanel.add(javax.swing.Box.createVerticalGlue());
 
         // Add both panels to content pane
         getContentPane().add(heroPanel, java.awt.BorderLayout.WEST);

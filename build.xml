@@ -195,6 +195,7 @@ endlocal
                 <include name="thuvien/common/**"/>
                 <include name="thuvien/client/**"/>
                 <include name="client.properties"/>
+                <include name="images/**"/>
                 <exclude name="thuvien/server/**"/>
                 <exclude name="db.properties"/>
                 <exclude name="db.properties.example"/>

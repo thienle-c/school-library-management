@@ -968,7 +968,7 @@ public final class ModernUIHelper {
     }
 
     // =========================================================================
-    // CRISP VECTOR ICONS (Immune to font missing glyphs / square '▯' box bug)
+    // CRISP VECTOR ICONS (Immune to font missing glyphs / square box bug)
     // =========================================================================
 
     public static class VectorIcon implements Icon {

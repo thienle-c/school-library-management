@@ -448,12 +448,12 @@ public class BorrowDialog extends JDialog {
                             warning = " &nbsp;<b style='color:#cc0000;'>[ĐÃ ĐẠT GIỚI HẠN MƯỢN TỐI ĐA]</b>";
                         }
                         studentInfoLabel.setText(String.format(
-                                "<html><span style='color:%s;'>✓ <b>%s</b> (Mã: %s, ID: %d) &nbsp;|&nbsp; Đang mượn: <b>%d/%d</b> quyển &nbsp;|&nbsp; TT: %s%s</span></html>",
+                                "<html><span style='color:%s;'>[HỢP LỆ] <b>%s</b> (Mã: %s, ID: %d) &nbsp;|&nbsp; Đang mượn: <b>%d/%d</b> quyển &nbsp;|&nbsp; TT: %s%s</span></html>",
                                 color, s.getFullName(), s.getStudentCode(), s.getId(), s.getCurrentBorrowCount(), s.getMaxBorrowLimit(), statusText, warning
                         ));
                         statusLabel.setText("Đã nhận diện sinh viên " + s.getFullName() + " (" + s.getStudentCode() + ").");
                     } else {
-                        studentInfoLabel.setText("<html><font color='#cc0000'>❌ Không tìm thấy sinh viên có mã hoặc tên: " + input + "</font></html>");
+                        studentInfoLabel.setText("<html><font color='#cc0000'>[!] Không tìm thấy sinh viên có mã hoặc tên: " + input + "</font></html>");
                         statusLabel.setText("Không tìm thấy sinh viên phù hợp.");
                     }
                 },
@@ -587,12 +587,12 @@ public class BorrowDialog extends JDialog {
                         String color = hasCopies ? "#006622" : "#cc0000";
                         String copiesWarning = hasCopies ? "" : " &nbsp;<b style='color:#cc0000;'>[HẾT BẢN SAO KHẢ DỤNG]</b>";
                         bookInfoLabel.setText(String.format(
-                                "<html><span style='color:%s;'>✓ <b>%s</b> (Mã ID: %d, ISBN: %s) &nbsp;|&nbsp; Có sẵn: <b>%d/%d</b> bản &nbsp;|&nbsp; TT: %s%s</span></html>",
+                                "<html><span style='color:%s;'>[HỢP LỆ] <b>%s</b> (Mã ID: %d, ISBN: %s) &nbsp;|&nbsp; Có sẵn: <b>%d/%d</b> bản &nbsp;|&nbsp; TT: %s%s</span></html>",
                                 color, b.getTitle(), b.getId(), b.getIsbn(), b.getAvailableCopies(), b.getTotalCopies(), b.getStatus(), copiesWarning
                         ));
                         statusLabel.setText("Đã nhận diện sách: " + b.getTitle() + " (Còn " + b.getAvailableCopies() + "/" + b.getTotalCopies() + " bản).");
                     } else {
-                        bookInfoLabel.setText("<html><font color='#cc0000'>❌ Không tìm thấy sách có ISBN, tiêu đề hoặc ID: " + input + "</font></html>");
+                        bookInfoLabel.setText("<html><font color='#cc0000'>[!] Không tìm thấy sách có ISBN, tiêu đề hoặc ID: " + input + "</font></html>");
                         statusLabel.setText("Không tìm thấy sách phù hợp.");
                     }
                 },
@@ -779,15 +779,15 @@ public class BorrowDialog extends JDialog {
             return false;
         }
 
-        statusLabel.setText("✓ Đủ điều kiện mượn sách! Bấm 'Xác Nhận Mượn' để hoàn tất.");
+        statusLabel.setText("Đủ điều kiện mượn sách! Bấm 'Xác Nhận Mượn' để hoàn tất.");
         statusLabel.setForeground(new Color(20, 130, 50));
 
         if (showSuccessPopup) {
             JOptionPane.showMessageDialog(this,
                     String.format("KẾT QUẢ KIỂM TRA ĐIỀU KIỆN:\n\n" +
-                                    "✓ Sinh viên: %s (Mã: %s, ID: %d)\n" +
+                                    "- Sinh viên: %s (Mã: %s, ID: %d)\n" +
                                     "  Trạng thái: Hoạt động | Số sách đang mượn: %d/%d\n\n" +
-                                    "✓ Sách: %s (ISBN: %s, ID: %d)\n" +
+                                    "- Sách: %s (ISBN: %s, ID: %d)\n" +
                                     "  Trạng thái: Khả dụng | Bản sao có sẵn: %d/%d\n\n" +
                                     "==> HỒ SƠ HOÀN TOÀN HỢP LỆ VÀ ĐỦ ĐIỀU KIỆN CHO MƯỢN!",
                             resolvedStudent.getFullName(), resolvedStudent.getStudentCode(), resolvedStudent.getId(),
@@ -823,12 +823,12 @@ public class BorrowDialog extends JDialog {
                     saved = true;
                     String msg = String.format(
                             "CHO MƯỢN SÁCH THÀNH CÔNG!\n\n" +
-                            "• Mã phiếu mượn: #%d\n" +
-                            "• Sinh viên: %s (Mã SV: %s)\n" +
-                            "• Tên sách: %s (ISBN: %s)\n" +
-                            "• Ngày mượn: %s\n" +
-                            "• Hạn trả sách: %s\n" +
-                            "• Trạng thái: %s",
+                            "- Mã phiếu mượn: #%d\n" +
+                            "- Sinh viên: %s (Mã SV: %s)\n" +
+                            "- Tên sách: %s (ISBN: %s)\n" +
+                            "- Ngày mượn: %s\n" +
+                            "- Hạn trả sách: %s\n" +
+                            "- Trạng thái: %s",
                             record.getId(), record.getStudentName(), record.getStudentCode(),
                             record.getBookTitle(), record.getBookIsbn(),
                             record.getBorrowDate() != null ? DATE_FMT.format(record.getBorrowDate()) : "N/A",

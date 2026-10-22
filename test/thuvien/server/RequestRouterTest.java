@@ -685,4 +685,47 @@ public class RequestRouterTest {
         Assert.assertNotNull(resp);
         Assert.assertEquals(StatusCode.FORBIDDEN, resp.getStatusCode());
     }
+
+    @Test
+    public void testStudentCannotPerformPrivilegedOperations() {
+        // 1. Student attempting DELETE_BOOK -> FORBIDDEN
+        Request reqDelBook = new Request(Action.DELETE_BOOK, studentToken, 1L);
+        Assert.assertEquals(StatusCode.FORBIDDEN, router.route(reqDelBook).getStatusCode());
+
+        // 2. Student attempting BORROW_BOOK directly -> FORBIDDEN
+        BorrowRequestDTO borrowPayload = new BorrowRequestDTO(3L, 1L);
+        Request reqBorrow = new Request(Action.BORROW_BOOK, studentToken, borrowPayload);
+        Assert.assertEquals(StatusCode.FORBIDDEN, router.route(reqBorrow).getStatusCode());
+
+        // 3. Student attempting PAY_FINE -> FORBIDDEN
+        Request reqPayFine = new Request(Action.PAY_FINE, studentToken, 1L);
+        Assert.assertEquals(StatusCode.FORBIDDEN, router.route(reqPayFine).getStatusCode());
+
+        // 4. Student attempting LIST_AUDIT_LOGS -> FORBIDDEN
+        Request reqAudit = new Request(Action.LIST_AUDIT_LOGS, studentToken, 50);
+        Assert.assertEquals(StatusCode.FORBIDDEN, router.route(reqAudit).getStatusCode());
+
+        // 5. Student attempting GENERATE_STUDENT_ACTIVATION -> FORBIDDEN
+        Request reqGenCode = new Request(Action.GENERATE_STUDENT_ACTIVATION, studentToken, 3L);
+        Assert.assertEquals(StatusCode.FORBIDDEN, router.route(reqGenCode).getStatusCode());
+    }
+
+    @Test
+    public void testLibrarianCannotPerformAdminOnlyOperations() {
+        // 1. Librarian attempting DELETE_USER -> FORBIDDEN
+        Request reqDelUser = new Request(Action.DELETE_USER, librarianToken, 5L);
+        Assert.assertEquals(StatusCode.FORBIDDEN, router.route(reqDelUser).getStatusCode());
+
+        // 2. Librarian attempting DELETE_STUDENT -> FORBIDDEN
+        Request reqDelStudent = new Request(Action.DELETE_STUDENT, librarianToken, 1L);
+        Assert.assertEquals(StatusCode.FORBIDDEN, router.route(reqDelStudent).getStatusCode());
+
+        // 3. Librarian attempting GENERATE_STUDENT_ACTIVATION -> FORBIDDEN
+        Request reqGenCode = new Request(Action.GENERATE_STUDENT_ACTIVATION, librarianToken, 1L);
+        Assert.assertEquals(StatusCode.FORBIDDEN, router.route(reqGenCode).getStatusCode());
+
+        // 4. Librarian attempting LIST_AUDIT_LOGS -> FORBIDDEN
+        Request reqAudit = new Request(Action.LIST_AUDIT_LOGS, librarianToken, 50);
+        Assert.assertEquals(StatusCode.FORBIDDEN, router.route(reqAudit).getStatusCode());
+    }
 }
