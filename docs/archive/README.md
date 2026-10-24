@@ -9,18 +9,18 @@
 ### BỘ TÀI LIỆU CHÍNH HIỆN HÀNH (ACTIVE DOCUMENTATION SET)
 
 Các tài liệu chính thức đang được sử dụng nằm tại thư mục gốc `docs/`:
-1. [README.md](file:///D:/workspace/thuvien/README.md): Hướng dẫn tổng quan dự án, tài khoản demo và xử lý sự cố.
-2. [ARCHITECTURE.md](file:///D:/workspace/thuvien/docs/ARCHITECTURE.md): Kiến trúc phân tầng 3-tier, phân quyền RBAC và nguyên tắc phân tách module.
-3. [NETWORK.md](file:///D:/workspace/thuvien/docs/NETWORK.md): Giao thức mạng, cấu hình cổng RMI 1099/1100 và phát hiện IP LAN.
-4. [DATABASE.md](file:///D:/workspace/thuvien/docs/DATABASE.md): Thiết kế cơ sở dữ liệu, quan hệ bảng và khóa ngoại InnoDB.
-5. [API.md](file:///D:/workspace/thuvien/docs/API.md): Danh mục Action, Request/Response envelope và mã trạng thái.
-6. [INSTALLATION.md](file:///D:/workspace/thuvien/docs/INSTALLATION.md): Hướng dẫn môi trường, biên dịch Ant và đóng gói phân phối.
-7. [DEPLOYMENT.md](file:///D:/workspace/thuvien/docs/DEPLOYMENT.md): Quy trình triển khai, kiểm tra môi trường và chạy migration an toàn.
-8. [BACKUP-RESTORE.md](file:///D:/workspace/thuvien/docs/BACKUP-RESTORE.md): Quy trình sao lưu và phục hồi với `--result-file`.
-9. [PERFORMANCE.md](file:///D:/workspace/thuvien/docs/PERFORMANCE.md): Tiêu chuẩn hiệu năng, bảo vệ EDT và kết quả benchmark.
-10. [master-finalization-and-staging-readiness.md](file:///D:/workspace/thuvien/docs/master-finalization-and-staging-readiness.md): Báo cáo tổng thể hiện trạng kỹ thuật và các cổng kiểm soát chất lượng.
-11. [STAGING-HANDOFF-CHECKLIST.md](file:///D:/workspace/thuvien/docs/STAGING-HANDOFF-CHECKLIST.md): Danh mục bàn giao hạ tầng và các tiêu chí nghiệm thu.
-12. [PROJECT-CLEANUP-REPORT.md](file:///D:/workspace/thuvien/docs/PROJECT-CLEANUP-REPORT.md): Báo cáo dọn dẹp và chuẩn hóa cấu trúc dự án.
+1. [README.md](../../README.md): Hướng dẫn tổng quan dự án, tài khoản demo và xử lý sự cố.
+2. [ARCHITECTURE.md](../ARCHITECTURE.md): Kiến trúc phân tầng 3-tier, phân quyền RBAC và nguyên tắc phân tách module.
+3. [NETWORK.md](../NETWORK.md): Giao thức mạng, cấu hình cổng RMI 1099/1100 và phát hiện IP LAN.
+4. [DATABASE.md](../DATABASE.md): Thiết kế cơ sở dữ liệu, quan hệ bảng và khóa ngoại InnoDB.
+5. [API.md](../API.md): Danh mục Action, Request/Response envelope và mã trạng thái.
+6. [INSTALLATION.md](../INSTALLATION.md): Hướng dẫn môi trường, biên dịch Ant và đóng gói phân phối.
+7. [DEPLOYMENT.md](../DEPLOYMENT.md): Quy trình triển khai, kiểm tra môi trường và chạy migration an toàn.
+8. [BACKUP-RESTORE.md](../BACKUP-RESTORE.md): Quy trình sao lưu và phục hồi với `--result-file`.
+9. [PERFORMANCE.md](../PERFORMANCE.md): Tiêu chuẩn hiệu năng, bảo vệ EDT và kết quả benchmark.
+10. [master-finalization-and-staging-readiness.md](../master-finalization-and-staging-readiness.md): Báo cáo tổng thể hiện trạng kỹ thuật và các cổng kiểm soát chất lượng.
+11. [STAGING-HANDOFF-CHECKLIST.md](../STAGING-HANDOFF-CHECKLIST.md): Danh mục bàn giao hạ tầng và các tiêu chí nghiệm thu.
+12. [PROJECT-CLEANUP-REPORT.md](../PROJECT-CLEANUP-REPORT.md): Báo cáo dọn dẹp và chuẩn hóa cấu trúc dự án.
 
 ---
 
