@@ -1,575 +1,132 @@
-# Remote School Library Management System
+# Hệ thống quản lý thư viện trường học
 
-A distributed 3-tier client-server school library management system designed for university Computer Networking and Network Programming coursework. The system enables comprehensive library circulation (catalog administration, book borrowing and returns, hold reservations, fine settlements, prefix search autocomplete, and security audit logging) over **Java Remote Method Invocation (Java RMI)** and **Java Object Serialization**.
+Ứng dụng quản lý thư viện theo mô hình client–server, xây dựng bằng Java Swing, Java RMI và MySQL. Dự án phục vụ mục đích học tập môn Lập trình mạng máy tính, đồng thời minh họa cách tách giao diện người dùng, giao tiếp mạng và xử lý nghiệp vụ phía máy chủ.
 
-A core technical highlight is the **server-authoritative concurrency guarantee**: when multiple clients simultaneously attempt to borrow the last available copy of a book, server-side atomic transactions and row-level database locking ensure that exactly one request succeeds, competing requests receive an informative error, and copy inventory never drops below zero.
+## Chức năng chính
 
----
+- Đăng nhập, đổi mật khẩu, quản lý phiên và phân quyền theo vai trò `ADMIN`, `LIBRARIAN`, `STUDENT`.
+- Quản lý sách, thể loại, tác giả và thông tin bản sao.
+- Quản lý bạn đọc/sinh viên, trạng thái tài khoản và đăng ký bằng mã kích hoạt.
+- Lập phiếu mượn, trả sách, đặt trước sách và xử lý tiền phạt.
+- Tìm kiếm danh mục, gợi ý tìm kiếm và xem bảng điều khiển theo quyền.
+- Ghi nhật ký kiểm toán cho các thao tác quan trọng.
+- Kiểm tra quyền ở phía máy chủ; thao tác mượn sách dùng giao dịch cơ sở dữ liệu để hạn chế tranh chấp khi nhiều máy khách cùng yêu cầu bản sao cuối cùng.
 
-## Table of Contents
+## Công nghệ
 
-- [Features](#features)
-- [Architecture](#architecture)
-- [Technologies](#technologies)
-- [Project Structure](#project-structure)
-- [Environment & Requirements](#environment--requirements)
-- [Database Setup](#database-setup)
-- [Configuration](#configuration)
-- [Building the Project](#building-the-project)
-  - [Using Apache Ant Bundled with NetBeans](#using-apache-ant-bundled-with-netbeans)
-  - [Using NetBeans IDE](#using-netbeans-ide)
-- [Testing](#testing)
-- [Running the Server](#running-the-server)
-  - [Server in Development Mode](#server-in-development-mode)
-  - [Server in Packaged Mode](#server-in-packaged-mode)
-- [Running the Client](#running-the-client)
-  - [Client in Development Mode](#client-in-development-mode)
-  - [Client in Packaged Mode](#client-in-packaged-mode)
-- [Running on Two Computers over LAN / Wi-Fi](#running-on-two-computers-over-lan--wi-fi)
-  - [1. Server Machine Setup](#1-server-machine-setup)
-  - [2. Client Machine Setup](#2-client-machine-setup)
-- [RMI Connection Diagnostics](#rmi-connection-diagnostics)
-- [Demo Accounts](#demo-accounts)
-- [Packaging & Distribution](#packaging--distribution)
-- [Troubleshooting](#troubleshooting)
-- [Security & Coursework Notes](#security--coursework-notes)
+| Thành phần | Công nghệ |
+|---|---|
+| Ngôn ngữ | Java 8 |
+| Giao diện | Java Swing |
+| Giao tiếp client–server | Java RMI, Java Object Serialization |
+| Cơ sở dữ liệu | MySQL 8 |
+| Build | Apache Ant |
+| IDE tương thích với cấu hình dự án | NetBeans |
 
----
-
-## Features
-
-### Authentication & Account Security
-* **Cryptographic Password Hashing**: Passwords stored using PBKDF2 with HMAC-SHA256 and cryptographically secure random salting, with backward-compatible SHA-256 verification.
-* **Brute-Force Rate Limiting**: 5 consecutive failed login attempts trigger an automated 15-minute global account lockout.
-* **Immediate Multi-Session Invalidation**: Lockout immediately revokes all active sessions across all connected clients for the affected user.
-* **Session Management**: Server-side in-memory session token store with a 30-minute idle expiration policy.
-* **Self-Service Password Change**: In-app password updates requiring validation of the current password and confirmation.
-
-### Role-Based Access Control (RBAC)
-* **Three Defined Roles**: `ADMIN`, `LIBRARIAN`, and `STUDENT`.
-* **Server-Authoritative Enforcement**: Client GUI visibility is purely convenience; all actions are strictly verified by `RequestRouter` on the server before execution.
-
-### Library & Catalog Management
-* **Catalog Administration**: CRUD operations for books, category classifications, and multi-author associations.
-* **Inventory Tracking**: Dedicated copy tracking per book (`total_copies`, `available_copies`, `shelf_location`, `status`).
-* **Multi-Field Catalog Search**: Case-insensitive filtering across title, author, category, or ISBN.
-* **Prefix Search Autocomplete**: Asynchronous debounced suggestions for books, authors, and student records without UI blocking.
-
-### Circulation Desk (Borrow & Return)
-* **Atomic Borrowing Workflow**: Multi-step transaction validating student status, active loan quotas, and book availability.
-* **Strict Anti-Race Concurrency**: Atomic conditional decrement (`available_copies = available_copies - 1 ... WHERE id = ? AND available_copies > 0`) prevents double-borrowing of the last copy by concurrent clients.
-* **Return & Fine Assessment**: Check-in workflow restores available copies, updates loan records to `RETURNED`, and automatically assesses fines for overdue loans based on configurable daily penalty rates.
-* **Hold Reservations**: Students can reserve checked-out books; staff can review, fulfill, or cancel hold queues.
-* **Fine Settlement**: Cash collection recording with collector attribution and balance clearance.
-
-### Student Registry & Self-Service Activation
-* **Student Records**: Profile maintenance (student code, class, contact details, status, borrow limits).
-* **Self-Service Registration**: Prospective students activate their user accounts using pre-generated one-time activation codes (`ACT-STU...`).
-
-### Operational Audit Logging
-* Comprehensive event logging (`LOGIN_SUCCESS`, `LOGIN_FAILED`, `ACCOUNT_LOCKED`, `PASSWORD_CHANGED`, `BORROW_CREATED`, `RETURN_COMPLETED`, `FINE_PAID`, etc.).
-* Sensitive secrets (plaintext passwords, hashes, session tokens) are never recorded in audit logs.
-
----
-
-## Architecture
-
-The system is strictly partitioned into a 3-tier distributed architecture over **Java Remote Method Invocation (Java RMI)**:
-
-```mermaid
-graph TD
-    subgraph Client Tier ["Java Swing Desktop Client"]
-        UI["Swing Views & Forms<br/>(LoginForm, MainDashboardForm)"]
-        CC["Client Controllers<br/>(Auth, Book, Student, Borrow)"]
-        AW["AsyncWorker (SwingWorker)<br/>(Offloads EDT)"]
-        RC["RMIClient<br/>(NetworkClient Adapter)"]
-        UI --> CC --> AW --> RC
-    end
-
-    subgraph Transport ["Network Transport Tier"]
-        REG["RMI Registry :1099<br/>(Service: LibraryRemoteService)"]
-        ROB["RMI Remote Object :1100<br/>(Fixed Export Port)"]
-        RC <-->|"1. LocateRegistry.lookup"| REG
-        RC <-->|"2. Remote Method Invocations"| ROB
-    end
-
-    subgraph Server Tier ["Java Library Server"]
-        LRS["LibraryRMIServer<br/>(Registry Bootstrap + Hostname Config)"]
-        RSI["LibraryRemoteServiceImpl<br/>(UnicastRemoteObject on :1100)"]
-        RR["RequestRouter<br/>(Session Guards & RBAC Enforcement)"]
-        SL["Service Layer<br/>(Auth, Book, Borrow, Return, Fine)"]
-        RL["Repository Layer<br/>(JDBC PreparedStatements)"]
-        DM["DatabaseManager<br/>(HikariCP Connection Pool)"]
-
-        LRS --> RSI --> RR --> SL --> RL --> DM
-    end
-
-    subgraph Data Tier ["Database Tier"]
-        DB[("MySQL Database<br/>(InnoDB Engine)")]
-        DM --> DB
-    end
-
-    ROB --- RSI
-```
-
-### Strict Architectural Boundaries:
-1. **Client ↔ Server Transport**: Communication takes place exclusively via Java RMI and Java Serialization (`Serializable` DTOs and envelopes).
-2. **Server-Only Database Access**: Only the Server connects to MySQL via HikariCP. The Client distribution contains **zero** JDBC drivers, zero database connection strings, and zero server repository classes.
-3. **Exclusive Java RMI Architecture**: All legacy raw TCP socket classes, handlers, and tests have been completely decommissioned and removed. Client-to-server communication is handled exclusively via Java RMI on ports 1099 (Registry) and 1100 (Remote Object).
-
----
-
-## Technologies
-
-| Component / Layer | Technology | Specification / Version |
-|---|---|---|
-| **Language & Runtime** | Java SE | Java 8 (OpenJDK 1.8 / Amazon Corretto 8) |
-| **Desktop Client GUI** | Java Swing | Standard JDK 8 (`javax.swing.*`, `java.awt.*`) |
-| **Remote Communication** | Java RMI | `java.rmi.*`, `UnicastRemoteObject` |
-| **RMI Registry Port** | TCP 1099 | `LocateRegistry.createRegistry(1099)` |
-| **RMI Remote Object Port** | TCP 1100 | Fixed export port (avoids random firewall-blocked ports) |
-| **Object Transfer** | Java Serialization | `java.io.Serializable` with explicit `serialVersionUID` |
-| **Database Engine** | MySQL (InnoDB) | 5.7+ / 8.0+ (Tested on Laragon MySQL 8.0.30) |
-| **Connection Pooling** | HikariCP | 4.0.3 |
-| **JDBC Driver** | MySQL Connector/J | 8.0.33 |
-| **Build System** | Apache Ant via NetBeans | NetBeans 8.0.2 bundled Ant 1.9.x |
-| **Testing Framework** | JUnit 4 | 4.13.2 |
-| **Logging** | SLF4J & `java.util.logging` | 1.7.36 |
-
----
-
-## Project Structure
+## Kiến trúc tổng quan
 
 ```text
-thuvien/
-├── common/                             # Shared RMI interface, DTOs, and domain enums
-│   └── src/thuvien/common/
-│       ├── dto/                        # Transfer objects (BookDTO, StudentDTO, UserSessionDTO, etc.)
-│       ├── enums/                      # UserRole, BookStatus, BorrowStatus, StudentStatus
-│       ├── exception/                  # Domain exceptions (AuthenticationException, BookUnavailableException)
-│       ├── protocol/                   # Request, Response, Action, StatusCode envelopes
-│       └── rmi/                        # LibraryRemoteService (Remote Interface)
-├── server/                             # Server-side business, database, and RMI implementation
-│   ├── src/thuvien/server/
-│   │   ├── database/                   # HikariCP DatabaseManager lifecycle
-│   │   ├── repository/                 # JDBC repositories with SQL PreparedStatements
-│   │   ├── rmi/                        # LibraryRMIServer (bootstrap) & LibraryRemoteServiceImpl
-│   │   ├── router/                     # RequestRouter (session validation & RBAC dispatch)
-│   │   ├── security/                   # PasswordHasher and SessionManager
-│   │   └── service/                    # Business logic and atomic database transactions
-│   └── resources/
-│       ├── db.properties               # MySQL database connection and HikariCP pool configuration
-│       ├── db.properties.example       # Template database configuration
-│       └── server.properties           # RMI registry port (1099), service port (1100), service name
-├── client/                             # Swing Desktop client implementation
-│   ├── src/thuvien/client/
-│   │   ├── controller/                 # UI controllers translating views to RMI calls
-│   │   ├── network/                    # RMIClient (adapter implementing NetworkClient)
-│   │   ├── session/                    # ClientSession tracking logged-in user and token
-│   │   ├── view/                       # Swing forms, panels, and modal dialogs
-│   │   └── ClientMain.java             # Client application bootstrap
-│   └── resources/
-│       └── client.properties           # Default RMI host (127.0.0.1) and registry port (1099)
-├── database/                           # Database definition and seed scripts
-│   ├── schema.sql                      # DDL for 11 InnoDB tables with foreign key constraints
-│   ├── indexes.sql                     # B-Tree performance indexes
-│   └── seed.sql                        # Initial seed data (demo accounts, sample catalog, students)
-├── scripts/                            # Diagnostic helper scripts
-│   └── test-rmi-ports.ps1              # PowerShell port connectivity test for ports 1099 and 1100
-├── test/                               # Automated JUnit 4 test suites (9 test suites)
-│   └── thuvien/
-│       ├── common/                     # ProtocolTest (envelope & serialization)
-│       └── server/
-│           ├── database/               # MySQLSmokeIntegrationTest
-│           ├── repository/             # RepositoryArchitectureTest
-│           ├── rmi/                    # RMIEndToEndIntegrationTest
-│           ├── service/                # AuthServiceTest, FineServiceTest, BorrowConcurrencyIntegrationTest, etc.
-│           └── RequestRouterTest.java  # RequestRouter authorization & routing tests
-├── lib/                                # Compile and runtime dependencies
-│   ├── HikariCP-4.0.3.jar
-│   ├── mysql-connector-java-8.0.33.jar
-│   ├── slf4j-api-1.7.36.jar
-│   ├── slf4j-jdk14-1.7.36.jar
-│   ├── junit-4.13.2.jar
-│   └── hamcrest-core-1.3.jar
-├── dist/                               # Distribution packages (generated by package-all)
-│   ├── server-dist/                    # Standalone Server distribution (server.jar + lib + resources)
-│   └── client-dist/                    # Standalone Client distribution (client.jar + resources + diagnostic script)
-├── test-connection.bat                 # Root helper script to verify ports 1099 & 1100
-├── nbproject/                          # NetBeans 8.0.2 project metadata
-└── build.xml                           # Apache Ant build script
+Java Swing Client
+      |
+      | Java RMI
+      v
+RMI Registry / Remote Service
+      |
+      v
+Server: xác thực, phân quyền, nghiệp vụ, giao dịch
+      |
+      v
+MySQL
 ```
 
----
+Máy khách xử lý giao diện và gửi yêu cầu qua RMI. Máy chủ chịu trách nhiệm xác thực phiên, kiểm tra quyền, thực hiện nghiệp vụ và truy cập cơ sở dữ liệu. Không nên xem việc ẩn nút trên giao diện là biện pháp phân quyền thay thế cho kiểm tra ở máy chủ.
 
-## Environment & Requirements
+## Cấu trúc thư mục
 
-* **Operating System**: Windows 10 / 11 (64-bit).
-* **Java Development Kit**: JDK 8 (OpenJDK 1.8 or Amazon Corretto 8). Ensure `JAVA_HOME` points to your JDK 8 installation and `java -version` reports `1.8.0_xxx`.
-* **Integrated Development Environment (IDE)**: Apache NetBeans 8.0.2 (or compatible NetBeans 8.x / 12.x+).
-* **Build System**: Apache Ant bundled inside NetBeans. **No separate Apache Ant installation or PATH configuration is required.**
-* **Database**: MySQL 5.7+ or 8.0+ running on `127.0.0.1:3306` (Laragon 6.0 recommended).
+| Đường dẫn | Nội dung |
+|---|---|
+| `client/` | Mã nguồn giao diện Swing và thành phần kết nối RMI |
+| `server/` | Máy chủ RMI, dịch vụ nghiệp vụ, bảo mật và truy cập dữ liệu |
+| `common/` | DTO, giao diện remote và các lớp dùng chung |
+| `test/` | Kiểm thử tự động |
+| `database/` | Schema, dữ liệu mẫu, chỉ mục và script migration |
+| `docs/` | Tài liệu kiến trúc, cài đặt, API, mạng và triển khai |
+| `docs/archive/` | Báo cáo kiểm tra và tài liệu lịch sử đã lưu trữ |
+| `scripts/` | Script hỗ trợ kiểm tra kết nối |
+| `lib/` | Thư viện phụ thuộc của dự án |
+| `build.xml` | Các tác vụ build, test, chạy và đóng gói bằng Ant |
 
----
+## Yêu cầu môi trường
 
-## Database Setup
+- JDK 8.
+- Apache Ant (có thể dùng Ant đi kèm NetBeans).
+- MySQL 8 và công cụ quản lý cơ sở dữ liệu phù hợp.
+- NetBeans nếu muốn mở và chạy dự án bằng IDE.
 
-1. Start your local MySQL instance (e.g., launch Laragon and click **Start All**).
-2. Verify MySQL is listening on port `3306`.
-3. Open a MySQL terminal or GUI client (HeidiSQL, MySQL Workbench, or Command Prompt):
-   ```sql
-   CREATE DATABASE IF NOT EXISTS school_library CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-   USE school_library;
-   SOURCE database/schema.sql;
-   SOURCE database/indexes.sql;
-   SOURCE database/seed.sql;
-   ```
-4. Verify server database configuration in `server/resources/db.properties`:
-   ```properties
-   db.driver=com.mysql.cj.jdbc.Driver
-   db.url=jdbc:mysql://localhost:3306/school_library?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
-   db.username=root
-   db.password=
-   ```
+Cần bảo đảm lệnh `java`, `javac` và `ant` sử dụng đúng phiên bản JDK. Tên database, tài khoản và mật khẩu phải được cấu hình theo môi trường của bạn; không dùng thông tin đăng nhập thực tế trong tài liệu công khai.
 
-> [!NOTE]
-> `db.password=` is left blank by default purely for local development environments (such as Laragon's default MySQL root account). For production or staging environments, always set a strong password and copy `server/resources/db.properties.example` to `server/resources/db.properties`.
+## Cài đặt cơ sở dữ liệu
 
----
+1. Khởi động MySQL.
+2. Tạo cơ sở dữ liệu thử nghiệm riêng, sau đó chạy các script trong `database/` theo thứ tự phù hợp với hướng dẫn tại [docs/DATABASE.md](docs/DATABASE.md).
+3. Nếu cần khởi tạo dữ liệu minh họa, xem [database/seed.sql](database/seed.sql).
+4. Đọc [docs/INSTALLATION.md](docs/INSTALLATION.md) và [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) trước khi cấu hình ứng dụng.
 
-## Configuration
+**Lưu ý:** kiểm tra kỹ tên database trước khi chạy script. Không chạy migration hoặc script seed lên cơ sở dữ liệu đang sử dụng thật nếu chưa sao lưu và chưa xác nhận tác động.
 
-### Server Configuration (`server/resources/server.properties`)
-```properties
-# Java RMI Server Configuration
-rmi.registry.port=1099
-rmi.service.port=1100
-rmi.service.name=LibraryRemoteService
+## Cấu hình kết nối
 
-# Optional: manually override published LAN IP if multi-homed
-# rmi.server.host=192.168.1.100
+Cấu hình máy chủ và máy khách được mô tả trong các file mẫu/tài liệu của dự án:
+
+- Máy chủ RMI: `server/resources/server.properties`.
+- Máy khách: `client/resources/client.properties`.
+- Kết nối MySQL: sử dụng cấu hình cục bộ `server/resources/db.properties` hoặc biến hệ thống được hỗ trợ trong tài liệu.
+
+Không commit mật khẩu, token, file cấu hình chứa thông tin xác thực hoặc dữ liệu cá nhân. File cấu hình cục bộ `db.properties` được Git bỏ qua; hãy dùng file mẫu nếu có và điền thông tin phù hợp trên máy của bạn.
+
+## Build và kiểm thử
+
+Mở terminal tại thư mục gốc dự án:
+
+```bash
+ant clean
+ant compile
+ant test
 ```
 
-### Client Configuration (`client/resources/client.properties`)
-```properties
-# Java RMI Client Configuration
-rmi.server.host=127.0.0.1
-rmi.registry.port=1099
-rmi.service.name=LibraryRemoteService
+Đóng gói các bản phân phối:
+
+```bash
+ant package-all
 ```
 
-### Understanding RMI Port Separation:
-* **Port 1099 (RMI Registry)**: The client connects to this port initially to look up the service name (`LibraryRemoteService`) and obtain the Remote Object stub.
-* **Port 1100 (RMI Remote Object)**: The actual method execution (ping, login, search, borrow, return) communicates with this fixed port.
-* **Client UI Requirement**: In the `LoginForm`, users only specify the **Server IP** and the **Registry Port (`1099`)**. The client stub automatically connects to port `1100` under the hood.
+Các gói đầu ra được tạo trong `dist/` và không được quản lý bằng Git. Các target chạy ứng dụng được khai báo trong `build.xml`; có thể xem thêm hướng dẫn ở [docs/INSTALLATION.md](docs/INSTALLATION.md).
 
----
+## Chạy ứng dụng qua mạng LAN
 
-## Building the Project
+1. Cấu hình database và khởi chạy máy chủ trên máy có MySQL.
+2. Xác định địa chỉ IP LAN của máy chủ và cấu hình máy khách trỏ đến địa chỉ đó.
+3. Đảm bảo firewall cho phép các cổng RMI mà dự án cấu hình; mặc định dự án sử dụng Registry cổng `1099` và remote service cổng `1100`.
+4. Chạy máy khách trên máy còn lại và kiểm tra đăng nhập/thao tác cơ bản.
 
-Because Apache Ant is typically bundled with NetBeans rather than added to the system `PATH`, you can build the project using either of the following two methods:
+Hướng dẫn chi tiết và chẩn đoán lỗi: [docs/NETWORK.md](docs/NETWORK.md), [docs/INSTALLATION.md](docs/INSTALLATION.md). RMI trong cấu hình hiện tại chưa sử dụng TLS, vì vậy chỉ nên thử nghiệm trong mạng tin cậy; không đưa trực tiếp lên Internet.
 
-### Using Apache Ant Bundled with NetBeans
+## Tài liệu
 
-Apache Ant does not need to be installed separately. NetBeans 8.x provides a bundled Ant binary inside its installation directory:
+- [Kiến trúc hệ thống](docs/ARCHITECTURE.md)
+- [API](docs/API.md)
+- [Cơ sở dữ liệu](docs/DATABASE.md)
+- [Cài đặt](docs/INSTALLATION.md)
+- [Triển khai](docs/DEPLOYMENT.md)
+- [Sao lưu và khôi phục](docs/BACKUP-RESTORE.md)
+- [Hiệu năng](docs/PERFORMANCE.md)
+- [Kiểm tra bàn giao staging](docs/STAGING-HANDOFF-CHECKLIST.md)
+- [Lịch sử báo cáo kỹ thuật](docs/archive/README.md)
 
-```text
-<NETBEANS_INSTALL>\netbeans\extide\ant\bin\ant.bat
-```
+## Phạm vi và lưu ý bảo mật
 
-> [!NOTE]
-> `<NETBEANS_ANT_PATH>` in the commands below is an illustrative placeholder for the `netbeans\extide\ant\bin` folder in your actual NetBeans installation path. Do **not** type `<NETBEANS_ANT_PATH>` literally; replace it with the real directory on your computer.
->
-> **Illustrative Windows path example:**
-> `"C:\Users\<USERNAME>\Downloads\netbeans-8.0.2-javase\netbeans\extide\ant\bin\ant.bat"`
-> *(Replace `<USERNAME>` and the path with your actual NetBeans extraction or installation path).*
+Đây là dự án học tập, không mặc nhiên được xem là sẵn sàng cho môi trường production. Trước khi triển khai thực tế cần đánh giá bảo mật mạng, cấu hình TLS, quản lý bí mật, sao lưu/khôi phục và quy trình quản trị tài khoản. Không dùng tài khoản demo hoặc mật khẩu mặc định trên dữ liệu thật.
 
-Run build commands by invoking the full path to `ant.bat` from the project root:
+## Giấy phép
 
-```bat
-:: 1. Clean previous build artifacts
-"<NETBEANS_ANT_PATH>\ant.bat" clean
-
-:: 2. Compile all modules (common, server, client)
-"<NETBEANS_ANT_PATH>\ant.bat" compile
-
-:: 3. Run automated JUnit test suite (requires active MySQL instance)
-"<NETBEANS_ANT_PATH>\ant.bat" test
-
-:: 4. Package standalone distributions for Server and Client
-"<NETBEANS_ANT_PATH>\ant.bat" package-all
-```
-
-### Using NetBeans IDE
-
-1. Open NetBeans 8.0.2 (or compatible version).
-2. Go to **File -> Open Project...** and select the cloned repository root folder (the folder containing `build.xml` and `nbproject`).
-3. Right-click the project root in the **Projects** panel and select **Clean and Build**.
-4. **Running the RMI Server in NetBeans**:
-   - **Method 1 (Recommended — Run Project / F6)**: Simply click the green **Run Project** button on the NetBeans toolbar or press **F6**. The project is pre-configured with `main.class=thuvien.server.rmi.LibraryRMIServer`, which immediately starts the RMI Server on ports `1099` (Registry) and `1100` (Remote Object).
-   - **Method 2 (Run File / Shift+F6)**: In the **Projects** view, navigate to `server/src` -> `thuvien.server.rmi` -> [`LibraryRMIServer.java`](server/src/thuvien/server/rmi/LibraryRMIServer.java), right-click and choose **Run File** (or press **Shift+F6**).
-5. **Running the Swing Client in NetBeans**:
-   - In the **Projects** view, navigate to `client/src` -> `thuvien.client` -> [`ClientMain.java`](client/src/thuvien/client/ClientMain.java), right-click and select **Run File** (or press **Shift+F6**).
-6. **Running custom Ant targets**: Open the **Files** view, right-click `build.xml`, navigate to **Run Target -> Other Targets**, and click the desired target (`run-server`, `run-client`, `package-all`).
-
----
-
-## Testing
-
-The project includes an automated JUnit 4 test suite verifying protocol serialization, role-based authorization, rate limiting, and end-to-end RMI operations.
-
-### Test Categories & Data Safety:
-1. **In-Memory Unit Tests (Safe to run anytime — No database required)**:
-   - `thuvien.common.ProtocolTest`: Protocol envelope serialization.
-   - `thuvien.server.service.AuthServiceTest`: Authentication and rate limiting with mock repositories.
-   - `thuvien.server.service.FineServiceTest`: Overdue penalty calculation math.
-   - `thuvien.server.repository.RepositoryArchitectureTest`: Architectural reflection checks.
-   - `thuvien.server.RequestRouterTest`: Authorization and role-based access control.
-2. **Database Integration Tests (Requires active MySQL instance — Side effects on data)**:
-   - `thuvien.server.database.MySQLSmokeIntegrationTest`: Connection pool smoke checks.
-   - `thuvien.server.rmi.RMIEndToEndIntegrationTest`: End-to-end RMI remote call verification.
-   - `thuvien.server.service.SecurityAndFeatureHardeningTest`: Integration checks for lockout and account registration.
-   - > [!CAUTION]
-   - > **`BorrowConcurrencyIntegrationTest` Modifies Database Rows**: This test directly executes `DELETE` on test borrow records and `UPDATE` on book ID 1 and students STU001/STU002 to test race condition handling. Only run against a local test database or re-seed database afterwards.
-
-### Running the Test Suite via Ant:
-```bat
-"<NETBEANS_ANT_PATH>\ant.bat" test
-```
-
-### Manual Concurrency Testing (Coursework Requirement):
-To manually verify that the server prevents two users from borrowing the last copy of the same book simultaneously:
-1. Ensure a book in the catalog has `available_copies = 1` (e.g., Book ID 1).
-2. Open two client instances on two different machines (or two windows on the same machine).
-3. Log in as Librarian on Client A and Client B.
-4. On Client A, enter Student A and Book ID 1.
-5. On Client B, enter Student B and Book ID 1.
-6. Click **"Mượn sách"** on both clients almost simultaneously.
-7. **Expected Result**: Exactly one client receives a success confirmation (`"Mượn sách thành công"`), and the second client receives an informative error (`"No copies available for book..."` / `BookUnavailableException`). Available copies remain `0` and never become negative.
-
-### Historical Test Log Archive:
-*(Reference build log recorded from local test run on October 7, 2026 — 99/99 passed)*:
-
-```text
-thuvien.common.ProtocolTest:                             tests=2,  failures=0, errors=0, skipped=0
-thuvien.server.database.MySQLSmokeIntegrationTest:       tests=4,  failures=0, errors=0, skipped=0
-thuvien.server.network.TCPEndToEndIntegrationTest:       tests=11, failures=0, errors=0, skipped=0
-thuvien.server.repository.RepositoryArchitectureTest:   tests=3,  failures=0, errors=0, skipped=0
-thuvien.server.RequestRouterTest:                        tests=24, failures=0, errors=0, skipped=0
-thuvien.server.rmi.RMIEndToEndIntegrationTest:           tests=15, failures=0, errors=0, skipped=0
-thuvien.server.service.AuthServiceTest:                  tests=5,  failures=0, errors=0, skipped=0
-thuvien.server.service.BorrowConcurrencyIntegrationTest: tests=3,  failures=0, errors=0, skipped=0
-thuvien.server.service.FineServiceTest:                  tests=3,  failures=0, errors=0, skipped=0
-thuvien.server.service.SecurityAndFeatureHardeningTest:  tests=29, failures=0, errors=0, skipped=0
------------------------------------------------------------------------------------------------------
-TOTAL: tests=99, failures=0, errors=0, skipped=0 | BUILD SUCCESSFUL (Historical)
-```
-
-> [!NOTE]
-> Automated tests verify RMI functionality on `localhost`. Multi-machine network connectivity across two physical computers over Wi-Fi/LAN requires independent verification of IP configuration and firewall rules on ports 1099 and 1100.
-
----
-
-## Running the Server
-
-> **Prerequisite**: Ensure MySQL is started and the `school_library` database is seeded before starting the server.
-
-### Option 1 — In NetBeans IDE (Development Mode)
-- **Run Project (F6)**: Simply click the green **Run Project** button or press **F6** in NetBeans. NetBeans executes `thuvien.server.rmi.LibraryRMIServer`, launching the RMI Registry on port `1099` and Remote Object on port `1100`.
-- **Run File (Shift+F6)**: Open `server/src/thuvien/server/rmi/LibraryRMIServer.java`, right-click and select **Run File**.
-
-### Option 2 — Using Ant from Command Line
-From the project root:
-```bat
-"<NETBEANS_ANT_PATH>\ant.bat" run-server
-```
-
-### Option 3 — Server in Packaged Mode
-Navigate to `dist/server-dist/` and execute the launcher batch script:
-```bat
-cd dist\server-dist
-run-server.bat
-```
-
-### Expected Server Console Startup Output:
-```text
-RMI Server started
-RMI Registry port: 1099
-RMI Remote Object port: 1100
-RMI hostname: 192.168.1.50
-Service: LibraryRemoteService
-Available IPv4 addresses:
-- 192.168.1.50 (Wi-Fi / Ethernet Adapter)
-```
-
-*(The printed IP address and adapter name will reflect your machine's actual LAN interface).*
-
-The server automatically scans network interfaces, identifies the active site-local Wi-Fi / LAN IPv4 address, and configures `java.rmi.server.hostname` so clients on other machines receive a valid reachable endpoint in their RMI stubs.
-
----
-
-## Running the Client
-
-### Option 1 — In NetBeans IDE (Development Mode)
-1. In the **Projects** panel, expand `client/src` -> `thuvien.client`.
-2. Right-click [`ClientMain.java`](client/src/thuvien/client/ClientMain.java) and select **Run File** (or press **Shift+F6**).
-3. The Java Swing Login window will appear.
-
-### Option 2 — Using Ant from Command Line
-From the project root:
-```bat
-"<NETBEANS_ANT_PATH>\ant.bat" run-client
-```
-
-### Option 3 — Client in Packaged Mode
-Navigate to `dist/client-dist/`:
-
-**Option A — Default (reads `resources/client.properties`):**
-```bat
-cd dist\client-dist
-run-client.bat
-```
-
-**Option B — Passing Server IP and Registry Port via CLI arguments:**
-```bat
-cd dist\client-dist
-run-client.bat <SERVER_IP> 1099
-```
-*(Example: `run-client.bat 192.168.1.50 1099`)*.
-
-### In the Desktop Login Window:
-1. Confirm the **Server IP** (e.g., `192.168.1.50` for LAN or `127.0.0.1` for localhost).
-2. Confirm the **Port** is `1099` (RMI Registry port).
-3. Click **"Kiểm tra kết nối"** (invokes `remoteService.ping()` over RMI). The status label will display `"Server connected"` in green.
-4. Enter your username and password, then click **"Đăng nhập"**.
-
----
-
-## Running on Two Computers over LAN / Wi-Fi
-
-This setup allows a client laptop running the Swing GUI to connect wirelessly to a server laptop running the Server and MySQL.
-
-### 1. Server Machine Setup
-1. Connect to the shared Wi-Fi / LAN network.
-2. Open PowerShell or Command Prompt and find your local IPv4 address:
-   ```cmd
-   ipconfig
-   ```
-   *(Identify the IPv4 address of your Wi-Fi or Ethernet adapter, e.g. `192.168.1.50` or `10.0.0.5`. Do NOT use `127.0.0.1` or virtual VPN adapter IPs).*
-3. Open Windows PowerShell as **Administrator** and allow inbound traffic on ports `1099` and `1100` through Windows Defender Firewall:
-   ```powershell
-   New-NetFirewallRule -DisplayName "School Library RMI Registry" -Direction Inbound -LocalPort 1099 -Protocol TCP -Action Allow -Profile Private
-   New-NetFirewallRule -DisplayName "School Library RMI Object" -Direction Inbound -LocalPort 1100 -Protocol TCP -Action Allow -Profile Private
-   ```
-   > [!IMPORTANT]
-   > **Do NOT open MySQL Port 3306**: In this 3-tier architecture, client machines communicate solely with the RMI Server (ports 1099 and 1100). The database is strictly accessed by the Server locally; MySQL port 3306 must **never** be opened to client machines.
-   >
-   > **Network Trust Notice**: Current Java RMI transport is unencrypted (no TLS/SSL). Always conduct multi-machine testing on a **trusted, private Wi-Fi or LAN** network. Do not expose RMI ports on public or untrusted Wi-Fi.
-
-4. Start the server (via NetBeans **Run Project (F6)**, `ant run-server`, or `dist\server-dist\run-server.bat`). Confirm that the server console displays `RMI hostname: <YOUR_LAN_IP>`.
-
-### 2. Client Machine Setup
-1. Connect to the same Wi-Fi / LAN network as the server.
-2. Copy the `dist/client-dist/` folder to the client machine (or clone the repository on the client machine).
-3. **Important — Server IP Address**: When running the client on a second computer, you **must** enter the Server's actual LAN IPv4 address (e.g., `192.168.1.50`). Do **NOT** use `localhost` or `127.0.0.1`, which refers only to the local client machine itself.
-4. **Test Network Connectivity**:
-   - Check raw TCP port reachability:
-     ```powershell
-     Test-NetConnection <SERVER_IP> -Port 1099
-     Test-NetConnection <SERVER_IP> -Port 1100
-     ```
-   - > [!NOTE]
-   - > **TCP Port Check vs. RMI Invocation**: A successful TCP handshake (`TcpTestSucceeded : True`) verifies that packets can traverse the network and firewall to the ports. However, a complete RMI invocation additionally requires that the RMI Registry successfully resolves the service stub and that the client can deserialize the remote interface. Always verify application-level connectivity by clicking **"Kiểm tra kết nối"** in the login window.
-5. Launch the client:
-   ```bat
-   run-client.bat <SERVER_IP> 1099
-   ```
-   *(Or in NetBeans on the client machine: run [`ClientMain.java`](client/src/thuvien/client/ClientMain.java) and type `<SERVER_IP>` into the Server IP field)*.
-6. Click **"Kiểm tra kết nối"** -> verify `"Server connected"` in green -> log in.
-
----
-
-## RMI Connection Diagnostics
-
-To quickly test connectivity and pinpoint whether port 1099 or port 1100 is blocked, two diagnostic utilities are provided:
-
-### 1. Diagnostic Batch Script (`dist/client-dist/test-connection.bat`)
-Run directly from the client machine:
-```bat
-test-connection.bat <SERVER_IP>
-```
-*Outputs green `[OK]` for open ports or red `[FAIL]` if a port is blocked or the server is down.*
-
-### 2. PowerShell Port Diagnostic Script (`scripts/test-rmi-ports.ps1`)
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/test-rmi-ports.ps1 -ServerIP <SERVER_IP>
-```
-
----
-
-## Demo Accounts
-
-The database seed ([database/seed.sql](database/seed.sql)) provides the following pre-configured demo accounts for evaluation:
-
-| Username | Password | Role | Description |
-|---|---|---|---|
-| `admin` | `admin123` | `ADMIN` | Full system administrator (all privileges, audit logs, user management) |
-| `librarian1` | `lib123` | `LIBRARIAN` | Head Librarian (circulation desk, catalog management, fines, reservations) |
-| `librarian2` | `lib123` | `LIBRARIAN` | Assistant Librarian |
-| `student1` | `student123` | `STUDENT` | Sample Student (Le Van An, linked to student record `STU001`) |
-
-### Sample Activation Codes for Student Self-Registration:
-Students without an existing user account can register through the login window using unlinked student records and pre-issued one-time activation codes:
-* `STU002` (Pham Thi Bich): Activation Code `ACT-STU002`
-* `STU003` (Hoang Minh Chau): Activation Code `ACT-STU003`
-
-> [!CAUTION]
-> **Educational & Testing Demo Credentials Only**: These pre-seeded accounts and activation codes are intended solely for grading, academic demonstration, and local coursework evaluation. In any production or shared deployment, default passwords must be changed immediately and unassigned activation codes must be revoked or cleared from `student_activations`.
-
----
-
-## Packaging & Distribution
-
-Execute the Ant `package-all` target to generate standalone deployment bundles:
-```bat
-"<NETBEANS_ANT_PATH>\ant.bat" package-all
-```
-
-The build produces two clean, isolated directories inside `dist/`:
-
-### Server Package (`dist/server-dist/`)
-* **`server.jar`**: Server and common bytecode (`Main-Class: thuvien.server.rmi.LibraryRMIServer`).
-* **`run-server.bat`**: Portable 1-click startup script with Java PATH checks.
-* **`resources/`**: `server.properties`, `db.properties`, `db.properties.example`.
-* **`lib/`**: Runtime libraries (`HikariCP-4.0.3.jar`, `mysql-connector-java-8.0.33.jar`, `slf4j-api-1.7.36.jar`, `slf4j-jdk14-1.7.36.jar`).
-
-### Client Package (`dist/client-dist/`)
-* **`client.jar`**: Swing client and common bytecode (`Main-Class: thuvien.client.ClientMain`).
-* **`run-client.bat`**: Portable launcher supporting optional `<host> <port>` CLI parameters.
-* **`test-connection.bat`**: Client-side network diagnostic script.
-* **`resources/`**: `client.properties`.
-* **`lib/`**: Empty directory. **The client package has ZERO database drivers, ZERO HikariCP dependencies, and ZERO server repository code.**
-
----
-
-## Troubleshooting
-
-| # | Symptom | Likely Cause | Resolution |
-|---|---|---|---|
-| 1 | `TcpTestSucceeded : False` on port 1099 | Server not running or Windows Firewall is blocking inbound port 1099. | Start server (`run-server.bat`), verify Server IP, and run firewall rule: `New-NetFirewallRule ... -LocalPort 1099 -Action Allow`. |
-| 2 | Port 1099 is `True`, but port 1100 is `False` | RMI Registry is open, but RMI Remote Object port 1100 is blocked by server firewall. | Run firewall rule on Server: `New-NetFirewallRule ... -LocalPort 1100 -Action Allow`. |
-| 3 | Lookup succeeds, but method calls timeout or fail | Client received `127.0.0.1` or an unresolvable hostname in the RMI stub. | Verify server console says `RMI hostname: <LAN_IP>`. If needed, manually set `rmi.server.host=<LAN_IP>` in `server/resources/server.properties`. |
-| 4 | `NotBoundException: LibraryRemoteService` | The service name specified by the client does not match the server binding name. | Verify `rmi.service.name=LibraryRemoteService` matches in both `server.properties` and `client.properties`. |
-| 5 | Client connects to `127.0.0.1` instead of LAN IP | Client properties or CLI parameters defaulted to localhost. | Pass the actual Server IP: `run-client.bat <SERVER_IP> 1099` or enter it directly into the `LoginForm`. |
-| 6 | Server throws `CommunicationsException` to MySQL | MySQL is not running on `127.0.0.1:3306`, or database credentials in `db.properties` are incorrect. | Start MySQL in Laragon, verify port 3306, and check `server/resources/db.properties`. |
-| 7 | Login fails with `Invalid credentials` | Incorrect username/password, or database has not been seeded with `database/seed.sql`. | Execute `database/seed.sql` in MySQL and use verified demo accounts (`admin` / `admin123`, `librarian1` / `lib123`). |
-| 8 | Command failed: `ant` is not recognized | Apache Ant is not installed as a standalone tool or added to Windows `PATH`. | Use the bundled Ant binary inside NetBeans via full path: `"<NETBEANS_ANT_PATH>\ant.bat" <target>`. |
-
----
-
-## Security & Coursework Notes
-
-* **Academic Purpose**: This project was developed for academic coursework in Computer Networking and Network Programming.
-* **Cleartext Transport**: Java RMI communications in this project are transmitted without TLS/SSL encryption. It is intended for evaluation on isolated local area networks.
-* **Network Isolation**: Do **not** expose ports `1099` or `1100` to the public Internet or unverified public Wi-Fi networks. Restrict firewall openings to trusted subnets.
-* **Password Storage**: Passwords are cryptographically hashed; however, demo passwords in `database/seed.sql` are public knowledge for grading purposes and must never be used in production.
+Xem file [LICENSE](LICENSE).
