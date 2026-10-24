@@ -19,6 +19,7 @@ import thuvien.client.controller.ClientFineController;
 import thuvien.client.controller.ClientSearchSuggestionController;
 import thuvien.client.network.NetworkClient;
 import thuvien.client.session.ClientSession;
+import thuvien.client.session.PermissionHelper;
 import thuvien.client.view.LoginForm;
 import thuvien.client.view.common.AsyncWorker;
 import thuvien.client.view.common.ModernUIHelper;
@@ -48,7 +49,7 @@ public class FineManagementPanel extends JPanel {
     public FineManagementPanel(NetworkClient networkClient) {
         this.networkClient = networkClient;
         this.fineController = new ClientFineController(networkClient);
-        this.isStaff = ClientSession.getInstance().isAdmin() || ClientSession.getInstance().isLibrarian();
+        this.isStaff = PermissionHelper.canManageFines(networkClient);
 
         initComponents();
         initCustom();
@@ -102,7 +103,7 @@ public class FineManagementPanel extends JPanel {
         bottomBar.setOpaque(false);
         bottomBar.setBorder(BorderFactory.createEmptyBorder(6, 4, 4, 4));
 
-        if (!isStaff) {
+        if (!PermissionHelper.canManageFines(networkClient)) {
             lblCalcDays.setVisible(false);
             calcDaysSpinner.setVisible(false);
             calcBtn.setVisible(false);
@@ -518,6 +519,10 @@ public class FineManagementPanel extends JPanel {
     }
 
     private void calculateFinePreview() {
+        if (!PermissionHelper.canManageFines(networkClient)) {
+            JOptionPane.showMessageDialog(this, "Bạn không có quyền tính mức tiền phạt.", "Từ chối truy cập", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         int days = (Integer) calcDaysSpinner.getValue();
         calcBtn.setEnabled(false);
         statusLabel.setText("Đang tính tiền phạt với máy chủ...");
@@ -538,6 +543,10 @@ public class FineManagementPanel extends JPanel {
     }
 
     private void performPayFine() {
+        if (!PermissionHelper.canManageFines(networkClient)) {
+            JOptionPane.showMessageDialog(this, "Bạn không có quyền thu tiền phạt.", "Từ chối truy cập", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         FineDTO fine = getSelectedFine();
         if (fine == null) {
             JOptionPane.showMessageDialog(this, "Vui lòng chọn một khoản phạt chưa nộp để thu tiền.", "Chưa chọn dữ liệu", JOptionPane.WARNING_MESSAGE);

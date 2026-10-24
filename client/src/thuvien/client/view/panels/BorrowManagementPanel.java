@@ -29,6 +29,7 @@ import thuvien.client.controller.ClientBorrowController;
 import thuvien.client.controller.ClientSearchSuggestionController;
 import thuvien.client.network.NetworkClient;
 import thuvien.client.session.ClientSession;
+import thuvien.client.session.PermissionHelper;
 import thuvien.client.view.LoginForm;
 import thuvien.client.view.common.AsyncWorker;
 import thuvien.client.view.common.ModernUIHelper;
@@ -62,10 +63,7 @@ public class BorrowManagementPanel extends JPanel {
     public BorrowManagementPanel(NetworkClient networkClient) {
         this.networkClient = networkClient;
         this.borrowController = new ClientBorrowController(networkClient);
-        ClientSession cs = (networkClient != null && networkClient.getSession() != null)
-                ? networkClient.getSession()
-                : ClientSession.getInstance();
-        this.isStaff = cs.isAdmin() || cs.isLibrarian();
+        this.isStaff = PermissionHelper.canManageBorrowReturn(networkClient);
 
         initComponents();
         initCustom();
@@ -853,6 +851,10 @@ public class BorrowManagementPanel extends JPanel {
     }
 
     private void openBorrowDialog() {
+        if (!PermissionHelper.canManageBorrowReturn(networkClient)) {
+            JOptionPane.showMessageDialog(this, "Bạn không có quyền thực hiện mượn sách.", "Từ chối truy cập", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         java.awt.Window owner = SwingUtilities.getWindowAncestor(this);
         BorrowDialog dialog = new BorrowDialog(owner, networkClient, null, null);
         dialog.setVisible(true);
@@ -862,6 +864,10 @@ public class BorrowManagementPanel extends JPanel {
     }
 
     private void performReturn() {
+        if (!PermissionHelper.canManageBorrowReturn(networkClient)) {
+            JOptionPane.showMessageDialog(this, "Bạn không có quyền nhận trả sách.", "Từ chối truy cập", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         BorrowRecordDTO record = getSelectedRecord();
         if (record == null) {
             JOptionPane.showMessageDialog(this, "Vui lòng chọn một lượt mượn cần trả sách.", "Yêu Cầu Chọn", JOptionPane.WARNING_MESSAGE);

@@ -6,6 +6,7 @@ import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 import thuvien.client.controller.ClientBookController;
 import thuvien.client.network.NetworkClient;
+import thuvien.client.session.PermissionHelper;
 import thuvien.client.view.common.AsyncWorker;
 import thuvien.client.view.common.ModernUIHelper;
 import thuvien.common.dto.BookDTO;
@@ -16,14 +17,22 @@ import thuvien.common.enums.BookStatus;
  * Modal dialog for creating and editing Book entries.
  */
 public class BookFormDialog extends JDialog {
+    private final NetworkClient networkClient;
     private final ClientBookController bookController;
     private final BookDTO bookToEdit;
     private boolean saved = false;
 
     public BookFormDialog(Window owner, NetworkClient networkClient, BookDTO bookToEdit) {
         super(owner, ModalityType.APPLICATION_MODAL);
+        this.networkClient = networkClient;
         this.bookController = new ClientBookController(networkClient);
         this.bookToEdit = bookToEdit;
+
+        if (!PermissionHelper.canManageBooks(networkClient)) {
+            JOptionPane.showMessageDialog(owner, "Bạn không có quyền thực hiện thao tác quản lý sách.", "Từ chối truy cập", JOptionPane.ERROR_MESSAGE);
+            dispose();
+            return;
+        }
 
         initComponents();
         initCustom();
@@ -395,6 +404,10 @@ public class BookFormDialog extends JDialog {
     }
 
     private void saveBook() {
+        if (!PermissionHelper.canManageBooks(networkClient)) {
+            JOptionPane.showMessageDialog(this, "Bạn không có quyền lưu sách.", "Từ chối truy cập", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         String title = titleField.getText().trim();
         String isbn = isbnField.getText().trim();
         CategoryDTO selectedCategory = (CategoryDTO) categoryCombo.getSelectedItem();

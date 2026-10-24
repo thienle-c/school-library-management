@@ -150,4 +150,51 @@ public class UserServiceImpl implements UserService {
             throw new LibraryException("Lỗi cơ sở dữ liệu khi đổi mật khẩu: " + e.getMessage(), e);
         }
     }
+
+    @Override
+    public thuvien.common.dto.AdminResetPasswordResponseDTO adminResetPassword(Long adminUserId, Long targetUserId)
+            throws thuvien.common.exception.ValidationException, EntityNotFoundException, LibraryException {
+        if (adminUserId == null) {
+            throw new thuvien.common.exception.ValidationException("Mã ID của quản trị viên không hợp lệ.");
+        }
+        if (targetUserId == null) {
+            throw new thuvien.common.exception.ValidationException("Mã ID người dùng mục tiêu không được để trống.");
+        }
+        if (adminUserId.equals(targetUserId)) {
+            throw new thuvien.common.exception.ValidationException("Không thể tự đặt lại mật khẩu của chính mình bằng chức năng quản trị. Vui lòng sử dụng chức năng Đổi Mật Khẩu cá nhân.");
+        }
+
+        UserDTO targetUser = getUserById(targetUserId);
+        if (targetUser == null) {
+            throw new EntityNotFoundException("Không tìm thấy người dùng với ID: " + targetUserId);
+        }
+        if (!targetUser.isActive()) {
+            throw new thuvien.common.exception.ValidationException("Không thể đặt lại mật khẩu cho tài khoản đã bị vô hiệu hóa.");
+        }
+
+        String tempPassword = thuvien.server.security.SecurePasswordGenerator.generateDefault();
+        String newPasswordHash = PasswordHasher.hash(tempPassword);
+
+        try (java.sql.Connection conn = thuvien.server.database.DatabaseManager.getInstance().getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                boolean updated = userRepository.resetPassword(targetUserId, newPasswordHash, true, conn);
+                if (!updated) {
+                    throw new LibraryException("Không thể cập nhật mật khẩu cho người dùng ID: " + targetUserId);
+                }
+                conn.commit();
+                LOGGER.info("Admin ID " + adminUserId + " successfully reset temporary password for user ID " + targetUserId);
+            } catch (Exception e) {
+                conn.rollback();
+                LOGGER.log(Level.SEVERE, "Transaction rollback during admin password reset for target ID: " + targetUserId, e);
+                if (e instanceof LibraryException) throw (LibraryException) e;
+                throw new LibraryException("Lỗi giao dịch khi cập nhật mật khẩu: " + e.getMessage(), e);
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Database connection error during admin password reset: " + e.getMessage(), e);
+            throw new LibraryException("Lỗi kết nối cơ sở dữ liệu khi đặt lại mật khẩu: " + e.getMessage(), e);
+        }
+
+        return new thuvien.common.dto.AdminResetPasswordResponseDTO(targetUserId, targetUser.getUsername(), tempPassword, true);
+    }
 }

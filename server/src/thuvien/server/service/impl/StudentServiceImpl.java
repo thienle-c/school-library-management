@@ -145,10 +145,17 @@ public class StudentServiceImpl implements StudentService {
             throw new LibraryException("Student and Student ID are required for update.");
         }
         // Verify existence
-        getStudentById(student.getId());
+        StudentDTO existing = getStudentById(student.getId());
 
         try {
-            return studentRepository.update(student, null);
+            boolean ok = studentRepository.update(student, null);
+            if (ok && student.getStatus() == StudentStatus.SUSPENDED) {
+                Long uid = student.getUserId() != null ? student.getUserId() : existing.getUserId();
+                if (uid != null) {
+                    thuvien.server.security.SessionManager.getInstance().invalidateUserSessions(uid);
+                }
+            }
+            return ok;
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Database error updating student ID: " + student.getId(), e);
             throw new LibraryException("Database error updating student: " + e.getMessage(), e);
@@ -162,7 +169,11 @@ public class StudentServiceImpl implements StudentService {
         }
         StudentDTO student = getStudentById(id);
         student.setStatus(StudentStatus.SUSPENDED);
-        return updateStudent(student);
+        boolean ok = updateStudent(student);
+        if (ok && student.getUserId() != null) {
+            thuvien.server.security.SessionManager.getInstance().invalidateUserSessions(student.getUserId());
+        }
+        return ok;
     }
 
     @Override
@@ -244,6 +255,9 @@ public class StudentServiceImpl implements StudentService {
 
                 conn.commit();
                 LOGGER.info("Successfully hard-deleted student ID: " + id);
+                if (student.getUserId() != null) {
+                    thuvien.server.security.SessionManager.getInstance().invalidateUserSessions(student.getUserId());
+                }
                 return true;
             } catch (ValidationException e) {
                 conn.rollback();

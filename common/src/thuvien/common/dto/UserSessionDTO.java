@@ -12,14 +12,21 @@ public class UserSessionDTO implements Serializable {
     private String fullName;
     private UserRole role;
 
+    private boolean mustChangePassword;
+
     public UserSessionDTO() {}
 
     public UserSessionDTO(String token, Long userId, String username, String fullName, UserRole role) {
+        this(token, userId, username, fullName, role, false);
+    }
+
+    public UserSessionDTO(String token, Long userId, String username, String fullName, UserRole role, boolean mustChangePassword) {
         this.token = token;
         this.userId = userId;
         this.username = username;
         this.fullName = fullName;
         this.role = role;
+        this.mustChangePassword = mustChangePassword;
     }
 
     public String getToken() {
@@ -62,12 +69,21 @@ public class UserSessionDTO implements Serializable {
         this.role = role;
     }
 
+    public boolean isMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    public void setMustChangePassword(boolean mustChangePassword) {
+        this.mustChangePassword = mustChangePassword;
+    }
+
     @Override
     public String toString() {
         return "UserSessionDTO{" +
                 "username='" + username + '\'' +
                 ", fullName='" + fullName + '\'' +
                 ", role=" + role +
+                ", mustChangePassword=" + mustChangePassword +
                 '}';
     }
 }

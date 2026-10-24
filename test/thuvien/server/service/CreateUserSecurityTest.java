@@ -75,6 +75,8 @@ public class CreateUserSecurityTest {
             public boolean delete(Long id, Connection conn) throws SQLException { return true; }
             @Override
             public boolean updatePassword(Long userId, String passwordHash, Connection conn) throws SQLException { return true; }
+            @Override
+            public boolean resetPassword(Long userId, String newPasswordHash, boolean mustChangePassword, Connection conn) throws SQLException { return true; }
         };
 
         userService = new UserServiceImpl(mockRepo);

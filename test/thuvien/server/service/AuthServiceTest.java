@@ -54,6 +54,8 @@ public class AuthServiceTest {
             public String getPasswordHash(String username) {
                 if ("librarian1".equalsIgnoreCase(username)) {
                     return PasswordHasher.hash("lib123");
+                } else if ("inactive_user".equalsIgnoreCase(username)) {
+                    return PasswordHasher.hash("inactive123");
                 }
                 return null;
             }
@@ -75,6 +77,11 @@ public class AuthServiceTest {
 
             @Override
             public boolean updatePassword(Long userId, String newPasswordHash, Connection conn) {
+                return true;
+            }
+
+            @Override
+            public boolean resetPassword(Long userId, String newPasswordHash, boolean mustChangePassword, Connection conn) {
                 return true;
             }
 
@@ -104,9 +111,15 @@ public class AuthServiceTest {
         authService.login(new LoginRequestDTO("librarian1", "wrongpwd"));
     }
 
-    @Test(expected = AuthenticationException.class)
-    public void testLoginInactiveAccount() throws AuthenticationException {
-        authService.login(new LoginRequestDTO("inactive_user", "any"));
+    @Test
+    public void testLoginInactiveAccount() {
+        try {
+            authService.login(new LoginRequestDTO("inactive_user", "inactive123"));
+            Assert.fail("Expected AuthenticationException for inactive user");
+        } catch (AuthenticationException expected) {
+            Assert.assertTrue("Exception message should indicate inactive account, got: " + expected.getMessage(),
+                    expected.getMessage().contains("vô hiệu hóa") || expected.getMessage().contains("chưa kích hoạt"));
+        }
     }
 
     @Test(expected = AuthenticationException.class)

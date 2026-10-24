@@ -23,6 +23,7 @@ import thuvien.common.dto.SearchSuggestionRequestDTO;
 import thuvien.common.dto.StudentDashboardDTO;
 import thuvien.common.dto.UserDTO;
 import thuvien.common.dto.UserSessionDTO;
+import thuvien.common.enums.StudentStatus;
 import thuvien.common.enums.UserRole;
 import thuvien.common.exception.AuthenticationException;
 import thuvien.common.exception.AuthorizationException;
@@ -182,6 +183,14 @@ public class RequestRouter {
                     sessionManager.removeSession(token);
                     return Response.error(reqId, StatusCode.UNAUTHORIZED, "Tài khoản đang bị tạm khóa do đăng nhập sai quá số lần cho phép. Vui lòng thử lại sau 15 phút.");
                 }
+
+                // Mandatory Password Change Enforcement (SEC-02)
+                if (session.isMustChangePassword()) {
+                    if (action != Action.CHANGE_PASSWORD && action != Action.LOGOUT && action != Action.GET_CURRENT_USER) {
+                        return Response.error(reqId, StatusCode.FORBIDDEN,
+                                "Tài khoản bắt buộc phải đổi mật khẩu ở lần đăng nhập đầu tiên trước khi truy cập các chức năng nghiệp vụ.");
+                    }
+                }
             }
 
             // 2. Action Routing
@@ -232,8 +241,7 @@ public class RequestRouter {
                     requireRole(session, UserRole.ADMIN, UserRole.LIBRARIAN);
                     return handleUpdateStudent(reqId, request);
                 case DELETE_STUDENT:
-                    requireRole(session, UserRole.ADMIN);
-                    return handleDeleteStudent(reqId, request);
+                    return handleDeleteStudent(reqId, request, session);
                 case GENERATE_STUDENT_ACTIVATION:
                     requireRole(session, UserRole.ADMIN);
                     return handleGenerateStudentActivation(reqId, request, session);
@@ -255,6 +263,7 @@ public class RequestRouter {
                 case LIST_FINES:
                     return handleListFines(reqId, request, session);
                 case CALCULATE_FINE:
+                    requireRole(session, UserRole.ADMIN, UserRole.LIBRARIAN);
                     return handleCalculateFine(reqId, request);
                 case PAY_FINE:
                     requireRole(session, UserRole.ADMIN, UserRole.LIBRARIAN);
@@ -314,6 +323,9 @@ public class RequestRouter {
                 case DELETE_USER:
                     requireRole(session, UserRole.ADMIN);
                     return handleDeleteUser(reqId, request);
+                case ADMIN_RESET_PASSWORD:
+                    requireRole(session, UserRole.ADMIN);
+                    return handleAdminResetPassword(reqId, request, session);
 
                 // --- Dashboard & Reports ---
                 case GET_DASHBOARD_METRICS:
@@ -352,7 +364,7 @@ public class RequestRouter {
             return Response.error(reqId, StatusCode.BAD_REQUEST, e.getMessage());
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Internal server error while routing action: " + action, e);
-            return Response.error(reqId, StatusCode.SERVER_ERROR, "Server error: " + e.getMessage());
+            return Response.error(reqId, StatusCode.SERVER_ERROR, "Lỗi máy chủ nội bộ. Vui lòng liên hệ quản trị viên.");
         }
     }
 
@@ -494,11 +506,27 @@ public class RequestRouter {
         if (!(request.getPayload() instanceof StudentDTO)) {
             throw new ValidationException("Invalid payload for UPDATE_STUDENT: must be StudentDTO.");
         }
-        boolean ok = studentService.updateStudent((StudentDTO) request.getPayload());
+        StudentDTO student = (StudentDTO) request.getPayload();
+        boolean ok = studentService.updateStudent(student);
+        if (ok && student.getStatus() == StudentStatus.SUSPENDED) {
+            Long uid = student.getUserId();
+            if (uid == null && student.getId() != null) {
+                try {
+                    StudentDTO s = studentService.getStudentById(student.getId());
+                    if (s != null) uid = s.getUserId();
+                } catch (Exception ignored) {}
+            }
+            if (uid != null) {
+                sessionManager.invalidateUserSessions(uid);
+            }
+        }
         return Response.ok(reqId, "Student updated successfully", ok);
     }
 
-    private Response handleDeleteStudent(String reqId, Request request) throws LibraryException, ValidationException {
+    private Response handleDeleteStudent(String reqId, Request request, UserSessionDTO session) throws LibraryException, ValidationException {
+        // Base permission guard: neither suspend nor hard delete is allowed for STUDENT (or unauthorized roles)
+        requireRole(session, UserRole.ADMIN, UserRole.LIBRARIAN);
+
         boolean permanent = false;
         Long id;
         Object payload = request.getPayload();
@@ -510,15 +538,34 @@ public class RequestRouter {
             id = extractLong(payload, "Student ID");
         }
 
+        // Hard delete / permanent purge strictly requires ADMIN role
+        if (permanent) {
+            requireRole(session, UserRole.ADMIN);
+        }
+
         if (id == null || id <= 0) {
             throw new ValidationException("Mã ID sinh viên không hợp lệ.");
         }
 
+        Long studentUserId = null;
+        try {
+            StudentDTO s = studentService.getStudentById(id);
+            if (s != null) {
+                studentUserId = s.getUserId();
+            }
+        } catch (Exception ignored) {}
+
         if (permanent) {
             boolean ok = studentService.hardDeleteStudent(id);
+            if (ok && studentUserId != null) {
+                sessionManager.invalidateUserSessions(studentUserId);
+            }
             return Response.ok(reqId, "Đã xóa vĩnh viễn sinh viên thành công.", ok);
         } else {
             boolean ok = studentService.deleteStudent(id);
+            if (ok && studentUserId != null) {
+                sessionManager.invalidateUserSessions(studentUserId);
+            }
             return Response.ok(reqId, "Đã tạm khóa sinh viên thành công.", ok);
         }
     }
@@ -811,13 +858,20 @@ public class RequestRouter {
         if (!(request.getPayload() instanceof UserDTO)) {
             throw new ValidationException("Invalid payload for UPDATE_USER: must be UserDTO.");
         }
-        boolean ok = userService.updateUser((UserDTO) request.getPayload());
+        UserDTO user = (UserDTO) request.getPayload();
+        boolean ok = userService.updateUser(user);
+        if (ok && !user.isActive()) {
+            sessionManager.invalidateUserSessions(user.getId());
+        }
         return Response.ok(reqId, "User updated successfully", ok);
     }
 
     private Response handleDeleteUser(String reqId, Request request) throws LibraryException, ValidationException {
         Long id = extractLong(request.getPayload(), "User ID");
         boolean ok = userService.deleteUser(id);
+        if (ok) {
+            sessionManager.invalidateUserSessions(id);
+        }
         return Response.ok(reqId, "User deleted successfully", ok);
     }
 
@@ -919,6 +973,7 @@ public class RequestRouter {
         }
         boolean ok = userService.changePassword(session.getUserId(), dto.getCurrentPassword(), dto.getNewPassword());
         if (ok) {
+            session.setMustChangePassword(false);
             // SEC-01: Invalidate all other active sessions of this user across all devices/terminals
             sessionManager.revokeOtherSessionsForUser(session.getUserId(), request.getToken());
             if (auditLogService != null) {
@@ -959,5 +1014,39 @@ public class RequestRouter {
         }
         List<String> list = searchSuggestionService.getSuggestions(type, kw, session);
         return Response.ok(reqId, list);
+    }
+
+    private Response handleAdminResetPassword(String reqId, Request request, UserSessionDTO session)
+            throws ValidationException, EntityNotFoundException, LibraryException {
+        requireRole(session, UserRole.ADMIN);
+
+        Long targetUserId = null;
+        Object payload = request.getPayload();
+        if (payload instanceof thuvien.common.dto.AdminResetPasswordRequestDTO) {
+            targetUserId = ((thuvien.common.dto.AdminResetPasswordRequestDTO) payload).getTargetUserId();
+        } else if (payload instanceof Number) {
+            targetUserId = ((Number) payload).longValue();
+        } else {
+            targetUserId = extractLong(payload, "Target User ID");
+        }
+
+        if (targetUserId == null || targetUserId <= 0) {
+            throw new ValidationException("Mã ID người dùng mục tiêu không hợp lệ.");
+        }
+
+        thuvien.common.dto.AdminResetPasswordResponseDTO result =
+                userService.adminResetPassword(session.getUserId(), targetUserId);
+
+        // Invalidate active sessions of target user immediately
+        sessionManager.invalidateUserSessions(targetUserId);
+
+        // Audit log (Notice: NO plaintext password or hash is logged!)
+        if (auditLogService != null) {
+            auditLogService.log(session.getUserId(), "ADMIN_PASSWORD_RESET", "User", targetUserId,
+                    "Admin đặt lại mật khẩu tạm thời cho tài khoản '" + result.getUsername() + "' (ID: " + targetUserId
+                            + "). Đã thu hồi các phiên làm việc và yêu cầu đổi mật khẩu ở lần đăng nhập tiếp theo.");
+        }
+
+        return Response.ok(reqId, "Đặt lại mật khẩu thành công. Mật khẩu tạm thời chỉ hiển thị một lần duy nhất.", result);
     }
 }

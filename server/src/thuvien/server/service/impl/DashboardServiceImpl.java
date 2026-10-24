@@ -13,6 +13,7 @@ import thuvien.common.dto.ReservationDTO;
 import thuvien.common.dto.StudentDTO;
 import thuvien.common.enums.BorrowStatus;
 import thuvien.common.enums.ReservationStatus;
+import thuvien.common.enums.StudentStatus;
 import thuvien.common.exception.LibraryException;
 import thuvien.server.repository.BookRepository;
 import thuvien.server.repository.BorrowRepository;
@@ -132,6 +133,9 @@ public class DashboardServiceImpl implements DashboardService {
             StudentDTO student = studentRepository.findByUserId(userId);
             if (student == null) {
                 throw new thuvien.common.exception.EntityNotFoundException("Không tìm thấy hồ sơ sinh viên tương ứng với tài khoản.");
+            }
+            if (student.getStatus() != StudentStatus.ACTIVE) {
+                throw new LibraryException("Tài khoản sinh viên đang bị tạm khóa hoặc không hoạt động (Status: " + student.getStatus() + ").");
             }
 
             thuvien.common.dto.StudentDashboardDTO dto = new thuvien.common.dto.StudentDashboardDTO();

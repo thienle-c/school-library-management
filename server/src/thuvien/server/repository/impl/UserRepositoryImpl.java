@@ -26,15 +26,23 @@ public class UserRepositoryImpl implements UserRepository {
 
     @Override
     public UserDTO findById(Long id) throws SQLException {
-        String sql = "SELECT id, username, role, full_name, email, phone, is_active, created_at " +
+        String sql = "SELECT id, username, role, full_name, email, phone, is_active, created_at, must_change_password " +
                      "FROM users WHERE id = ?";
-        try (Connection conn = databaseManager.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setLong(1, id);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return mapRow(rs);
+        try (Connection conn = databaseManager.getConnection()) {
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setLong(1, id);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        return mapRow(rs);
+                    }
                 }
+            } catch (SQLException e) {
+                if (e.getErrorCode() == 1054 || (e.getMessage() != null && e.getMessage().contains("must_change_password"))) {
+                    throw new SQLException("Cơ sở dữ liệu chưa được nâng cấp schema: thiếu cột 'must_change_password'. "
+                            + "Vui lòng áp dụng migration: ALTER TABLE users ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT FALSE AFTER is_active;",
+                            e.getSQLState(), 1054);
+                }
+                throw e;
             }
         }
         return null;
@@ -42,15 +50,23 @@ public class UserRepositoryImpl implements UserRepository {
 
     @Override
     public UserDTO findByUsername(String username) throws SQLException {
-        String sql = "SELECT id, username, role, full_name, email, phone, is_active, created_at " +
+        String sql = "SELECT id, username, role, full_name, email, phone, is_active, created_at, must_change_password " +
                      "FROM users WHERE username = ?";
-        try (Connection conn = databaseManager.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, username);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return mapRow(rs);
+        try (Connection conn = databaseManager.getConnection()) {
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, username);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        return mapRow(rs);
+                    }
                 }
+            } catch (SQLException e) {
+                if (e.getErrorCode() == 1054 || (e.getMessage() != null && e.getMessage().contains("must_change_password"))) {
+                    throw new SQLException("Cơ sở dữ liệu chưa được nâng cấp schema: thiếu cột 'must_change_password'. "
+                            + "Vui lòng áp dụng migration: ALTER TABLE users ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT FALSE AFTER is_active;",
+                            e.getSQLState(), 1054);
+                }
+                throw e;
             }
         }
         return null;
@@ -58,7 +74,7 @@ public class UserRepositoryImpl implements UserRepository {
 
     @Override
     public String getPasswordHash(String username) throws SQLException {
-        String sql = "SELECT password_hash FROM users WHERE username = ? AND is_active = TRUE";
+        String sql = "SELECT password_hash FROM users WHERE username = ?";
         try (Connection conn = databaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, username);
@@ -73,14 +89,22 @@ public class UserRepositoryImpl implements UserRepository {
 
     @Override
     public List<UserDTO> findAll() throws SQLException {
-        String sql = "SELECT id, username, role, full_name, email, phone, is_active, created_at " +
+        String sql = "SELECT id, username, role, full_name, email, phone, is_active, created_at, must_change_password " +
                      "FROM users ORDER BY id ASC";
         List<UserDTO> users = new ArrayList<>();
-        try (Connection conn = databaseManager.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-            while (rs.next()) {
-                users.add(mapRow(rs));
+        try (Connection conn = databaseManager.getConnection()) {
+            try (PreparedStatement stmt = conn.prepareStatement(sql);
+                 ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    users.add(mapRow(rs));
+                }
+            } catch (SQLException e) {
+                if (e.getErrorCode() == 1054 || (e.getMessage() != null && e.getMessage().contains("must_change_password"))) {
+                    throw new SQLException("Cơ sở dữ liệu chưa được nâng cấp schema: thiếu cột 'must_change_password'. "
+                            + "Vui lòng áp dụng migration: ALTER TABLE users ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT FALSE AFTER is_active;",
+                            e.getSQLState(), 1054);
+                }
+                throw e;
             }
         }
         return users;
@@ -144,13 +168,49 @@ public class UserRepositoryImpl implements UserRepository {
 
     @Override
     public boolean updatePassword(Long userId, String newPasswordHash, Connection conn) throws SQLException {
-        String sql = "UPDATE users SET password_hash = ? WHERE id = ?";
         boolean localConn = (conn == null);
         Connection activeConn = localConn ? databaseManager.getConnection() : conn;
-        try (PreparedStatement stmt = activeConn.prepareStatement(sql)) {
-            stmt.setString(1, newPasswordHash);
-            stmt.setLong(2, userId);
-            return stmt.executeUpdate() > 0;
+        try {
+            String sql = "UPDATE users SET password_hash = ?, must_change_password = FALSE WHERE id = ?";
+            try (PreparedStatement stmt = activeConn.prepareStatement(sql)) {
+                stmt.setString(1, newPasswordHash);
+                stmt.setLong(2, userId);
+                return stmt.executeUpdate() > 0;
+            } catch (SQLException e) {
+                if (e.getErrorCode() == 1054 || (e.getMessage() != null && e.getMessage().contains("must_change_password"))) {
+                    throw new SQLException("Cơ sở dữ liệu chưa được nâng cấp schema (thiếu cột 'must_change_password'). "
+                            + "Vui lòng áp dụng migration: ALTER TABLE users ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT FALSE AFTER is_active;",
+                            e.getSQLState(), 1054);
+                }
+                throw e;
+            }
+        } finally {
+            if (localConn && activeConn != null) {
+                activeConn.close();
+            }
+        }
+    }
+
+    @Override
+    public boolean resetPassword(Long userId, String newPasswordHash, boolean mustChangePassword, Connection conn) throws SQLException {
+        boolean localConn = (conn == null);
+        Connection activeConn = localConn ? databaseManager.getConnection() : conn;
+        try {
+            String sql = "UPDATE users SET password_hash = ?, must_change_password = ? WHERE id = ?";
+            try (PreparedStatement stmt = activeConn.prepareStatement(sql)) {
+                stmt.setString(1, newPasswordHash);
+                stmt.setBoolean(2, mustChangePassword);
+                stmt.setLong(3, userId);
+                return stmt.executeUpdate() > 0;
+            } catch (SQLException e) {
+                if (e.getErrorCode() == 1054 || (e.getMessage() != null && e.getMessage().contains("must_change_password"))) {
+                    throw new SQLException("Cơ sở dữ liệu chưa được nâng cấp schema: thiếu cột 'must_change_password'. "
+                            + "Chức năng đặt lại mật khẩu tạm thời bị từ chối để ngăn chặn rủi ro bỏ qua kiểm soát bắt buộc đổi mật khẩu. "
+                            + "Vui lòng áp dụng migration: ALTER TABLE users ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT FALSE AFTER is_active;",
+                            e.getSQLState(), 1054);
+                }
+                throw e;
+            }
         } finally {
             if (localConn && activeConn != null) {
                 activeConn.close();
@@ -186,6 +246,19 @@ public class UserRepositoryImpl implements UserRepository {
         if (ts != null) {
             user.setCreatedAt(new java.util.Date(ts.getTime()));
         }
+        user.setMustChangePassword(rs.getBoolean("must_change_password"));
         return user;
+    }
+
+    public static boolean isSchemaMigrated(Connection conn) {
+        if (conn == null) return false;
+        try {
+            java.sql.DatabaseMetaData meta = conn.getMetaData();
+            try (ResultSet rs = meta.getColumns(conn.getCatalog(), null, "users", "must_change_password")) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            return false;
+        }
     }
 }

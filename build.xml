@@ -141,13 +141,14 @@
             <fileset dir="server/resources" includes="server.properties,db.properties,db.properties.example"/>
         </copy>
 
-        <!-- Build server.jar with ONLY common + server classes (NO client GUI, NO tests) -->
+        <!-- Build server.jar with ONLY common + server classes (NO client GUI, NO tests, NO baked-in database credentials) -->
         <jar destfile="${server.dist.dir}/server.jar">
             <fileset dir="${build.classes.dir}">
                 <include name="thuvien/common/**"/>
                 <include name="thuvien/server/**"/>
                 <include name="server.properties"/>
-                <include name="db.properties"/>
+                <exclude name="db.properties"/>
+                <exclude name="db.properties.example"/>
                 <exclude name="thuvien/client/**"/>
                 <exclude name="client.properties"/>
             </fileset>
@@ -157,7 +158,7 @@
             </manifest>
         </jar>
 
-        <!-- Create portable run-server.bat for RMI Server -->
+        <!-- Create portable run-server.bat for RMI Server with pre-flight config check -->
         <echo file="${server.dist.dir}/run-server.bat">@echo off
 setlocal
 cd /d "%~dp0"
@@ -166,6 +167,20 @@ where java &gt;nul 2&gt;&amp;1
 if errorlevel 1 (
     echo [ERROR] Java Runtime Environment ^(java^) was not found in PATH.
     echo Please install Java 8+ and add it to your system PATH.
+    pause
+    exit /b 1
+)
+
+if not exist "resources\db.properties" (
+    echo ==============================================================================
+    echo [ERROR] Khong tim thay tep cau hinh co so du lieu: resources\db.properties
+    echo ==============================================================================
+    echo Vui long sao chep tep mau 'resources\db.properties.example' thanh 'resources\db.properties'
+    echo va cau hinh thong tin ket noi MySQL chinh xac truoc khi khoi dong may chu.
+    echo.
+    echo Lenh thuc hien:
+    echo   copy resources\db.properties.example resources\db.properties
+    echo ==============================================================================
     pause
     exit /b 1
 )
@@ -232,5 +247,36 @@ endlocal
         <echo message="[ANT] Client distribution created at: ${client.dist.dir}"/>
     </target>
 
-    <target name="package-all" depends="jar,package-server,package-client" description="Builds all Server and Client distributions"/>
+    <target name="package-server-release" depends="package-server" description="Packages clean Production Server distribution into dist/server-release without test/development database credentials">
+        <property name="server.release.dir" value="${dist.dir}/server-release"/>
+        <delete dir="${server.release.dir}"/>
+        <mkdir dir="${server.release.dir}"/>
+        <mkdir dir="${server.release.dir}/lib"/>
+        <mkdir dir="${server.release.dir}/resources"/>
+
+        <!-- Copy external runtime libraries required by Server -->
+        <copy todir="${server.release.dir}/lib">
+            <fileset dir="lib">
+                <include name="mysql-connector-java-8.0.33.jar"/>
+                <include name="HikariCP-4.0.3.jar"/>
+                <include name="slf4j-api-1.7.36.jar"/>
+                <include name="slf4j-jdk14-1.7.36.jar"/>
+            </fileset>
+        </copy>
+
+        <!-- Copy ONLY server.properties and db.properties.example (NEVER dev db.properties) -->
+        <copy todir="${server.release.dir}/resources">
+            <fileset dir="server/resources" includes="server.properties,db.properties.example"/>
+        </copy>
+
+        <!-- Copy identical server.jar (which has zero baked-in db.properties) -->
+        <copy file="${server.dist.dir}/server.jar" todir="${server.release.dir}"/>
+
+        <!-- Copy portable run-server.bat with target validation -->
+        <copy file="${server.dist.dir}/run-server.bat" todir="${server.release.dir}"/>
+
+        <echo message="[ANT] Clean Production Server distribution created at: ${server.release.dir}"/>
+    </target>
+
+    <target name="package-all" depends="jar,package-server,package-server-release,package-client" description="Builds all Server, Production Server Release, and Client distributions"/>
 </project>

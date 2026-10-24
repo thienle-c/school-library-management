@@ -9,6 +9,7 @@ import thuvien.common.dto.BookDTO;
 import thuvien.common.dto.ReservationDTO;
 import thuvien.common.dto.StudentDTO;
 import thuvien.common.enums.ReservationStatus;
+import thuvien.common.enums.StudentStatus;
 import thuvien.common.exception.EntityNotFoundException;
 import thuvien.common.exception.LibraryException;
 import thuvien.server.repository.BookRepository;
@@ -48,6 +49,9 @@ public class ReservationServiceImpl implements ReservationService {
             StudentDTO student = studentRepository.findById(studentId);
             if (student == null) {
                 throw new EntityNotFoundException("Student not found with ID: " + studentId);
+            }
+            if (student.getStatus() != StudentStatus.ACTIVE) {
+                throw new LibraryException("Sinh viên đang bị tạm khóa hoặc không hoạt động (Status: " + student.getStatus() + "). Không thể đặt trước sách.");
             }
 
             BookDTO book = bookRepository.findById(bookId);

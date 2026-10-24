@@ -22,6 +22,7 @@ import thuvien.client.controller.ClientAuthController;
 import thuvien.client.network.NetworkClient;
 import thuvien.client.network.RMIClient;
 import thuvien.client.session.ClientSession;
+import thuvien.client.session.PermissionHelper;
 import thuvien.client.view.common.AsyncWorker;
 import thuvien.client.view.common.CyberCardPanel;
 import thuvien.client.view.common.CyberHeaderPanel;
@@ -53,10 +54,13 @@ public class MainDashboardForm extends JFrame {
     public MainDashboardForm(NetworkClient networkClient, UserSessionDTO session) {
         this.networkClient = networkClient;
         this.session = session != null ? session : createDesignSession();
-        if (this.networkClient != null && this.session != null) {
-            ClientSession cs = new ClientSession();
-            cs.setSession(this.session);
-            this.networkClient.setSession(cs);
+        if (this.session != null) {
+            ClientSession.getInstance().setSession(this.session);
+            if (this.networkClient != null) {
+                ClientSession cs = new ClientSession();
+                cs.setSession(this.session);
+                this.networkClient.setSession(cs);
+            }
         }
         initComponents();
         initCustom();
@@ -120,6 +124,16 @@ public class MainDashboardForm extends JFrame {
         changePwdBtn.setIconTextGap(6);
         changePwdBtn.setPreferredSize(new Dimension(135, 32));
 
+        if (PermissionHelper.canResetUserPassword(networkClient)) {
+            javax.swing.JButton adminResetPwdBtn = new javax.swing.JButton("Reset MK User");
+            ModernUIHelper.styleSecondaryButton(adminResetPwdBtn, "Reset MK User");
+            adminResetPwdBtn.setIcon(ModernUIHelper.getVectorIcon("LOCK", 13, ModernUIHelper.PRIMARY_BLUE));
+            adminResetPwdBtn.setIconTextGap(6);
+            adminResetPwdBtn.setPreferredSize(new Dimension(140, 32));
+            adminResetPwdBtn.addActionListener(e -> new thuvien.client.view.dialogs.AdminResetPasswordDialog(this, networkClient).setVisible(true));
+            userPanel.add(adminResetPwdBtn, 1);
+        }
+
         ModernUIHelper.styleDangerButton(logoutBtn, "Đăng xuất");
         logoutBtn.setIcon(ModernUIHelper.getVectorIcon("LOGOUT", 14, new Color(0xFC, 0xA5, 0xA5)));
         logoutBtn.setIconTextGap(6);
@@ -144,8 +158,8 @@ public class MainDashboardForm extends JFrame {
             ModernUIHelper.styleSidebarButton(finesBtn, "Quản lý tiền phạt", ModernUIHelper.getVectorIcon("FINES", 16));
             ModernUIHelper.styleSidebarButton(reservationsBtn, "Đặt trước sách", ModernUIHelper.getVectorIcon("RESERVATIONS", 16));
             ModernUIHelper.styleSidebarButton(auditBtn, "Nhật ký kiểm toán", ModernUIHelper.getVectorIcon("AUDIT", 16));
-            overviewBtn.setVisible(true);
-            auditBtn.setVisible(role == UserRole.ADMIN);
+            overviewBtn.setVisible(PermissionHelper.canViewOverviewMetrics(networkClient));
+            auditBtn.setVisible(PermissionHelper.canViewAuditLogs(networkClient));
         }
 
         // Replace contentCards with alpha-fade capable container
@@ -190,6 +204,18 @@ public class MainDashboardForm extends JFrame {
             showCardWithFade("OVERVIEW", overviewBtn);
         }
         ModernUIHelper.styleComponentTree(getContentPane());
+
+        if (session != null && session.isMustChangePassword()) {
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                javax.swing.JOptionPane.showMessageDialog(this,
+                        "Tài khoản của bạn đã được quản trị viên đặt lại mật khẩu tạm thời.\n"
+                        + "Bạn bắt buộc phải đổi sang mật khẩu mới trước khi tiếp tục thao tác nghiệp vụ.",
+                        "Yêu Cầu Đổi Mật Khẩu Bắt Buộc",
+                        javax.swing.JOptionPane.WARNING_MESSAGE);
+                ChangePasswordDialog dialog = new ChangePasswordDialog(this, networkClient);
+                dialog.setVisible(true);
+            });
+        }
     }
 
     /**
@@ -430,6 +456,9 @@ public class MainDashboardForm extends JFrame {
     }//GEN-LAST:event_homeBtnActionPerformed
 
     private void overviewBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_overviewBtnActionPerformed
+        if (!PermissionHelper.canViewOverviewMetrics(networkClient)) {
+            return;
+        }
         showCardWithFade("OVERVIEW", overviewBtn);
     }//GEN-LAST:event_overviewBtnActionPerformed
 
@@ -454,6 +483,9 @@ public class MainDashboardForm extends JFrame {
     }//GEN-LAST:event_reservationsBtnActionPerformed
 
     private void auditBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_auditBtnActionPerformed
+        if (!PermissionHelper.canViewAuditLogs(networkClient)) {
+            return;
+        }
         showCardWithFade("AUDIT_LOGS", auditBtn);
     }//GEN-LAST:event_auditBtnActionPerformed
 

@@ -27,6 +27,7 @@ import thuvien.client.controller.ClientBorrowController;
 import thuvien.client.controller.ClientStudentController;
 import thuvien.client.network.NetworkClient;
 import thuvien.client.session.ClientSession;
+import thuvien.client.session.PermissionHelper;
 import thuvien.client.view.common.AsyncWorker;
 import thuvien.common.dto.BookDTO;
 import thuvien.client.view.common.ModernUIHelper;
@@ -66,6 +67,12 @@ public class BorrowDialog extends JDialog {
         this.borrowController = new ClientBorrowController(networkClient);
         this.studentController = new ClientStudentController(networkClient);
         this.bookController = new ClientBookController(networkClient);
+
+        if (!PermissionHelper.canManageBorrowReturn(networkClient)) {
+            JOptionPane.showMessageDialog(owner, "Bạn không có quyền lập phiếu mượn sách.", "Từ chối truy cập", JOptionPane.ERROR_MESSAGE);
+            dispose();
+            return;
+        }
 
         initComponents();
         initCustom(defaultStudentId, defaultBookId);
@@ -800,6 +807,10 @@ public class BorrowDialog extends JDialog {
     }
 
     private void performBorrow() {
+        if (!PermissionHelper.canManageBorrowReturn(networkClient)) {
+            JOptionPane.showMessageDialog(this, "Bạn không có quyền lập phiếu mượn sách.", "Từ chối truy cập", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         if (!checkConditions(false)) {
             return;
         }

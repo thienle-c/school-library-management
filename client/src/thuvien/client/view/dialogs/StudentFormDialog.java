@@ -5,6 +5,7 @@ import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 import thuvien.client.controller.ClientStudentController;
 import thuvien.client.network.NetworkClient;
+import thuvien.client.session.PermissionHelper;
 import thuvien.client.view.common.AsyncWorker;
 import thuvien.common.dto.StudentDTO;
 import thuvien.common.enums.StudentStatus;
@@ -14,14 +15,23 @@ import thuvien.client.view.common.ModernUIHelper;
  * Modal dialog for creating and editing Student records.
  */
 public class StudentFormDialog extends JDialog {
+    private final NetworkClient networkClient;
     private final ClientStudentController studentController;
     private final StudentDTO studentToEdit;
     private boolean saved = false;
 
     public StudentFormDialog(Window owner, NetworkClient networkClient, StudentDTO studentToEdit) {
         super(owner, ModalityType.APPLICATION_MODAL);
+        this.networkClient = networkClient;
         this.studentController = new ClientStudentController(networkClient);
         this.studentToEdit = studentToEdit;
+
+        if (!PermissionHelper.canManageStudents(networkClient)) {
+            JOptionPane.showMessageDialog(owner, "Bạn không có quyền quản lý hồ sơ sinh viên.", "Từ chối truy cập", JOptionPane.ERROR_MESSAGE);
+            dispose();
+            return;
+        }
+
         initComponents();
         initCustom();
     }
@@ -271,6 +281,10 @@ public class StudentFormDialog extends JDialog {
     }//GEN-LAST:event_saveButtonActionPerformed
 
     private void saveStudent() {
+        if (!PermissionHelper.canManageStudents(networkClient)) {
+            JOptionPane.showMessageDialog(this, "Bạn không có quyền lưu hồ sơ sinh viên.", "Từ chối truy cập", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         String code = codeField.getText().trim();
         String name = nameField.getText().trim();
 

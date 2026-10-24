@@ -14,6 +14,7 @@ import thuvien.common.dto.BookSearchCriteriaDTO;
 import thuvien.common.dto.BorrowRecordDTO;
 import thuvien.common.dto.BorrowRequestDTO;
 import thuvien.common.dto.CategoryDTO;
+import thuvien.common.dto.DeleteStudentRequestDTO;
 import thuvien.common.dto.DashboardMetricsDTO;
 import thuvien.common.dto.FineDTO;
 import thuvien.common.dto.LoginRequestDTO;
@@ -396,6 +397,20 @@ public class RequestRouterTest {
             public boolean deleteUser(Long id) { return true; }
             @Override
             public boolean changePassword(Long userId, String currentPassword, String newPassword) { return true; }
+            @Override
+            public thuvien.common.dto.AdminResetPasswordResponseDTO adminResetPassword(Long adminUserId, Long targetUserId)
+                    throws thuvien.common.exception.ValidationException, EntityNotFoundException, LibraryException {
+                if (adminUserId != null && adminUserId.equals(targetUserId)) {
+                    throw new thuvien.common.exception.ValidationException("Không thể tự reset mật khẩu của chính mình.");
+                }
+                if (targetUserId == null || targetUserId <= 0) {
+                    throw new thuvien.common.exception.ValidationException("Mã người dùng không hợp lệ.");
+                }
+                if (targetUserId == 9999L) {
+                    throw new EntityNotFoundException("Không tìm thấy người dùng.");
+                }
+                return new thuvien.common.dto.AdminResetPasswordResponseDTO(targetUserId, "user" + targetUserId, "Temp#Pass12345678", true);
+            }
         };
 
         router = new RequestRouter(
@@ -716,8 +731,8 @@ public class RequestRouterTest {
         Request reqDelUser = new Request(Action.DELETE_USER, librarianToken, 5L);
         Assert.assertEquals(StatusCode.FORBIDDEN, router.route(reqDelUser).getStatusCode());
 
-        // 2. Librarian attempting DELETE_STUDENT -> FORBIDDEN
-        Request reqDelStudent = new Request(Action.DELETE_STUDENT, librarianToken, 1L);
+        // 2. Librarian attempting permanent DELETE_STUDENT -> FORBIDDEN
+        Request reqDelStudent = new Request(Action.DELETE_STUDENT, librarianToken, new DeleteStudentRequestDTO(1L, true));
         Assert.assertEquals(StatusCode.FORBIDDEN, router.route(reqDelStudent).getStatusCode());
 
         // 3. Librarian attempting GENERATE_STUDENT_ACTIVATION -> FORBIDDEN
@@ -727,5 +742,202 @@ public class RequestRouterTest {
         // 4. Librarian attempting LIST_AUDIT_LOGS -> FORBIDDEN
         Request reqAudit = new Request(Action.LIST_AUDIT_LOGS, librarianToken, 50);
         Assert.assertEquals(StatusCode.FORBIDDEN, router.route(reqAudit).getStatusCode());
+
+        // 5. Librarian attempting LIST_USERS -> FORBIDDEN
+        Request reqListUsers = new Request(Action.LIST_USERS, librarianToken, null);
+        Assert.assertEquals(StatusCode.FORBIDDEN, router.route(reqListUsers).getStatusCode());
+
+        // 6. Librarian attempting CREATE_USER -> FORBIDDEN
+        UserDTO newUser = new UserDTO();
+        newUser.setUsername("newuser");
+        Request reqCreateUser = new Request(Action.CREATE_USER, librarianToken, newUser);
+        Assert.assertEquals(StatusCode.FORBIDDEN, router.route(reqCreateUser).getStatusCode());
+    }
+
+    @Test
+    public void testStudentCannotCalculateFine() {
+        // Student attempting CALCULATE_FINE -> must be FORBIDDEN at server tier
+        Request req = new Request(Action.CALCULATE_FINE, studentToken, 5);
+        Response resp = router.route(req);
+        Assert.assertNotNull(resp);
+        Assert.assertEquals(StatusCode.FORBIDDEN, resp.getStatusCode());
+
+        // Staff (Librarian and Admin) can calculate fine
+        Request reqLib = new Request(Action.CALCULATE_FINE, librarianToken, 5);
+        Response respLib = router.route(reqLib);
+        Assert.assertEquals(StatusCode.OK, respLib.getStatusCode());
+
+        Request reqAdmin = new Request(Action.CALCULATE_FINE, adminToken, 5);
+        Response respAdmin = router.route(reqAdmin);
+        Assert.assertEquals(StatusCode.OK, respAdmin.getStatusCode());
+    }
+
+    @Test
+    public void testStudentForbiddenActionsComprehensive() {
+        // Book mutations
+        Request reqCreateBook = new Request(Action.CREATE_BOOK, studentToken, new BookDTO());
+        Assert.assertEquals(StatusCode.FORBIDDEN, router.route(reqCreateBook).getStatusCode());
+
+        Request reqUpdateBook = new Request(Action.UPDATE_BOOK, studentToken, new BookDTO());
+        Assert.assertEquals(StatusCode.FORBIDDEN, router.route(reqUpdateBook).getStatusCode());
+
+        // Student directory mutations
+        Request reqListStudents = new Request(Action.LIST_STUDENTS, studentToken, null);
+        Assert.assertEquals(StatusCode.FORBIDDEN, router.route(reqListStudents).getStatusCode());
+
+        Request reqCreateStudent = new Request(Action.CREATE_STUDENT, studentToken, new StudentDTO());
+        Assert.assertEquals(StatusCode.FORBIDDEN, router.route(reqCreateStudent).getStatusCode());
+
+        Request reqUpdateStudent = new Request(Action.UPDATE_STUDENT, studentToken, new StudentDTO());
+        Assert.assertEquals(StatusCode.FORBIDDEN, router.route(reqUpdateStudent).getStatusCode());
+
+        // Circulation records
+        Request reqListBorrow = new Request(Action.LIST_BORROW_RECORDS, studentToken, null);
+        Assert.assertEquals(StatusCode.FORBIDDEN, router.route(reqListBorrow).getStatusCode());
+
+        Request reqReturn = new Request(Action.RETURN_BOOK, studentToken, new Long[]{1L, 1L});
+        Assert.assertEquals(StatusCode.FORBIDDEN, router.route(reqReturn).getStatusCode());
+
+        // Dashboard metrics
+        Request reqMetrics = new Request(Action.GET_DASHBOARD_METRICS, studentToken, null);
+        Assert.assertEquals(StatusCode.FORBIDDEN, router.route(reqMetrics).getStatusCode());
+    }
+
+    @Test
+    public void testInvalidOrExpiredSessionRejected() {
+        // Null or fake token attempting sensitive action -> UNAUTHORIZED (401)
+        Request reqFakeToken = new Request(Action.DELETE_BOOK, "non-existent-token", 1L);
+        Response resp = router.route(reqFakeToken);
+        Assert.assertNotNull(resp);
+        Assert.assertEquals(StatusCode.UNAUTHORIZED, resp.getStatusCode());
+
+        Request reqNullToken = new Request(Action.LIST_USERS, null, null);
+        Response respNull = router.route(reqNullToken);
+        Assert.assertNotNull(respNull);
+        Assert.assertEquals(StatusCode.UNAUTHORIZED, respNull.getStatusCode());
+    }
+
+    @Test
+    public void testStudentDeletionRoleSeparation() {
+        // 1. LIBRARIAN suspend student (permanent == false) -> ALLOWED (OK)
+        Request reqLibSuspend = new Request(Action.DELETE_STUDENT, librarianToken, new DeleteStudentRequestDTO(99L, false));
+        Response respLibSuspend = router.route(reqLibSuspend);
+        Assert.assertNotNull(respLibSuspend);
+        Assert.assertEquals("Librarian must be allowed to suspend student", StatusCode.OK, respLibSuspend.getStatusCode());
+
+        // 2. LIBRARIAN hard delete student (permanent == true) -> FORBIDDEN (403)
+        Request reqLibHard = new Request(Action.DELETE_STUDENT, librarianToken, new DeleteStudentRequestDTO(99L, true));
+        Response respLibHard = router.route(reqLibHard);
+        Assert.assertNotNull(respLibHard);
+        Assert.assertEquals("Librarian must be forbidden from hard deleting student", StatusCode.FORBIDDEN, respLibHard.getStatusCode());
+
+        // 3. STUDENT suspend student (permanent == false) -> FORBIDDEN (403)
+        Request reqStuSuspend = new Request(Action.DELETE_STUDENT, studentToken, new DeleteStudentRequestDTO(99L, false));
+        Response respStuSuspend = router.route(reqStuSuspend);
+        Assert.assertNotNull(respStuSuspend);
+        Assert.assertEquals("Student must be forbidden from suspending student", StatusCode.FORBIDDEN, respStuSuspend.getStatusCode());
+
+        // 4. STUDENT hard delete student (permanent == true) -> FORBIDDEN (403)
+        Request reqStuHard = new Request(Action.DELETE_STUDENT, studentToken, new DeleteStudentRequestDTO(99L, true));
+        Response respStuHard = router.route(reqStuHard);
+        Assert.assertNotNull(respStuHard);
+        Assert.assertEquals("Student must be forbidden from hard deleting student", StatusCode.FORBIDDEN, respStuHard.getStatusCode());
+
+        // 5. ADMIN both suspend and hard delete -> ALLOWED (OK)
+        Request reqAdminSuspend = new Request(Action.DELETE_STUDENT, adminToken, new DeleteStudentRequestDTO(99L, false));
+        Response respAdminSuspend = router.route(reqAdminSuspend);
+        Assert.assertNotNull(respAdminSuspend);
+        Assert.assertEquals("Admin must be allowed to suspend student", StatusCode.OK, respAdminSuspend.getStatusCode());
+
+        Request reqAdminHard = new Request(Action.DELETE_STUDENT, adminToken, new DeleteStudentRequestDTO(99L, true));
+        Response respAdminHard = router.route(reqAdminHard);
+        Assert.assertNotNull(respAdminHard);
+        Assert.assertEquals("Admin must be allowed to hard delete student", StatusCode.OK, respAdminHard.getStatusCode());
+
+        // 6. Request with invalid or missing payload
+        // STUDENT with null payload fails role check first -> FORBIDDEN (403)
+        Request reqStuNull = new Request(Action.DELETE_STUDENT, studentToken, null);
+        Assert.assertEquals(StatusCode.FORBIDDEN, router.route(reqStuNull).getStatusCode());
+
+        // LIBRARIAN with null payload -> BAD_REQUEST (400)
+        Request reqLibNull = new Request(Action.DELETE_STUDENT, librarianToken, null);
+        Assert.assertEquals(StatusCode.BAD_REQUEST, router.route(reqLibNull).getStatusCode());
+
+        // ADMIN with invalid negative ID -> BAD_REQUEST (400)
+        Request reqAdminInvalid = new Request(Action.DELETE_STUDENT, adminToken, new DeleteStudentRequestDTO(-1L, true));
+        Assert.assertEquals(StatusCode.BAD_REQUEST, router.route(reqAdminInvalid).getStatusCode());
+    }
+
+    @Test
+    public void testAdminResetPassword_AllowedForAdmin() {
+        Request req = new Request(Action.ADMIN_RESET_PASSWORD, adminToken,
+                new thuvien.common.dto.AdminResetPasswordRequestDTO(2L));
+        Response resp = router.route(req);
+        Assert.assertNotNull(resp);
+        Assert.assertEquals(StatusCode.OK, resp.getStatusCode());
+        Assert.assertTrue(resp.getData() instanceof thuvien.common.dto.AdminResetPasswordResponseDTO);
+        thuvien.common.dto.AdminResetPasswordResponseDTO dto = (thuvien.common.dto.AdminResetPasswordResponseDTO) resp.getData();
+        Assert.assertEquals(Long.valueOf(2L), dto.getUserId());
+        Assert.assertNotNull(dto.getTemporaryPassword());
+        Assert.assertTrue(dto.isMustChangePassword());
+    }
+
+    @Test
+    public void testAdminResetPassword_ForbiddenForLibrarianAndStudent() {
+        Request reqLib = new Request(Action.ADMIN_RESET_PASSWORD, librarianToken,
+                new thuvien.common.dto.AdminResetPasswordRequestDTO(3L));
+        Response respLib = router.route(reqLib);
+        Assert.assertEquals("Librarian must be forbidden from resetting passwords",
+                StatusCode.FORBIDDEN, respLib.getStatusCode());
+
+        Request reqStu = new Request(Action.ADMIN_RESET_PASSWORD, studentToken,
+                new thuvien.common.dto.AdminResetPasswordRequestDTO(2L));
+        Response respStu = router.route(reqStu);
+        Assert.assertEquals("Student must be forbidden from resetting passwords",
+                StatusCode.FORBIDDEN, respStu.getStatusCode());
+    }
+
+    @Test
+    public void testAdminResetPassword_SelfResetForbidden() {
+        Request reqSelf = new Request(Action.ADMIN_RESET_PASSWORD, adminToken,
+                new thuvien.common.dto.AdminResetPasswordRequestDTO(1L));
+        Response respSelf = router.route(reqSelf);
+        Assert.assertEquals("Admin self-reset must be rejected with BAD_REQUEST",
+                StatusCode.BAD_REQUEST, respSelf.getStatusCode());
+    }
+
+    @Test
+    public void testMandatoryPasswordChange_BlocksBusinessActions() {
+        // Create session requiring password change
+        UserSessionDTO restrictedSession = new UserSessionDTO(null, 50L, "restricted_user", "Restricted", UserRole.LIBRARIAN, true);
+        String restrictedToken = sessionManager.createSession(restrictedSession);
+
+        // 1. Business action LIST_BOOKS must be rejected with 403 FORBIDDEN
+        Request reqBooks = new Request(Action.LIST_BOOKS, restrictedToken, null);
+        Response respBooks = router.route(reqBooks);
+        Assert.assertEquals(StatusCode.FORBIDDEN, respBooks.getStatusCode());
+        Assert.assertTrue(respBooks.getMessage().contains("bắt buộc phải đổi mật khẩu"));
+
+        // 2. Business action LIST_STUDENTS must be rejected with 403 FORBIDDEN
+        Request reqStudents = new Request(Action.LIST_STUDENTS, restrictedToken, null);
+        Response respStudents = router.route(reqStudents);
+        Assert.assertEquals(StatusCode.FORBIDDEN, respStudents.getStatusCode());
+
+        // 3. GET_CURRENT_USER must be allowed
+        Request reqSelf = new Request(Action.GET_CURRENT_USER, restrictedToken, null);
+        Response respSelf = router.route(reqSelf);
+        Assert.assertEquals(StatusCode.OK, respSelf.getStatusCode());
+
+        // 4. CHANGE_PASSWORD must be allowed
+        thuvien.common.dto.ChangePasswordRequestDTO changeDto =
+                new thuvien.common.dto.ChangePasswordRequestDTO("OldPass123", "NewSecurePass#2026");
+        Request reqChange = new Request(Action.CHANGE_PASSWORD, restrictedToken, changeDto);
+        Response respChange = router.route(reqChange);
+        Assert.assertEquals(StatusCode.OK, respChange.getStatusCode());
+
+        // 5. After successful CHANGE_PASSWORD, session mustChangePassword is cleared and business actions succeed
+        Assert.assertFalse("Must change password flag must be cleared", restrictedSession.isMustChangePassword());
+        Response respBooksUnlocked = router.route(reqBooks);
+        Assert.assertEquals(StatusCode.OK, respBooksUnlocked.getStatusCode());
     }
 }

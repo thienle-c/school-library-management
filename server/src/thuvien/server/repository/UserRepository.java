@@ -13,5 +13,6 @@ public interface UserRepository {
     Long create(UserDTO user, String passwordHash, Connection conn) throws SQLException;
     boolean update(UserDTO user, Connection conn) throws SQLException;
     boolean updatePassword(Long userId, String newPasswordHash, Connection conn) throws SQLException;
+    boolean resetPassword(Long userId, String newPasswordHash, boolean mustChangePassword, Connection conn) throws SQLException;
     boolean delete(Long id, Connection conn) throws SQLException;
 }

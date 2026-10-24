@@ -20,6 +20,7 @@ import thuvien.client.controller.ClientSearchSuggestionController;
 import thuvien.client.controller.ClientStudentController;
 import thuvien.client.network.NetworkClient;
 import thuvien.client.session.ClientSession;
+import thuvien.client.session.PermissionHelper;
 import thuvien.client.view.LoginForm;
 import thuvien.client.view.common.AsyncWorker;
 import thuvien.client.view.common.ModernUIHelper;
@@ -51,7 +52,7 @@ public class StudentManagementPanel extends JPanel {
     public StudentManagementPanel(NetworkClient networkClient) {
         this.networkClient = networkClient;
         this.studentController = new ClientStudentController(networkClient);
-        this.isStaff = ClientSession.getInstance().isAdmin() || ClientSession.getInstance().isLibrarian();
+        this.isStaff = PermissionHelper.canManageStudents(networkClient);
 
         initComponents();
         initCustom();
@@ -159,11 +160,8 @@ public class StudentManagementPanel extends JPanel {
             statusLabel.setFont(ModernUIHelper.FONT_SMALL);
             statusLabel.setForeground(ModernUIHelper.TEXT_MUTED);
 
-            boolean isAdmin = ClientSession.getInstance().isAdmin();
-            if (!isAdmin) {
-                activationCodeBtn.setVisible(false);
-                hardDeleteStudentBtn.setVisible(false);
-            }
+            activationCodeBtn.setVisible(PermissionHelper.canGenerateActivationCode(networkClient));
+            hardDeleteStudentBtn.setVisible(PermissionHelper.canDeleteStudent(networkClient));
 
             SearchAutoCompleteHelper.attach(searchField, "STUDENT", new ClientSearchSuggestionController(networkClient), () -> applyFilter(false));
 
@@ -1016,6 +1014,10 @@ public class StudentManagementPanel extends JPanel {
     }
 
     private void openCreateDialog() {
+        if (!PermissionHelper.canManageStudents(networkClient)) {
+            JOptionPane.showMessageDialog(this, "Bạn không có quyền thêm hồ sơ sinh viên.", "Từ chối truy cập", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         java.awt.Window owner = SwingUtilities.getWindowAncestor(this);
         StudentFormDialog dialog = new StudentFormDialog(owner, networkClient, null);
         dialog.setVisible(true);
@@ -1025,6 +1027,10 @@ public class StudentManagementPanel extends JPanel {
     }
 
     private void openEditDialog() {
+        if (!PermissionHelper.canManageStudents(networkClient)) {
+            JOptionPane.showMessageDialog(this, "Bạn không có quyền chỉnh sửa hồ sơ sinh viên.", "Từ chối truy cập", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         StudentDTO s = getSelectedStudent();
         if (s == null) {
             JOptionPane.showMessageDialog(this, "Vui lòng chọn một sinh viên để chỉnh sửa.", "Yêu Cầu Chọn", JOptionPane.WARNING_MESSAGE);
@@ -1039,6 +1045,10 @@ public class StudentManagementPanel extends JPanel {
     }
 
     private void suspendSelectedStudent() {
+        if (!PermissionHelper.canManageStudents(networkClient)) {
+            JOptionPane.showMessageDialog(this, "Bạn không có quyền tạm khóa sinh viên.", "Từ chối truy cập", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         StudentDTO s = getSelectedStudent();
         if (s == null) {
             JOptionPane.showMessageDialog(this, "Vui lòng chọn sinh viên cần tạm khóa.", "Yêu Cầu Chọn", JOptionPane.WARNING_MESSAGE);
@@ -1072,6 +1082,10 @@ public class StudentManagementPanel extends JPanel {
     }
 
     private void hardDeleteSelectedStudent() {
+        if (!PermissionHelper.canDeleteStudent(networkClient)) {
+            JOptionPane.showMessageDialog(this, "Chỉ Quản trị viên mới có quyền xóa vĩnh viễn sinh viên.", "Từ chối truy cập", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         StudentDTO s = getSelectedStudent();
         if (s == null) {
             JOptionPane.showMessageDialog(this, "Vui lòng chọn sinh viên cần xóa vĩnh viễn.", "Yêu Cầu Chọn", JOptionPane.WARNING_MESSAGE);
@@ -1121,6 +1135,10 @@ public class StudentManagementPanel extends JPanel {
     }
 
     private void generateActivationCodeForSelectedStudent() {
+        if (!PermissionHelper.canGenerateActivationCode(networkClient)) {
+            JOptionPane.showMessageDialog(this, "Chỉ Quản trị viên mới có quyền cấp mã kích hoạt tài khoản.", "Từ chối truy cập", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         StudentDTO s = getSelectedStudent();
         if (s == null) {
             JOptionPane.showMessageDialog(this, "Vui lòng chọn sinh viên cần cấp mã kích hoạt.", "Yêu Cầu Chọn", JOptionPane.WARNING_MESSAGE);

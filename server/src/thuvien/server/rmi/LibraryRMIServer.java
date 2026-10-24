@@ -4,6 +4,7 @@ import java.io.InputStream;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.sql.Connection;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.Enumeration;
@@ -65,6 +66,7 @@ public class LibraryRMIServer {
     private LibraryRemoteServiceImpl remoteService;
     private String activeHost;
     private boolean running = false;
+    private boolean createdRegistry = false;
 
     public LibraryRMIServer() {
         this(DEFAULT_REGISTRY_PORT, DEFAULT_SERVICE_PORT, DEFAULT_SERVICE_NAME, null);
@@ -93,12 +95,49 @@ public class LibraryRMIServer {
         // Configure serialization filter before RMI initialization
         configureSerializationFilter();
 
-        // Initialize database pool early
-        try {
-            DatabaseManager.getInstance().getConnection().close();
-            LOGGER.info("Database connection pool verified.");
+        // Initialize database pool early and verify schema integrity
+        try (Connection conn = DatabaseManager.getInstance().getConnection()) {
+            String catalog = conn.getCatalog();
+            LOGGER.info("Connected to Target Database Catalog: '" + catalog + "'");
+
+            // Verify expected catalog / environment if specified
+            String expectedCatalog = System.getProperty("db.expected.catalog");
+            if (expectedCatalog == null || expectedCatalog.trim().isEmpty()) {
+                expectedCatalog = System.getenv("DB_EXPECTED_CATALOG");
+            }
+            if (expectedCatalog != null && !expectedCatalog.trim().isEmpty()) {
+                if (catalog == null || !expectedCatalog.trim().equalsIgnoreCase(catalog.trim())) {
+                    String envMismatchMsg = String.format(
+                            "[DATABASE CONFIG ERROR] Mục tiêu cơ sở dữ liệu không khớp! Yêu cầu: '%s', nhưng kết nối thực tế tới: '%s'. "
+                            + "Máy chủ dừng khởi động để bảo vệ an toàn dữ liệu.",
+                            expectedCatalog.trim(), catalog);
+                    LOGGER.severe(envMismatchMsg);
+                    System.err.println(envMismatchMsg);
+                    throw new IllegalStateException(envMismatchMsg);
+                }
+                LOGGER.info("Verified expected database catalog match: '" + catalog + "'");
+            } else {
+                LOGGER.warning("[WARN] Chưa thiết lập tham số bảo vệ catalog ('db.expected.catalog' hoặc 'DB_EXPECTED_CATALOG'). "
+                        + "Khuyến nghị thiết lập DB_EXPECTED_CATALOG=school_library trên Production để ngăn chặn kết nối sai môi trường.");
+            }
+
+            if (!thuvien.server.repository.impl.UserRepositoryImpl.isSchemaMigrated(conn)) {
+                String fatalMsg = "[SECURITY FATAL] Cơ sở dữ liệu '" + catalog
+                        + "' chưa được nâng cấp schema: bảng 'users' thiếu cột 'must_change_password'. "
+                        + "Máy chủ từ chối khởi động để ngăn chặn rủi ro bỏ qua kiểm soát mật khẩu tạm thời. "
+                        + "Vui lòng chạy migration: ALTER TABLE users ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT FALSE AFTER is_active;";
+                LOGGER.severe(fatalMsg);
+                System.err.println(fatalMsg);
+                throw new IllegalStateException(fatalMsg);
+            }
+            LOGGER.info("Database connection pool and schema integrity verified (must_change_password column present in '" + catalog + "').");
+        } catch (IllegalStateException e) {
+            throw e;
         } catch (Exception e) {
-            LOGGER.log(Level.WARNING, "Database not available immediately during RMI server startup: " + e.getMessage());
+            String dbFailMsg = "[DATABASE CONNECTION ERROR] Không thể kết nối cơ sở dữ liệu khi khởi động máy chủ: " + e.getMessage();
+            LOGGER.severe(dbFailMsg);
+            System.err.println(dbFailMsg);
+            throw new IllegalStateException(dbFailMsg, e);
         }
 
         // 1. Resolve actual LAN IPv4 and configure java.rmi.server.hostname BEFORE exporting remote object
@@ -106,19 +145,26 @@ public class LibraryRMIServer {
         System.setProperty("java.rmi.server.hostname", activeHost);
         LOGGER.info("Configured java.rmi.server.hostname = " + activeHost);
 
-        // 2. Locate or create RMI registry on designated port (default 1099)
         try {
-            registry = LocateRegistry.createRegistry(registryPort);
-            LOGGER.info("Created new RMI Registry on port " + registryPort);
-        } catch (Exception e) {
-            registry = LocateRegistry.getRegistry(registryPort);
-            LOGGER.info("Using existing RMI Registry on port " + registryPort);
-        }
+            // 2. Locate or create RMI registry on designated port (default 1099)
+            try {
+                registry = LocateRegistry.createRegistry(registryPort);
+                createdRegistry = true;
+                LOGGER.info("Created new RMI Registry on port " + registryPort);
+            } catch (Exception e) {
+                registry = LocateRegistry.getRegistry(registryPort);
+                createdRegistry = false;
+                LOGGER.info("Using existing RMI Registry on port " + registryPort);
+            }
 
-        // 3. Export remote object on fixed port (default 1100, NEVER dynamic) and bind to registry
-        remoteService = new LibraryRemoteServiceImpl(servicePort, new RequestRouter());
-        registry.rebind(serviceName, remoteService);
-        running = true;
+            // 3. Export remote object on fixed port (default 1100, NEVER dynamic) and bind to registry
+            remoteService = new LibraryRemoteServiceImpl(servicePort, new RequestRouter());
+            registry.rebind(serviceName, remoteService);
+            running = true;
+        } catch (Exception ex) {
+            cleanupRmiResources();
+            throw ex;
+        }
 
         LOGGER.info("==================================================");
         LOGGER.info("LibraryRMIServer started successfully");
@@ -141,21 +187,33 @@ public class LibraryRMIServer {
     }
 
     public synchronized void stop() {
-        if (!running) {
+        if (!running && registry == null && remoteService == null) {
             return;
         }
-        try {
-            if (registry != null) {
-                registry.unbind(serviceName);
-            }
-        } catch (Exception ignored) {}
-        try {
-            if (remoteService != null) {
-                java.rmi.server.UnicastRemoteObject.unexportObject(remoteService, true);
-            }
-        } catch (Exception ignored) {}
+        cleanupRmiResources();
         running = false;
         LOGGER.info("LibraryRMIServer stopped.");
+    }
+
+    private void cleanupRmiResources() {
+        if (registry != null) {
+            try {
+                registry.unbind(serviceName);
+            } catch (Exception ignored) {}
+            if (createdRegistry) {
+                try {
+                    java.rmi.server.UnicastRemoteObject.unexportObject(registry, true);
+                } catch (Exception ignored) {}
+            }
+            registry = null;
+        }
+        if (remoteService != null) {
+            try {
+                java.rmi.server.UnicastRemoteObject.unexportObject(remoteService, true);
+            } catch (Exception ignored) {}
+            remoteService = null;
+        }
+        createdRegistry = false;
     }
 
     public boolean isRunning() {

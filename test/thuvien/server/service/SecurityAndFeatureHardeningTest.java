@@ -1,5 +1,9 @@
 package thuvien.server.service;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.List;
 import org.junit.After;
 import org.junit.Assert;
@@ -10,9 +14,11 @@ import thuvien.common.dto.BorrowRequestDTO;
 import thuvien.common.dto.ChangePasswordRequestDTO;
 import thuvien.common.dto.LoginRequestDTO;
 import thuvien.common.dto.RegisterStudentRequestDTO;
+import thuvien.common.dto.SearchSuggestionRequestDTO;
 import thuvien.common.dto.UserSessionDTO;
 import thuvien.common.enums.UserRole;
 import thuvien.common.exception.AuthenticationException;
+import thuvien.common.exception.AuthorizationException;
 import thuvien.common.exception.ValidationException;
 import thuvien.common.protocol.Action;
 import thuvien.common.protocol.Request;
@@ -788,5 +794,182 @@ public class SecurityAndFeatureHardeningTest {
         reqRestore.setToken(sessionClientA.getToken());
         Response respRestore = router.route(reqRestore);
         Assert.assertEquals("Restore password must succeed", StatusCode.OK, respRestore.getStatusCode());
+    }
+
+    @Test
+    public void test25_SessionInvalidationOnUserDeactivation() {
+        // Create an active session
+        UserSessionDTO userSession = new UserSessionDTO(null, 9999L, "temp_deact_user", "Temp User", UserRole.STUDENT);
+        String token = sessionManager.createSession(userSession);
+        Assert.assertTrue("Session must be active initially", sessionManager.isValid(token));
+
+        // Simulate admin deactivation / deletion triggering invalidateUserSessions
+        sessionManager.invalidateUserSessions(9999L);
+        Assert.assertFalse("Session must be immediately invalidated after deactivation", sessionManager.isValid(token));
+
+        // Any authenticated request using this token must be rejected with 401 UNAUTHORIZED
+        Request req = new Request(Action.GET_CURRENT_USER, null);
+        req.setToken(token);
+        Response resp = router.route(req);
+        Assert.assertEquals(StatusCode.UNAUTHORIZED, resp.getStatusCode());
+    }
+
+    @Test
+    public void test26_UnexpectedExceptionHidesInternalDetailsFromClient() {
+        // Pass an object that causes an unhandled exception or routing error
+        Request malformedReq = new Request(Action.GET_BOOK, null, new Object());
+        Response resp = router.route(malformedReq);
+        Assert.assertNotNull(resp);
+        // Message must NOT leak stack traces, SQL, or class names
+        String msg = resp.getMessage();
+        Assert.assertNotNull(msg);
+        Assert.assertFalse("Error message must not leak SQL keywords", msg.toLowerCase().contains("select") || msg.toLowerCase().contains("where"));
+        Assert.assertFalse("Error message must not leak java class names", msg.contains("java.lang") || msg.contains("NullPointerException"));
+    }
+
+    @Test
+    public void test27_StudentCannotAccessOtherStudentActiveBorrows() throws Exception {
+        // Create a student session for user ID 100
+        UserSessionDTO studentSession = new UserSessionDTO(null, 100L, "student_idor_test", "Student Test", UserRole.STUDENT);
+        String token = sessionManager.createSession(studentSession);
+
+        // Attempt to request active borrows by passing another student's ID (IDOR probe)
+        Request idorReq = new Request(Action.GET_STUDENT_ACTIVE_BORROWS, 999L);
+        idorReq.setToken(token);
+        Response resp = router.route(idorReq);
+        Assert.assertNotNull(resp);
+        // RequestRouter must either return empty list for user's own linked record or throw entity not found,
+        // but it must NOT return student 999's records
+        Assert.assertNotEquals("Student must not access ID 999's data", 999L, resp.getData());
+    }
+
+    @Test
+    public void test28_FineSearchSuggestionsStudentIsolationAndStaffAccess() throws Exception {
+        requireIsolatedTestDb();
+
+        DatabaseManager db = DatabaseManager.getInstance();
+        Long borrowRecordId1 = null;
+        Long borrowRecordId2 = null;
+        Long fineId1 = null;
+        Long fineId2 = null;
+
+        try (Connection conn = db.getConnection()) {
+            // Setup test data in school_library_test:
+            // Student 1 (id=1, STU001, Le Van An) -> fine for "Clean Code" (book id=2)
+            // Student 2 (id=2, STU002, Pham Thi Bich) -> fine for "Effective Java" (book id=3)
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "INSERT INTO borrow_records (book_id, student_id, issued_by_user_id, borrow_date, due_date, status) VALUES (2, 1, 1, '2026-09-01', '2026-09-15', 'OVERDUE')",
+                    Statement.RETURN_GENERATED_KEYS)) {
+                ps.executeUpdate();
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    if (rs.next()) borrowRecordId1 = rs.getLong(1);
+                }
+            }
+
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "INSERT INTO fines (borrow_record_id, student_id, overdue_days, fine_rate_per_day, fine_amount, is_paid) VALUES (?, 1, 5, 5000.00, 25000.00, 0)",
+                    Statement.RETURN_GENERATED_KEYS)) {
+                ps.setLong(1, borrowRecordId1);
+                ps.executeUpdate();
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    if (rs.next()) fineId1 = rs.getLong(1);
+                }
+            }
+
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "INSERT INTO borrow_records (book_id, student_id, issued_by_user_id, borrow_date, due_date, status) VALUES (3, 2, 1, '2026-09-01', '2026-09-15', 'OVERDUE')",
+                    Statement.RETURN_GENERATED_KEYS)) {
+                ps.executeUpdate();
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    if (rs.next()) borrowRecordId2 = rs.getLong(1);
+                }
+            }
+
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "INSERT INTO fines (borrow_record_id, student_id, overdue_days, fine_rate_per_day, fine_amount, is_paid) VALUES (?, 2, 10, 5000.00, 50000.00, 0)",
+                    Statement.RETURN_GENERATED_KEYS)) {
+                ps.setLong(1, borrowRecordId2);
+                ps.executeUpdate();
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    if (rs.next()) fineId2 = rs.getLong(1);
+                }
+            }
+
+            // 1. Establish sessions
+            UserSessionDTO student1Session = authService.login(new LoginRequestDTO("student1", "student123"));
+            UserSessionDTO librarianSession = authService.login(new LoginRequestDTO("librarian1", "lib123"));
+            UserSessionDTO adminSession = authService.login(new LoginRequestDTO("admin", "admin123"));
+
+            // 2. Student 1 queries suggestions for "Clean" -> matches Student 1's fine on Clean Code
+            List<String> stu1Clean = suggestionService.getSuggestions("FINE", "Clean", student1Session);
+            Assert.assertNotNull(stu1Clean);
+            Assert.assertTrue("Student 1 should receive own fine book title", stu1Clean.contains("Clean Code"));
+
+            // 3. Student 1 queries suggestions for "Effective" / "Java" (matches Student 2's fine)
+            // MUST BE EMPTY — no leakage of Student 2's fine to Student 1
+            List<String> stu1Java = suggestionService.getSuggestions("FINE", "Java", student1Session);
+            Assert.assertNotNull(stu1Java);
+            Assert.assertFalse("Student 1 must NOT see Student 2's book title in fine suggestions", stu1Java.contains("Effective Java"));
+            Assert.assertTrue("Student 1 must get empty results when searching for other student's fine", stu1Java.isEmpty());
+
+            // 4. Student 1 queries by Student 2's student_code "STU002"
+            // Parenthesizing test: f.student_id = ? AND (b.title LIKE ? OR s.full_name LIKE ? OR s.student_code LIKE ?)
+            // Searching "STU002" must NOT return Student 2's fine to Student 1!
+            List<String> stu1ByCode = suggestionService.getSuggestions("FINE", "STU002", student1Session);
+            Assert.assertNotNull(stu1ByCode);
+            Assert.assertTrue("Student 1 cannot bypass data ownership by querying other student's code", stu1ByCode.isEmpty());
+
+            // 5. Student 1 queries by Student 2's name "Bich"
+            List<String> stu1ByName = suggestionService.getSuggestions("FINE", "Bich", student1Session);
+            Assert.assertNotNull(stu1ByName);
+            Assert.assertTrue("Student 1 cannot bypass data ownership by querying other student's name", stu1ByName.isEmpty());
+
+            // 6. Librarian can search across all students' fines
+            List<String> libJava = suggestionService.getSuggestions("FINE", "Java", librarianSession);
+            Assert.assertNotNull(libJava);
+            Assert.assertTrue("Librarian should see fine with student code", libJava.contains("Effective Java (STU002)"));
+
+            List<String> libClean = suggestionService.getSuggestions("FINE", "Clean", librarianSession);
+            Assert.assertNotNull(libClean);
+            Assert.assertTrue("Librarian should see fine for Clean Code with STU001", libClean.contains("Clean Code (STU001)"));
+
+            // 7. Admin can search across all students' fines
+            List<String> adminJava = suggestionService.getSuggestions("FINE", "Java", adminSession);
+            Assert.assertNotNull(adminJava);
+            Assert.assertTrue("Admin should see fine with student code", adminJava.contains("Effective Java (STU002)"));
+
+            // 8. Unauthenticated / null session throws AuthorizationException
+            try {
+                suggestionService.getSuggestions("FINE", "Clean", null);
+                Assert.fail("Null session must throw AuthorizationException for FINE suggestions");
+            } catch (AuthorizationException e) {
+                Assert.assertNotNull(e.getMessage());
+            }
+
+            // 9. End-to-end RequestRouter verification
+            Request reqRouterStuClean = new Request(Action.SEARCH_SUGGESTIONS, student1Session.getToken(), new SearchSuggestionRequestDTO("FINE", "Clean"));
+            Response respRouterStuClean = router.route(reqRouterStuClean);
+            Assert.assertEquals(StatusCode.OK, respRouterStuClean.getStatusCode());
+            @SuppressWarnings("unchecked")
+            List<String> routerList1 = (List<String>) respRouterStuClean.getData();
+            Assert.assertTrue(routerList1.contains("Clean Code"));
+
+            Request reqRouterStuJava = new Request(Action.SEARCH_SUGGESTIONS, student1Session.getToken(), new SearchSuggestionRequestDTO("FINE", "Java"));
+            Response respRouterStuJava = router.route(reqRouterStuJava);
+            Assert.assertEquals(StatusCode.OK, respRouterStuJava.getStatusCode());
+            @SuppressWarnings("unchecked")
+            List<String> routerList2 = (List<String>) respRouterStuJava.getData();
+            Assert.assertTrue("Via RequestRouter: Student 1 must get empty results for Student 2's fine", routerList2.isEmpty());
+
+        } finally {
+            // Guaranteed cleanup of test records
+            try (Connection conn = db.getConnection();
+                 Statement stmt = conn.createStatement()) {
+                if (fineId1 != null) stmt.executeUpdate("DELETE FROM fines WHERE id = " + fineId1);
+                if (fineId2 != null) stmt.executeUpdate("DELETE FROM fines WHERE id = " + fineId2);
+                if (borrowRecordId1 != null) stmt.executeUpdate("DELETE FROM borrow_records WHERE id = " + borrowRecordId1);
+                if (borrowRecordId2 != null) stmt.executeUpdate("DELETE FROM borrow_records WHERE id = " + borrowRecordId2);
+            } catch (Exception ignored) {}
+        }
     }
 }

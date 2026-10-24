@@ -20,6 +20,7 @@ import thuvien.client.controller.ClientBookController;
 import thuvien.client.controller.ClientSearchSuggestionController;
 import thuvien.client.network.NetworkClient;
 import thuvien.client.session.ClientSession;
+import thuvien.client.session.PermissionHelper;
 import thuvien.client.view.LoginForm;
 import thuvien.client.view.common.AsyncWorker;
 import thuvien.client.view.common.ModernUIHelper;
@@ -140,7 +141,7 @@ public class BookManagementPanel extends JPanel {
         statusLabel.setFont(ModernUIHelper.FONT_SMALL);
         statusLabel.setForeground(ModernUIHelper.TEXT_MUTED);
 
-        boolean isStaff = ClientSession.getInstance().isAdmin() || ClientSession.getInstance().isLibrarian();
+        boolean isStaff = PermissionHelper.canManageBooks(networkClient);
         if (!isStaff) {
             newBookBtn.setVisible(false);
             editBookBtn.setVisible(false);
@@ -839,6 +840,10 @@ public class BookManagementPanel extends JPanel {
     }
 
     private void openCreateDialog() {
+        if (!PermissionHelper.canManageBooks(networkClient)) {
+            JOptionPane.showMessageDialog(this, "Bạn không có quyền thêm sách mới.", "Từ chối truy cập", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         java.awt.Window owner = SwingUtilities.getWindowAncestor(this);
         BookFormDialog dialog = new BookFormDialog(owner, networkClient, null);
         dialog.setVisible(true);
@@ -848,6 +853,10 @@ public class BookManagementPanel extends JPanel {
     }
 
     private void openEditDialog() {
+        if (!PermissionHelper.canManageBooks(networkClient)) {
+            JOptionPane.showMessageDialog(this, "Bạn không có quyền chỉnh sửa sách.", "Từ chối truy cập", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         BookDTO selected = getSelectedBook();
         if (selected == null) {
             JOptionPane.showMessageDialog(this, "Vui lòng chọn một cuốn sách cần sửa.", "Yêu Cầu Chọn", JOptionPane.WARNING_MESSAGE);
@@ -863,6 +872,10 @@ public class BookManagementPanel extends JPanel {
     }
 
     private void confirmDelete() {
+        if (!PermissionHelper.canManageBooks(networkClient)) {
+            JOptionPane.showMessageDialog(this, "Bạn không có quyền xóa sách.", "Từ chối truy cập", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         BookDTO selected = getSelectedBook();
         if (selected == null) {
             JOptionPane.showMessageDialog(this, "Vui lòng chọn một cuốn sách cần xóa.", "Yêu Cầu Chọn", JOptionPane.WARNING_MESSAGE);

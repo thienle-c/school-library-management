@@ -17,6 +17,7 @@ public enum Action {
     CREATE_USER,
     UPDATE_USER,
     DELETE_USER,
+    ADMIN_RESET_PASSWORD,
 
     // Student Management
     LIST_STUDENTS,

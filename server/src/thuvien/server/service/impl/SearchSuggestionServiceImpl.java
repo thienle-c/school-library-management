@@ -91,29 +91,25 @@ public class SearchSuggestionServiceImpl implements SearchSuggestionService {
                     break;
 
                 case "BORROW":
-                    Long studentId = null;
                     if (session != null && session.getRole() == UserRole.STUDENT) {
                         StudentDTO s = studentRepository.findByUserId(session.getUserId());
-                        if (s != null) studentId = s.getId();
-                    }
-
-                    String sqlBorrow;
-                    if (studentId != null) {
-                        sqlBorrow = "SELECT DISTINCT b.title FROM borrow_records br " +
-                                    "JOIN books b ON br.book_id = b.id " +
-                                    "WHERE br.student_id = ? AND b.title LIKE ? LIMIT 6";
-                        try (PreparedStatement ps = conn.prepareStatement(sqlBorrow)) {
-                            ps.setLong(1, studentId);
-                            ps.setString(2, kw);
-                            try (ResultSet rs = ps.executeQuery()) {
-                                while (rs.next()) results.add(rs.getString("title"));
+                        if (s != null) {
+                            String sqlBorrow = "SELECT DISTINCT b.title FROM borrow_records br " +
+                                               "JOIN books b ON br.book_id = b.id " +
+                                               "WHERE br.student_id = ? AND b.title LIKE ? LIMIT 6";
+                            try (PreparedStatement ps = conn.prepareStatement(sqlBorrow)) {
+                                ps.setLong(1, s.getId());
+                                ps.setString(2, kw);
+                                try (ResultSet rs = ps.executeQuery()) {
+                                    while (rs.next()) results.add(rs.getString("title"));
+                                }
                             }
                         }
-                    } else {
-                        sqlBorrow = "SELECT DISTINCT b.title, s.full_name, s.student_code FROM borrow_records br " +
-                                    "JOIN books b ON br.book_id = b.id " +
-                                    "JOIN students s ON br.student_id = s.id " +
-                                    "WHERE b.title LIKE ? OR s.full_name LIKE ? OR s.student_code LIKE ? LIMIT 6";
+                    } else if (session != null && (session.getRole() == UserRole.ADMIN || session.getRole() == UserRole.LIBRARIAN)) {
+                        String sqlBorrow = "SELECT DISTINCT b.title, s.full_name, s.student_code FROM borrow_records br " +
+                                           "JOIN books b ON br.book_id = b.id " +
+                                           "JOIN students s ON br.student_id = s.id " +
+                                           "WHERE b.title LIKE ? OR s.full_name LIKE ? OR s.student_code LIKE ? LIMIT 6";
                         try (PreparedStatement ps = conn.prepareStatement(sqlBorrow)) {
                             ps.setString(1, kw);
                             ps.setString(2, kw);
@@ -124,33 +120,31 @@ public class SearchSuggestionServiceImpl implements SearchSuggestionService {
                                 }
                             }
                         }
+                    } else {
+                        throw new AuthorizationException("Yêu cầu phiên đăng nhập hợp lệ để tra cứu gợi ý mượn trả.");
                     }
                     break;
 
                 case "RESERVATION":
-                    Long resStudentId = null;
                     if (session != null && session.getRole() == UserRole.STUDENT) {
                         StudentDTO s = studentRepository.findByUserId(session.getUserId());
-                        if (s != null) resStudentId = s.getId();
-                    }
-
-                    String sqlRes;
-                    if (resStudentId != null) {
-                        sqlRes = "SELECT DISTINCT b.title FROM reservations r " +
-                                 "JOIN books b ON r.book_id = b.id " +
-                                 "WHERE r.student_id = ? AND b.title LIKE ? LIMIT 6";
-                        try (PreparedStatement ps = conn.prepareStatement(sqlRes)) {
-                            ps.setLong(1, resStudentId);
-                            ps.setString(2, kw);
-                            try (ResultSet rs = ps.executeQuery()) {
-                                while (rs.next()) results.add(rs.getString("title"));
+                        if (s != null) {
+                            String sqlRes = "SELECT DISTINCT b.title FROM reservations r " +
+                                            "JOIN books b ON r.book_id = b.id " +
+                                            "WHERE r.student_id = ? AND b.title LIKE ? LIMIT 6";
+                            try (PreparedStatement ps = conn.prepareStatement(sqlRes)) {
+                                ps.setLong(1, s.getId());
+                                ps.setString(2, kw);
+                                try (ResultSet rs = ps.executeQuery()) {
+                                    while (rs.next()) results.add(rs.getString("title"));
+                                }
                             }
                         }
-                    } else {
-                        sqlRes = "SELECT DISTINCT b.title, s.student_code FROM reservations r " +
-                                 "JOIN books b ON r.book_id = b.id " +
-                                 "JOIN students s ON r.student_id = s.id " +
-                                 "WHERE b.title LIKE ? OR s.full_name LIKE ? OR s.student_code LIKE ? LIMIT 6";
+                    } else if (session != null && (session.getRole() == UserRole.ADMIN || session.getRole() == UserRole.LIBRARIAN)) {
+                        String sqlRes = "SELECT DISTINCT b.title, s.student_code FROM reservations r " +
+                                        "JOIN books b ON r.book_id = b.id " +
+                                        "JOIN students s ON r.student_id = s.id " +
+                                        "WHERE b.title LIKE ? OR s.full_name LIKE ? OR s.student_code LIKE ? LIMIT 6";
                         try (PreparedStatement ps = conn.prepareStatement(sqlRes)) {
                             ps.setString(1, kw);
                             ps.setString(2, kw);
@@ -161,24 +155,51 @@ public class SearchSuggestionServiceImpl implements SearchSuggestionService {
                                 }
                             }
                         }
+                    } else {
+                        throw new AuthorizationException("Yêu cầu phiên đăng nhập hợp lệ để tra cứu gợi ý đặt trước.");
                     }
                     break;
 
                 case "FINE":
-                    String sqlFine = "SELECT DISTINCT b.title, s.student_code FROM fines f " +
-                                     "JOIN borrow_records br ON f.borrow_record_id = br.id " +
-                                     "JOIN books b ON br.book_id = b.id " +
-                                     "JOIN students s ON f.student_id = s.id " +
-                                     "WHERE b.title LIKE ? OR s.full_name LIKE ? OR s.student_code LIKE ? LIMIT 6";
-                    try (PreparedStatement ps = conn.prepareStatement(sqlFine)) {
-                        ps.setString(1, kw);
-                        ps.setString(2, kw);
-                        ps.setString(3, kw);
-                        try (ResultSet rs = ps.executeQuery()) {
-                            while (rs.next()) {
-                                results.add(rs.getString("title") + " (" + rs.getString("student_code") + ")");
+                    if (session != null && session.getRole() == UserRole.STUDENT) {
+                        StudentDTO s = studentRepository.findByUserId(session.getUserId());
+                        if (s != null) {
+                            Long fineStudentId = s.getId();
+                            String sqlFineStudent = "SELECT DISTINCT b.title FROM fines f " +
+                                                    "JOIN borrow_records br ON f.borrow_record_id = br.id " +
+                                                    "JOIN books b ON br.book_id = b.id " +
+                                                    "JOIN students s ON f.student_id = s.id " +
+                                                    "WHERE f.student_id = ? AND (b.title LIKE ? OR s.full_name LIKE ? OR s.student_code LIKE ?) LIMIT 6";
+                            try (PreparedStatement ps = conn.prepareStatement(sqlFineStudent)) {
+                                ps.setLong(1, fineStudentId);
+                                ps.setString(2, kw);
+                                ps.setString(3, kw);
+                                ps.setString(4, kw);
+                                try (ResultSet rs = ps.executeQuery()) {
+                                    while (rs.next()) {
+                                        results.add(rs.getString("title"));
+                                    }
+                                }
                             }
                         }
+                    } else if (session != null && (session.getRole() == UserRole.ADMIN || session.getRole() == UserRole.LIBRARIAN)) {
+                        String sqlFineStaff = "SELECT DISTINCT b.title, s.student_code FROM fines f " +
+                                              "JOIN borrow_records br ON f.borrow_record_id = br.id " +
+                                              "JOIN books b ON br.book_id = b.id " +
+                                              "JOIN students s ON f.student_id = s.id " +
+                                              "WHERE b.title LIKE ? OR s.full_name LIKE ? OR s.student_code LIKE ? LIMIT 6";
+                        try (PreparedStatement ps = conn.prepareStatement(sqlFineStaff)) {
+                            ps.setString(1, kw);
+                            ps.setString(2, kw);
+                            ps.setString(3, kw);
+                            try (ResultSet rs = ps.executeQuery()) {
+                                while (rs.next()) {
+                                    results.add(rs.getString("title") + " (" + rs.getString("student_code") + ")");
+                                }
+                            }
+                        }
+                    } else {
+                        throw new AuthorizationException("Yêu cầu phiên đăng nhập hợp lệ để tra cứu gợi ý tiền phạt.");
                     }
                     break;
 

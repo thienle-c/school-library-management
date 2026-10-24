@@ -71,6 +71,10 @@ public class ClientSession {
         return hasRole(UserRole.STUDENT);
     }
 
+    public synchronized boolean isMustChangePassword() {
+        return currentUser != null && currentUser.isMustChangePassword();
+    }
+
     public synchronized void clear() {
         this.currentUser = null;
     }

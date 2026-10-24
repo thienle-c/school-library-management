@@ -14,4 +14,6 @@ public interface UserService {
     boolean deleteUser(Long id) throws LibraryException;
     boolean changePassword(Long userId, String currentPassword, String newPassword)
             throws thuvien.common.exception.ValidationException, EntityNotFoundException, LibraryException;
+    thuvien.common.dto.AdminResetPasswordResponseDTO adminResetPassword(Long adminUserId, Long targetUserId)
+            throws thuvien.common.exception.ValidationException, EntityNotFoundException, LibraryException;
 }

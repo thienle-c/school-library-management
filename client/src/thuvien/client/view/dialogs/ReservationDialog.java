@@ -5,7 +5,7 @@ import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 import thuvien.client.controller.ClientReservationController;
 import thuvien.client.network.NetworkClient;
-import thuvien.client.session.ClientSession;
+import thuvien.client.session.PermissionHelper;
 import thuvien.client.view.common.AsyncWorker;
 import thuvien.client.view.common.ModernUIHelper;
 import thuvien.common.dto.ReservationDTO;
@@ -14,11 +14,13 @@ import thuvien.common.dto.ReservationDTO;
  * Modal dialog for reserving a book.
  */
 public class ReservationDialog extends JDialog {
+    private final NetworkClient networkClient;
     private final ClientReservationController reservationController;
     private boolean saved = false;
 
     public ReservationDialog(Window owner, NetworkClient networkClient, Long defaultBookId, Long defaultStudentId) {
         super(owner, ModalityType.APPLICATION_MODAL);
+        this.networkClient = networkClient;
         this.reservationController = new ClientReservationController(networkClient);
         initComponents();
         initCustom(defaultBookId, defaultStudentId);
@@ -54,7 +56,7 @@ public class ReservationDialog extends JDialog {
             bookIdField.setText(defaultBookId.toString());
         }
 
-        boolean isStudent = ClientSession.getInstance().isStudent();
+        boolean isStudent = PermissionHelper.isStudent(networkClient);
         if (isStudent) {
             lblStudentId.setVisible(false);
             studentIdField.setVisible(false);
@@ -186,7 +188,7 @@ public class ReservationDialog extends JDialog {
         }
 
         Long studentId = null;
-        if (!ClientSession.getInstance().isStudent()) {
+        if (!PermissionHelper.isStudent(networkClient)) {
             String stuStr = studentIdField.getText().trim();
             if (stuStr.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Vui lòng nhập Mã ID sinh viên.", "Lỗi Xác Thực", JOptionPane.WARNING_MESSAGE);

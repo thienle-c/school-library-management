@@ -87,9 +87,50 @@ public class ClientAuthController {
         Request request = new Request(Action.CHANGE_PASSWORD, payload);
         Response response = networkClient.send(request);
         if (response.isSuccess()) {
+            if (clientSession != null && clientSession.getCurrentUser() != null) {
+                clientSession.getCurrentUser().setMustChangePassword(false);
+            }
+            if (networkClient != null && networkClient.getSession() != null && networkClient.getSession().getCurrentUser() != null) {
+                networkClient.getSession().getCurrentUser().setMustChangePassword(false);
+            }
             return true;
         } else if (response.getStatusCode() == StatusCode.BAD_REQUEST) {
             throw new ValidationException(response.getMessage());
+        } else {
+            throw new LibraryException(response.getMessage());
+        }
+    }
+
+    public thuvien.common.dto.AdminResetPasswordResponseDTO adminResetPassword(Long targetUserId)
+            throws LibraryException, NetworkException {
+        if (targetUserId == null || targetUserId <= 0) {
+            throw new ValidationException("Mã ID người dùng mục tiêu không hợp lệ.");
+        }
+        thuvien.common.dto.AdminResetPasswordRequestDTO payload =
+                new thuvien.common.dto.AdminResetPasswordRequestDTO(targetUserId);
+        Request request = new Request(Action.ADMIN_RESET_PASSWORD, payload);
+        Response response = networkClient.send(request);
+        if (response.isSuccess() && response.getData() instanceof thuvien.common.dto.AdminResetPasswordResponseDTO) {
+            return (thuvien.common.dto.AdminResetPasswordResponseDTO) response.getData();
+        } else if (response.getStatusCode() == StatusCode.BAD_REQUEST) {
+            throw new ValidationException(response.getMessage());
+        } else if (response.getStatusCode() == StatusCode.NOT_FOUND) {
+            throw new thuvien.common.exception.EntityNotFoundException(response.getMessage());
+        } else if (response.getStatusCode() == StatusCode.FORBIDDEN) {
+            throw new thuvien.common.exception.AuthorizationException(response.getMessage());
+        } else {
+            throw new LibraryException(response.getMessage());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public java.util.List<thuvien.common.dto.UserDTO> listUsers() throws LibraryException, NetworkException {
+        Request request = new Request(Action.LIST_USERS, null);
+        Response response = networkClient.send(request);
+        if (response.isSuccess() && response.getData() instanceof java.util.List) {
+            return (java.util.List<thuvien.common.dto.UserDTO>) response.getData();
+        } else if (response.getStatusCode() == StatusCode.FORBIDDEN) {
+            throw new thuvien.common.exception.AuthorizationException(response.getMessage());
         } else {
             throw new LibraryException(response.getMessage());
         }

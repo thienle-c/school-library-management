@@ -18,6 +18,7 @@ import thuvien.client.controller.ClientReservationController;
 import thuvien.client.controller.ClientSearchSuggestionController;
 import thuvien.client.network.NetworkClient;
 import thuvien.client.session.ClientSession;
+import thuvien.client.session.PermissionHelper;
 import thuvien.client.view.LoginForm;
 import thuvien.client.view.common.AsyncWorker;
 import thuvien.client.view.common.ModernUIHelper;
@@ -49,7 +50,7 @@ public class ReservationManagementPanel extends JPanel {
     public ReservationManagementPanel(NetworkClient networkClient) {
         this.networkClient = networkClient;
         this.reservationController = new ClientReservationController(networkClient);
-        this.isStaff = ClientSession.getInstance().isAdmin() || ClientSession.getInstance().isLibrarian();
+        this.isStaff = PermissionHelper.isStaff(networkClient);
 
         initComponents();
         initCustom();

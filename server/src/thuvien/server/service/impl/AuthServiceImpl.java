@@ -6,10 +6,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import thuvien.common.dto.LoginRequestDTO;
+import thuvien.common.dto.StudentDTO;
 import thuvien.common.dto.UserDTO;
 import thuvien.common.dto.UserSessionDTO;
+import thuvien.common.enums.StudentStatus;
+import thuvien.common.enums.UserRole;
 import thuvien.common.exception.AuthenticationException;
+import thuvien.server.repository.StudentRepository;
 import thuvien.server.repository.UserRepository;
+import thuvien.server.repository.impl.StudentRepositoryImpl;
 import thuvien.server.repository.impl.UserRepositoryImpl;
 import thuvien.server.security.PasswordHasher;
 import thuvien.server.security.SessionManager;
@@ -28,6 +33,7 @@ public class AuthServiceImpl implements AuthService {
     public static final long LOCKOUT_DURATION_MS = 15 * 60 * 1000L; // 15 minutes
 
     private final UserRepository userRepository;
+    private final StudentRepository studentRepository;
     private final SessionManager sessionManager;
     private final AuditLogService auditLogService;
 
@@ -37,19 +43,28 @@ public class AuthServiceImpl implements AuthService {
     private final Map<Long, Long> userIdLockoutUntil = new ConcurrentHashMap<>();
 
     public AuthServiceImpl() {
-        this(new UserRepositoryImpl(), SessionManager.getInstance(), new AuditLogServiceImpl());
+        this(new UserRepositoryImpl(), new StudentRepositoryImpl(), SessionManager.getInstance(), new AuditLogServiceImpl());
     }
 
     public AuthServiceImpl(UserRepository userRepository) {
-        this(userRepository, SessionManager.getInstance(), null);
+        this(userRepository, new StudentRepositoryImpl(), SessionManager.getInstance(), null);
     }
 
     public AuthServiceImpl(UserRepository userRepository, SessionManager sessionManager) {
-        this(userRepository, sessionManager, null);
+        this(userRepository, new StudentRepositoryImpl(), sessionManager, null);
     }
 
     public AuthServiceImpl(UserRepository userRepository, SessionManager sessionManager, AuditLogService auditLogService) {
+        this(userRepository, new StudentRepositoryImpl(), sessionManager, auditLogService);
+    }
+
+    public AuthServiceImpl(UserRepository userRepository, StudentRepository studentRepository, SessionManager sessionManager) {
+        this(userRepository, studentRepository, sessionManager, null);
+    }
+
+    public AuthServiceImpl(UserRepository userRepository, StudentRepository studentRepository, SessionManager sessionManager, AuditLogService auditLogService) {
         this.userRepository = userRepository;
+        this.studentRepository = studentRepository != null ? studentRepository : new StudentRepositoryImpl();
         this.sessionManager = sessionManager != null ? sessionManager : SessionManager.getInstance();
         this.auditLogService = auditLogService;
     }
@@ -189,18 +204,51 @@ public class AuthServiceImpl implements AuthService {
                 throw new AuthenticationException("Tên đăng nhập hoặc mật khẩu không chính xác.");
             }
 
-            if (!user.isActive()) {
-                recordFailedAttempt(username, user.getId(), "Tài khoản đang bị vô hiệu hóa");
-                throw new AuthenticationException("Tài khoản đang bị vô hiệu hóa hoặc chưa kích hoạt.");
-            }
-
+            // 2. Verify credentials from database (Password check)
             String storedHash = userRepository.getPasswordHash(username);
             if (storedHash == null || !PasswordHasher.verify(plainPassword, storedHash)) {
                 recordFailedAttempt(username, user.getId(), "Mật khẩu không khớp");
                 throw new AuthenticationException("Tên đăng nhập hoặc mật khẩu không chính xác.");
             }
 
-            // 2. Successful Login: Clear failed attempts and lockouts
+            // 3. Credentials verified. Check account operational status from database before creating session
+            // 3a. System user active status
+            if (!user.isActive()) {
+                if (auditLogService != null) {
+                    auditLogService.log(user.getId(), "LOGIN_BLOCKED_INACTIVE", "User", user.getId(),
+                            "Đăng nhập bị từ chối do tài khoản đang bị vô hiệu hóa");
+                }
+                throw new AuthenticationException("Tài khoản đang bị vô hiệu hóa hoặc chưa kích hoạt.");
+            }
+
+            // 3b. Student operational status check from database
+            if (user.getRole() == UserRole.STUDENT && studentRepository != null) {
+                StudentDTO student = studentRepository.findByUserId(user.getId());
+                if (student != null) {
+                    if (student.getStatus() == StudentStatus.SUSPENDED) {
+                        if (auditLogService != null) {
+                            auditLogService.log(user.getId(), "LOGIN_BLOCKED_SUSPENDED", "Student", student.getId(),
+                                    "Đăng nhập bị từ chối: Tài khoản sinh viên đang bị đình chỉ hoạt động");
+                        }
+                        LOGGER.warning("Login rejected for suspended student: " + username + " (Student ID: " + student.getId() + ")");
+                        throw new AuthenticationException("Tài khoản sinh viên đang bị đình chỉ hoạt động. Vui lòng liên hệ Thư viện.");
+                    } else if (student.getStatus() == StudentStatus.GRADUATED) {
+                        if (auditLogService != null) {
+                            auditLogService.log(user.getId(), "LOGIN_BLOCKED_GRADUATED", "Student", student.getId(),
+                                    "Đăng nhập bị từ chối: Sinh viên đã tốt nghiệp");
+                        }
+                        throw new AuthenticationException("Tài khoản sinh viên đã tốt nghiệp và không còn hoạt động.");
+                    } else if (student.getStatus() != StudentStatus.ACTIVE) {
+                        if (auditLogService != null) {
+                            auditLogService.log(user.getId(), "LOGIN_BLOCKED_INACTIVE", "Student", student.getId(),
+                                    "Đăng nhập bị từ chối: Trạng thái sinh viên không hợp lệ (" + student.getStatus() + ")");
+                        }
+                        throw new AuthenticationException("Tài khoản sinh viên không ở trạng thái hoạt động (" + student.getStatus() + ").");
+                    }
+                }
+            }
+
+            // 4. Successful Login: Clear failed attempts and lockouts
             failedAttempts.remove(username);
             failedAttempts.remove(username.toLowerCase());
             lockoutUntil.remove(username);
@@ -223,7 +271,8 @@ public class AuthServiceImpl implements AuthService {
                     user.getId(),
                     user.getUsername(),
                     user.getFullName(),
-                    user.getRole()
+                    user.getRole(),
+                    user.isMustChangePassword()
             );
             sessionManager.createSession(session);
 
@@ -235,7 +284,7 @@ public class AuthServiceImpl implements AuthService {
             return session;
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Database error during user login authentication for: " + username, e);
-            throw new AuthenticationException("Dịch vụ xác thực tạm thời không khả dụng: " + e.getMessage());
+            throw new AuthenticationException("Dịch vụ xác thực tạm thời không khả dụng. Vui lòng thử lại sau.");
         }
     }
 
